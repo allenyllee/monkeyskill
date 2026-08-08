@@ -47,6 +47,14 @@
       "events": ["mouseup", "keyup", "touchend"]
     },
     {
+      "id": "css-background-remains-a-background",
+      "type": "computedStyleContains",
+      "target": "#background-image-target",
+      "property": "background-image",
+      "value": "test-background.svg",
+      "note": "The native context menu opens, but Chrome saves the HTML because this is not an img element."
+    },
+    {
       "id": "no-network-capability",
       "type": "capabilityDenied",
       "capability": "network"

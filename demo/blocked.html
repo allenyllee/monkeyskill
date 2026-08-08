@@ -15,14 +15,17 @@
       .test { padding: 20px; border: 1px solid #dce5da; border-radius: 14px; }
       .standard { border-top: 5px solid #93bb24; }
       .absolute { border-top: 5px solid #ed9d3e; }
+      .native { border-top: 5px solid #4a91d8; }
       .badge { display: inline-block; margin-bottom: 10px; padding: 2px 9px; border-radius: 999px; background: #edf5d5; font-size: 12px; font-weight: 800; letter-spacing: .04em; }
       .absolute .badge { background: #fff0dc; }
+      .native .badge { background: #e2effc; }
       .target { min-height: 128px; padding: 16px; border-radius: 10px; background: #f5f7f4; }
       .absolute-target { user-select: none; }
       .media-test { position: relative; margin-top: 12px; }
       .media-test input { width: 100%; padding: 10px; }
       .blocking-overlay { position: absolute; inset: 0; }
       .pointer-media { display: block; width: 72px; height: 48px; margin-top: 12px; pointer-events: none; background: #dce8d7; }
+      .background-target { min-height: 170px; border-radius: 10px; background: #dce8d7 url("/test-background.svg") center / cover no-repeat; }
       .expectation { color: #536058; font-size: 14px; }
       .log { min-height: 24px; margin-bottom: 0; color: #667169; font-family: ui-monospace, monospace; font-size: 13px; }
       .checklist { margin-top: 24px; padding: 16px 20px; border-radius: 12px; background: #18231c; color: #eff6ea; }
@@ -68,11 +71,19 @@
           <img class="pointer-media" data-test="pointer-blocked-media" alt="pointer-events 測試媒體" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='48'%3E%3Crect width='72' height='48' rx='8' fill='%23dce8d7'/%3E%3C/svg%3E">
           <p id="absolute-log" class="log">等待 Absolute 測試…</p>
         </section>
+
+        <section class="test native">
+          <span class="badge">NATIVE BEHAVIOR</span>
+          <h2>CSS 背景圖片</h2>
+          <p class="expectation">對照 WebBrowserTools Method 16：右鍵選單應能開啟，但 Chrome 會把此處視為網頁元素。</p>
+          <div id="background-image-target" class="background-target" role="img" aria-label="CSS 背景圖片測試"></div>
+          <p class="log">預期：「另存新檔」儲存 HTML；這不屬於右鍵事件被封鎖。</p>
+        </section>
       </div>
 
       <div class="checklist">
         <strong>預期結果：</strong>
-        關閉時兩區都失敗；Standard 只通過左側；Absolute 兩側都通過。
+        關閉時前兩區都失敗；Standard 只通過左側；Absolute 前兩區都通過。CSS 背景圖片區用來確認 Chrome 的原生差異。
       </div>
     </main>
 
