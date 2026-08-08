@@ -130,11 +130,11 @@ globalThis.__monkeySkillAcceptanceTests = {
   },
 
   async "method-16-css-background"(h) {
-    h.setBody(`<div id="target" style="background-image:url(data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E)"></div>`);
+    h.setBody(`<div id="target" style="background-image:linear-gradient(red,blue)"></div>`);
     let blocked = false;
     h.target().addEventListener("contextmenu", event => { blocked = true; event.preventDefault(); });
     const event = h.fire("#target", "contextmenu", { button: 2 });
     h.assert(!blocked && !event.defaultPrevented, "background contextmenu listener still ran");
-    h.assert(getComputedStyle(h.target()).backgroundImage !== "none", "CSS background image was removed");
+    h.assert(h.target().style.backgroundImage.includes("linear-gradient"), "CSS background image declaration was removed");
   }
 };

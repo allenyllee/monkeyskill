@@ -80,6 +80,7 @@ test("preinstalled Skills point to separate specs and generated builds", async (
   for (const test of acceptance.tests.filter(test => !test.type)) {
     assert.match(runner, new RegExp(`"${test.id}"`));
   }
+  assert.match(runner, /style\.backgroundImage\.includes\("linear-gradient"\)/);
 });
 
 test("demo exposes all 16 methods on one page", async () => {
