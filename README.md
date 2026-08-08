@@ -53,6 +53,33 @@ npm run serve:demo
 
 Then open `http://127.0.0.1:4173/blocked.html`. Try selection, copying, and right-click before and after enabling Standard and Absolute modes.
 
+## Local agent API
+
+Run a local OpenAI-compatible endpoint that exercises the complete Extension request, generation, validation, review, and approval path:
+
+```powershell
+npm run serve:agent
+```
+
+The server prints a random local token. In MonkeySkill's LLM settings use:
+
+- Endpoint: `http://127.0.0.1:8787/v1/chat/completions`
+- Model: `local-agent`
+- API key: the printed local token
+
+The default `fixture` agent runs offline and deterministically turns the bundled Restore right click MSkill into a response with the same shape as Chat Completions. This verifies the whole integration without spending API credits. Each call creates an inspectable conversation; use the printed `/sessions` URL with the same bearer token.
+
+To hand the conversation to a real upstream OpenAI-compatible agent instead, keep the Extension pointed at localhost and start the bridge in proxy mode:
+
+```powershell
+$env:MONKEYSKILL_AGENT_MODE = "proxy"
+$env:MONKEYSKILL_UPSTREAM_API_KEY = "your-upstream-key"
+$env:MONKEYSKILL_UPSTREAM_MODEL = "your-model"
+npm run serve:agent
+```
+
+Optional variables are `MONKEYSKILL_UPSTREAM_ENDPOINT`, `MONKEYSKILL_LOCAL_TOKEN`, and `MONKEYSKILL_AGENT_PORT`. The upstream key stays in the local server process and is not stored by the Extension.
+
 ## Development
 
 ```powershell
