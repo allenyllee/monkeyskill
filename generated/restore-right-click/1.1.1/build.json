@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "skillId": "restore-right-click",
+  "skillVersion": "1.1.1",
+  "artifactType": "packaged-content-script",
+  "execution": {
+    "runAt": "document_start",
+    "allFrames": true,
+    "world": "MAIN"
+  },
+  "modes": {
+    "standard": {
+      "js": ["generated/restore-right-click/1.1.1/standard.js"],
+      "css": ["generated/restore-right-click/1.1.0/standard.css"]
+    },
+    "absolute": {
+      "js": ["generated/restore-right-click/1.1.1/absolute.js"],
+      "css": ["generated/restore-right-click/1.1.0/absolute.css"]
+    }
+  }
+}

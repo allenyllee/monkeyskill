@@ -8,6 +8,7 @@ Restore the browser context menu, text selection, copying, cutting, pasting, and
 
 - Stop page handlers from cancelling `contextmenu`, `copy`, `cut`, `selectstart`, and `dragstart`.
 - Remove equivalent inline event-handler attributes.
+- Remove inline mouse/pointer handlers only when their source explicitly cancels the event.
 - Restore text selection only where the page explicitly disables it.
 - Observe dynamically inserted elements without scanning the full page continuously.
 

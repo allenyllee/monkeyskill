@@ -72,6 +72,8 @@ test("Absolute build covers structural right-click blockers", async () => {
   const absoluteStyles = await readFile(join(root, build.modes.absolute.css[0]), "utf8");
 
   assert.match(absoluteSource, /pointer-events/);
+  assert.match(absoluteSource, /onmousedown/);
+  assert.match(absoluteSource, /isCancellingInlineHandler/);
   assert.match(absoluteSource, /substantiallyOverlaps/);
   assert.match(absoluteSource, /\["mouseup", "keyup", "touchend"\]/);
   assert.match(absoluteSource, /insertFromPaste/);
