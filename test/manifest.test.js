@@ -74,6 +74,7 @@ test("demo exposes all 16 methods on one page", async () => {
   assert.match(demo, /id="absolute-target"/);
   assert.match(demo, /id="background-image-target"/);
   assert.match(demo, /removeAllRanges/);
+  assert.match(demo, /event\.key\.toLowerCase\(\) !== "c"/);
 });
 
 test("Absolute build covers structural right-click blockers", async () => {

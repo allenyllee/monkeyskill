@@ -200,9 +200,10 @@
       }
 
       document.querySelector("#method-11 input").onkeydown = event => {
-        if (!(event.ctrlKey || event.metaKey)) return;
+        const shortcut = event.ctrlKey || event.metaKey;
+        if (!shortcut || event.key.toLowerCase() !== "c") return;
         event.preventDefault();
-        markBlocked(11, "keydown handler 阻擋了快捷鍵");
+        markBlocked(11, "keydown handler 阻擋了 Ctrl/Cmd+C");
         return false;
       };
 
