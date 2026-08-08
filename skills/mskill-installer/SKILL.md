@@ -1,13 +1,13 @@
 ---
 name: mskill-installer
-description: Compile a MonkeySkill specification into JavaScript and CSS artifacts for chrome.userScripts. Use when an agent receives an MSkill manifest, SKILL.md, and acceptance tests and must produce a constrained, reviewable runtime build without adding undeclared permissions or remote dependencies.
+description: Compile a human-readable MonkeySkill specification into JavaScript and CSS artifacts for chrome.userScripts. Use when an agent receives an MSkill manifest and SKILL.md and must produce a constrained, reviewable runtime build without seeing hidden tests or adding undeclared permissions or remote dependencies.
 ---
 
 # MSkill Installer
 
-Generate the smallest self-contained implementation that satisfies the supplied specification and acceptance tests.
+Generate the smallest self-contained implementation that satisfies the supplied human-readable specification. Acceptance tests are intentionally hidden and are never input to this agent.
 
-The acceptance-test manifest and executable runner are immutable input. Read them to understand observable requirements, but never reproduce, replace, weaken, or modify the test code in the generated build.
+If a later repair request lists failed criterion IDs, use only the matching `[criterion:id]` text already present in `SKILL.md`. Treat IDs as diagnostics, never as new requirements. Refuse to add behavior that is not stated in the original specification.
 
 ## Security boundary
 
@@ -25,7 +25,7 @@ The acceptance-test manifest and executable runner are immutable input. Read the
 - Avoid global names except the marker.
 - Preserve normal links, buttons, forms, editable fields, navigation, and left-click behavior unless the specification explicitly changes them.
 - Make repeated execution safe.
-- Support dynamically inserted content when required by the acceptance tests.
+- Support dynamically inserted content only when required by the human-readable specification.
 - Do not embed source maps or explanatory comments containing secrets.
 
 ## Required response

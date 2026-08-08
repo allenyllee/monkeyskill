@@ -20,6 +20,7 @@ No source code or visual assets from the referenced extension are included.
 - A two-step LLM workflow: generate and validate a draft, then explicitly approve installation.
 - Sixteen fixed executable behavior tests packaged with the MSkill and run in isolated sandbox frames before both review and installation.
 - Durable offscreen generation jobs, so multi-minute LLM requests survive MV3 service-worker suspension and Store refreshes preserve running, failed, and ready outcomes.
+- Hidden declarative acceptance checks: the build LLM receives only the trusted installer policy, capability manifest, and human-readable `SKILL.md`; MSkill packages cannot supply executable test code.
 - Runtime-generated builds installed through `chrome.userScripts` while packaged builds continue to use `chrome.scripting`.
 
 ## Load in Chrome

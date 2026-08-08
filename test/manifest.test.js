@@ -27,7 +27,8 @@ test("manifest references existing extension entrypoints", async () => {
     access(join(root, "skills", "mskill-creator", "SKILL.md")),
     access(join(root, "skills", "mskill-installer", "SKILL.md")),
     access(join(root, "src", "validation", "offscreen.html")),
-    access(join(root, "src", "validation", "sandbox.html"))
+    access(join(root, "src", "validation", "sandbox.html")),
+    access(join(root, "src", "validation", "scenarios.js"))
   ]);
 });
 
@@ -69,17 +70,26 @@ test("preinstalled Skills point to separate specs and generated builds", async (
   await Promise.all(artifactPaths.map(path => access(join(root, path))));
 
   const specificationFiles = await readdir(join(root, "skills", skill.id), { recursive: true });
-  const runtimeSource = specificationFiles.filter(path => /\.(?:js|css)$/i.test(path))
-    .filter(path => !String(path).replaceAll("\\", "/").startsWith("tests/"));
+  const runtimeSource = specificationFiles.filter(path => /\.(?:js|css)$/i.test(path));
   assert.deepEqual(runtimeSource, []);
 
   const acceptance = JSON.parse(await readFile(join(root, "skills", skill.id, skill.tests), "utf8"));
-  assert.equal(acceptance.tests.filter(test => !test.type).length, 16);
-  await access(join(root, "skills", skill.id, acceptance.runner));
-  const runner = await readFile(join(root, "skills", skill.id, acceptance.runner), "utf8");
+  assert.equal(acceptance.schemaVersion, 2);
+  assert.equal(acceptance.runner, undefined);
+  const behaviorTests = acceptance.tests.filter(test => !test.type);
+  assert.equal(behaviorTests.filter(test => test.id.startsWith("method-")).length, 16);
+  assert.equal(behaviorTests.length, 17);
+  const runner = await readFile(join(root, "src", "validation", "scenarios.js"), "utf8");
   for (const test of acceptance.tests.filter(test => !test.type)) {
-    assert.match(runner, new RegExp(`"${test.id}"`));
+    assert.deepEqual(Object.keys(test).sort(), ["criterion", "id", "mode", "scenario"]);
+    assert.match(runner, new RegExp(`"${test.scenario}"`));
   }
+  const criteria = [...(await readFile(join(root, "skills", skill.id, skill.entrypoint), "utf8"))
+    .matchAll(/\[criterion:([a-z0-9-]+)\]/g)].map(match => match[1]);
+  assert.deepEqual(
+    [...new Set(acceptance.tests.map(test => test.criterion))].sort(),
+    [...new Set(criteria)].sort()
+  );
   assert.match(runner, /style\.backgroundImage\.includes\("linear-gradient"\)/);
 });
 

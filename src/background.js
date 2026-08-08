@@ -17,6 +17,7 @@ import {
   LLM_SETTINGS_KEY,
   buildGenerationMessages,
   endpointOriginPattern,
+  extractCriterionIds,
   normalizeLlmSettings,
   publicLlmSettings,
   scanGeneratedBuild
@@ -352,14 +353,13 @@ async function prepareGenerationRequest(packageDefinition) {
     loadTextAsset(`${skillRoot}${packageDefinition.skill.entrypoint}`),
     loadJsonAsset(`${skillRoot}${packageDefinition.skill.tests}`)
   ]);
-  const testRunner = tests.runner ? await loadTextAsset(`${skillRoot}${tests.runner}`) : "";
   const messages = buildGenerationMessages({
     installerInstructions,
     skillInstructions,
-    skill: packageDefinition.skill,
-    tests,
-    testRunner
+    skill: packageDefinition.skill
   });
+  const criteria = extractCriterionIds(skillInstructions);
+  if (criteria.length === 0) throw new Error("MSkill must declare human-readable criterion IDs in SKILL.md.");
 
   return {
     request: {
@@ -373,7 +373,7 @@ async function prepareGenerationRequest(packageDefinition) {
         response_format: { type: "json_object" }
       }
     },
-    tests: { suite: tests, runnerSource: testRunner }
+    tests: { suite: tests, criteria }
   };
 }
 
@@ -465,16 +465,18 @@ async function validatePackagedBehavior(packageDefinition) {
   if (!skillPath) throw new Error("Generated Skill is missing its packaged test location.");
   const skillRoot = skillPath.slice(0, skillPath.lastIndexOf("/") + 1);
   const suite = await loadJsonAsset(`${skillRoot}${packageDefinition.skill.tests}`);
-  if (typeof suite.runner !== "string" || !suite.runner || !Array.isArray(suite.tests)) {
-    throw new Error("MSkill must include an executable browser test suite.");
+  if (suite.schemaVersion !== 2 || !Array.isArray(suite.tests) || "runner" in suite) {
+    throw new Error("MSkill must include a declarative browser test suite.");
   }
-  const runnerSource = await loadTextAsset(`${skillRoot}${suite.runner}`);
+  const skillInstructions = await loadTextAsset(`${skillRoot}${packageDefinition.skill.entrypoint}`);
+  const criteria = extractCriterionIds(skillInstructions);
   await ensureValidationDocument();
   const response = await chrome.runtime.sendMessage({
     target: "validation-offscreen",
     type: "run-behavior-tests",
     suite,
-    runnerSource,
+    criteria,
+    skill: packageDefinition.skill,
     build: packageDefinition.build
   });
   if (!response?.results) throw new Error(response?.error || "Behavior test runner did not respond.");

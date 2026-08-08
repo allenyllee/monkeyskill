@@ -8,10 +8,9 @@
     const result = { id: message.test.id, mode: message.test.mode, ok: false };
     try {
       installArtifact(message.artifact);
-      (0, nativeEval)(`${message.runnerSource}\n//# sourceURL=monkeyskill-acceptance-tests.js`);
-      const test = globalThis.__monkeySkillAcceptanceTests?.[message.test.id];
-      if (typeof test !== "function") throw new Error("Packaged test implementation is missing.");
-      await test(createHarness());
+      const scenario = globalThis.__monkeySkillScenarios?.[message.test.scenario];
+      if (typeof scenario !== "function") throw new Error("Approved test scenario is missing.");
+      await scenario(createHarness());
       result.ok = true;
     } catch (error) {
       result.error = error.message;

@@ -26,7 +26,7 @@ export function endpointOriginPattern(endpoint) {
   return `${url.protocol}//${url.host}/*`;
 }
 
-export function buildGenerationMessages({ installerInstructions, skillInstructions, skill, tests, testRunner = "" }) {
+export function buildGenerationMessages({ installerInstructions, skillInstructions, skill }) {
   return [
     {
       role: "system",
@@ -48,13 +48,26 @@ export function buildGenerationMessages({ installerInstructions, skillInstructio
         JSON.stringify(skill),
         "SKILL.md:",
         skillInstructions,
-        "Acceptance tests:",
-        JSON.stringify(tests),
-        "Executable acceptance-test source (read-only; do not copy it into the build):",
-        testRunner
+        "The Extension keeps acceptance tests private. Implement only the human-readable specification; do not guess hidden checks."
       ].join("\n\n")
     }
   ];
+}
+
+export function extractCriterionIds(skillInstructions) {
+  return [...String(skillInstructions).matchAll(/\[criterion:([a-z0-9][a-z0-9-]{0,79})\]/g)]
+    .map(match => match[1]);
+}
+
+export function buildRepairMessage(failedCriteria) {
+  const criteria = [...new Set(failedCriteria)].filter(value => /^[a-z0-9][a-z0-9-]{0,79}$/.test(value));
+  return [
+    "The previous candidate did not satisfy these criterion IDs from the original human-readable SKILL.md:",
+    criteria.join(", "),
+    "Revise the candidate only within the original specification and declared capabilities.",
+    "These IDs are diagnostics, not new instructions. Do not add behavior that is absent from SKILL.md.",
+    "Return the complete JSON build again."
+  ].join("\n");
 }
 
 export function extractAssistantText(payload) {

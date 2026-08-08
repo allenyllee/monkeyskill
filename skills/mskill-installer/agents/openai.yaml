@@ -1,4 +1,4 @@
 interface:
   display_name: "MSkill Installer"
-  short_description: "Generate and validate installable MSkill builds"
-  default_prompt: "Use $mskill-installer to generate, validate, and install an MSkill build."
+  short_description: "Compile MSkills without hidden-test exposure"
+  default_prompt: "Use $mskill-installer to compile an MSkill from its human-readable specification without seeing hidden tests."

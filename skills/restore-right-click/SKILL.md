@@ -33,9 +33,11 @@ Restore the browser context menu, text selection, copying, cutting, pasting, and
 
 ## Success criteria
 
-- Selected text remains selected.
-- Copy and cut keyboard shortcuts reach the browser default behavior.
-- A real user right-click can open the native context menu.
-- Dynamically added protected content is repaired.
-- Empty blocking overlays and `pointer-events: none` media are repaired.
-- Ordinary links, buttons, inputs, and editable fields still work.
+- [criterion:context-menu] A real user right-click can open the native context menu on ordinary elements, inputs, images, overlays, and CSS-background elements.
+- [criterion:text-selection] Selected text remains selected and page `selectstart` blockers no longer disable selection.
+- [criterion:keyboard-copy] Copy and cut keyboard shortcuts reach the browser default behavior.
+- [criterion:paste] Paste reaches editable controls without page handlers blocking or rolling it back.
+- [criterion:pointer-overlays] Empty blocking overlays and `pointer-events: none` media are repaired.
+- [criterion:selection-visibility] Page styles cannot make the selection highlight transparent.
+- [criterion:preserve-controls] Ordinary links, buttons, inputs, editable fields, navigation, and left-click behavior still work.
+- [criterion:no-network] The implementation makes no network requests.
