@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MonkeySkill</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="brand-mark" aria-hidden="true">M</div>
+        <div>
+          <h1>MonkeySkill</h1>
+          <p>Teach your browser a new trick.</p>
+        </div>
+      </header>
+
+      <section class="skill-card">
+        <div class="skill-heading">
+          <div>
+            <span class="eyebrow">INSTALLED SKILL</span>
+            <h2>Restore right click & copy</h2>
+          </div>
+          <span class="local-badge">Local only</span>
+        </div>
+
+        <p class="description">
+          恢復右鍵選單、文字選取、複製與拖曳，不會讀取或傳送頁面內容。
+        </p>
+
+        <label for="site-mode">目前網站</label>
+        <div id="site-name" class="site-name">正在讀取…</div>
+        <select id="site-mode">
+          <option value="inherit">跟隨全域設定</option>
+          <option value="off">停用</option>
+          <option value="standard">標準模式</option>
+          <option value="absolute">Absolute 強制模式</option>
+        </select>
+
+        <label for="global-mode">其他網站的預設值</label>
+        <select id="global-mode">
+          <option value="off">停用</option>
+          <option value="standard">標準模式</option>
+          <option value="absolute">Absolute 強制模式</option>
+        </select>
+
+        <div class="actions">
+          <button id="save" class="primary">套用並重新整理</button>
+          <button id="manage" class="secondary">管理</button>
+        </div>
+        <p id="status" class="status" role="status"></p>
+      </section>
+
+      <footer>此版本使用已封裝、可審查的第一個 Monkey Skill。</footer>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
+

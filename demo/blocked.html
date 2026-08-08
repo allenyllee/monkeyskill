@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-Hant" oncontextmenu="return false" onselectstart="return false" oncopy="return false">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MonkeySkill Right-click Test</title>
+    <style>
+      body { max-width: 720px; margin: 60px auto; padding: 0 24px; font: 16px/1.7 system-ui, sans-serif; color: #17211b; background: #f3f6f1; user-select: none; }
+      main { padding: 28px; border-radius: 18px; background: white; box-shadow: 0 16px 40px rgba(30, 50, 36, .1); }
+      h1 { margin-top: 0; }
+      .blocked { padding: 16px; border-left: 4px solid #93bb24; background: #f4fbdc; }
+      button { padding: 10px 14px; border: 0; border-radius: 10px; background: #c8f24f; font-weight: 750; cursor: pointer; }
+      #log { color: #667169; font-family: ui-monospace, monospace; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>被網站限制的頁面</h1>
+      <p class="blocked" oncontextmenu="return false" oncopy="return false">
+        請嘗試選取並複製這段文字，然後在這裡按右鍵。未啟用 MonkeySkill 時，網站會阻止這些操作。
+      </p>
+      <button id="add">加入動態受保護內容</button>
+      <p id="log">等待測試…</p>
+    </main>
+    <script>
+      document.addEventListener("contextmenu", event => {
+        event.preventDefault();
+        document.querySelector("#log").textContent = "網站攔截了右鍵事件";
+      });
+      document.addEventListener("copy", event => {
+        event.preventDefault();
+        document.querySelector("#log").textContent = "網站攔截了複製事件";
+      });
+      document.addEventListener("selectionchange", () => {
+        const selection = document.getSelection();
+        if (selection && !selection.isCollapsed) selection.removeAllRanges();
+      });
+      document.querySelector("#add").addEventListener("click", () => {
+        const paragraph = document.createElement("p");
+        paragraph.setAttribute("oncontextmenu", "return false");
+        paragraph.setAttribute("oncopy", "return false");
+        paragraph.setAttribute("unselectable", "on");
+        paragraph.textContent = "這是動態加入、同樣禁止右鍵與複製的文字。";
+        document.querySelector("main").append(paragraph);
+      });
+    </script>
+  </body>
+</html>
+

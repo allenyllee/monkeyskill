@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "tests": [
+    {
+      "id": "contextmenu-not-cancelled",
+      "type": "eventDefaultPrevented",
+      "event": "contextmenu",
+      "target": "body",
+      "expected": false
+    },
+    {
+      "id": "body-text-selectable",
+      "type": "computedStyleNotEquals",
+      "target": "body",
+      "property": "user-select",
+      "value": "none"
+    },
+    {
+      "id": "no-network-capability",
+      "type": "capabilityDenied",
+      "capability": "network"
+    }
+  ]
+}
+

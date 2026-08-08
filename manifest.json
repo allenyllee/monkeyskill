@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "MonkeySkill",
+  "version": "0.1.0",
+  "description": "Install small, site-specific browser abilities. First skill: restore right click, selection, and copying.",
+  "minimum_chrome_version": "120",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "MonkeySkill"
+  },
+  "options_page": "src/options/options.html"
+}
+

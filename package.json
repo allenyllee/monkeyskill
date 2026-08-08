@@ -1,0 +1,12 @@
+{
+  "name": "monkeyskill",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/background.js && node --check src/lib/settings.js && node --check src/popup/popup.js && node --check src/options/options.js && node --check src/skills/restore-right-click/standard.js && node --check src/skills/restore-right-click/absolute.js",
+    "serve:demo": "node scripts/serve-demo.mjs"
+  }
+}
+

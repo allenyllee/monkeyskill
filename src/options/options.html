@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MonkeySkill 管理</title>
+    <link rel="stylesheet" href="options.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="logo">M</span>
+        <div>
+          <h1>MonkeySkill</h1>
+          <p>已安裝技能與網站設定</p>
+        </div>
+      </header>
+
+      <section>
+        <div class="section-title">
+          <div>
+            <span class="eyebrow">SKILL 01</span>
+            <h2>Restore right click & copy</h2>
+          </div>
+          <span class="installed">Installed</span>
+        </div>
+        <p class="copy">所有設定只保存在本機。標準模式適合一般網站；Absolute 模式會更積極阻止網站攔截事件。</p>
+
+        <dl>
+          <div><dt>全域預設</dt><dd id="global-value">—</dd></div>
+          <div><dt>網路存取</dt><dd>禁止</dd></div>
+          <div><dt>資料收集</dt><dd>無</dd></div>
+        </dl>
+
+        <h3>網站覆寫</h3>
+        <div id="overrides" class="overrides"></div>
+        <button id="reset" class="danger">重設這個 Skill</button>
+        <p id="status" role="status"></p>
+      </section>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
+
