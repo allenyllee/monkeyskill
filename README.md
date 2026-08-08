@@ -80,6 +80,8 @@ npm run serve:agent
 
 Optional variables are `MONKEYSKILL_UPSTREAM_ENDPOINT`, `MONKEYSKILL_LOCAL_TOKEN`, and `MONKEYSKILL_AGENT_PORT`. The upstream key stays in the local server process and is not stored by the Extension.
 
+For an interactive Codex-only experiment, `MONKEYSKILL_AGENT_MODE=subagent` exposes a protected one-job queue at `/agent/jobs/next`. A live Codex task must explicitly collect each queued request and submit its generated JSON to `/agent/jobs/{id}/complete`; this mode is intentionally not presented as a standalone background service.
+
 ## Development
 
 ```powershell

@@ -12,6 +12,7 @@ export function createAgentApiServer(options = {}) {
   const token = options.token || randomBytes(18).toString("base64url");
   const mode = options.mode || "fixture";
   const upstreamFetch = options.fetch || globalThis.fetch;
+  const broker = createSubagentBroker(options.agentTimeoutMs || 300_000);
 
   const server = http.createServer(async (request, response) => {
     setCorsHeaders(response);
@@ -28,6 +29,26 @@ export function createAgentApiServer(options = {}) {
       }
       if (!isAuthorized(request, token)) {
         sendJson(response, 401, { error: { message: "Invalid local agent token." } });
+        return;
+      }
+      if (mode === "subagent" && request.method === "GET" && url.pathname === "/agent/jobs/next") {
+        const job = await broker.take(Number(url.searchParams.get("wait")) || 0);
+        if (!job) response.writeHead(204).end();
+        else sendJson(response, 200, job);
+        return;
+      }
+      const completionMatch = mode === "subagent" && request.method === "POST"
+        ? url.pathname.match(/^\/agent\/jobs\/([^/]+)\/complete$/)
+        : null;
+      if (completionMatch) {
+        const result = await readJsonBody(request);
+        if (typeof result.content !== "string" || !result.content.trim()) {
+          throw httpError(400, "Subagent completion must contain text content.");
+        }
+        if (!broker.complete(decodeURIComponent(completionMatch[1]), result.content)) {
+          throw httpError(404, "Subagent job not found or already completed.");
+        }
+        sendJson(response, 200, { ok: true });
         return;
       }
       if (request.method === "GET" && url.pathname === "/sessions") {
@@ -60,9 +81,12 @@ export function createAgentApiServer(options = {}) {
       session.turns.push({ role: "request", at: new Date().toISOString(), messages: body.messages });
       sessions.set(sessionId, session);
 
-      const completion = mode === "proxy"
-        ? await runProxyAgent(body, { ...options, fetch: upstreamFetch })
-        : await runFixtureAgent(body, options);
+      let completion;
+      if (mode === "proxy") completion = await runProxyAgent(body, { ...options, fetch: upstreamFetch });
+      else if (mode === "subagent") {
+        const content = await broker.submit({ sessionId, request: body });
+        completion = chatCompletion(body.model, content);
+      } else completion = await runFixtureAgent(body, options);
       session.turns.push({
         role: "assistant",
         at: new Date().toISOString(),
@@ -75,7 +99,58 @@ export function createAgentApiServer(options = {}) {
     }
   });
 
-  return { server, token, mode, sessions };
+  return { server, token, mode, sessions, broker };
+}
+
+function createSubagentBroker(timeoutMs) {
+  const queued = [];
+  const waitingWorkers = [];
+  const active = new Map();
+
+  function dispatch(job) {
+    const worker = waitingWorkers.shift();
+    if (worker) worker(job);
+    else queued.push(job);
+  }
+
+  return {
+    submit(payload) {
+      const id = randomUUID();
+      const job = { id, ...payload, createdAt: new Date().toISOString() };
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          active.delete(id);
+          reject(httpError(504, "Timed out waiting for the Codex subagent."));
+        }, timeoutMs);
+        active.set(id, { resolve, timer });
+        dispatch(job);
+      });
+    },
+    take(waitMs = 0) {
+      if (queued.length) return Promise.resolve(queued.shift());
+      if (waitMs <= 0) return Promise.resolve(null);
+      return new Promise(resolve => {
+        const worker = job => {
+          clearTimeout(timer);
+          resolve(job);
+        };
+        const timer = setTimeout(() => {
+          const index = waitingWorkers.indexOf(worker);
+          if (index >= 0) waitingWorkers.splice(index, 1);
+          resolve(null);
+        }, Math.min(waitMs, 30_000));
+        waitingWorkers.push(worker);
+      });
+    },
+    complete(id, content) {
+      const pending = active.get(id);
+      if (!pending) return false;
+      clearTimeout(pending.timer);
+      active.delete(id);
+      pending.resolve(content);
+      return true;
+    }
+  };
 }
 
 export async function runFixtureAgent(request, options = {}) {

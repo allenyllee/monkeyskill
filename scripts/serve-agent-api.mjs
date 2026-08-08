@@ -13,6 +13,9 @@ server.listen(port, host, () => {
   console.log(`Mode: ${mode}`);
   console.log(`Local API token: ${token}`);
   console.log(`Sessions: http://${host}:${port}/sessions`);
+  if (mode === "subagent") {
+    console.log(`Subagent queue: http://${host}:${port}/agent/jobs/next?wait=30000`);
+  }
 });
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
