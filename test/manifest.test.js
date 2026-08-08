@@ -65,12 +65,15 @@ test("preinstalled Skills point to separate specs and generated builds", async (
   assert.equal(specificationFiles.some(path => /\.(?:js|css)$/i.test(path)), false);
 });
 
-test("demo exposes separate Standard and Absolute targets", async () => {
+test("demo exposes all 16 methods on one page", async () => {
   const demo = await readFile(join(root, "demo", "blocked.html"), "utf8");
+  for (let method = 1; method <= 16; method += 1) {
+    assert.match(demo, new RegExp(`id="method-${method}"`));
+  }
   assert.match(demo, /id="standard-target"/);
   assert.match(demo, /id="absolute-target"/);
   assert.match(demo, /id="background-image-target"/);
-  assert.match(demo, /selectionchange/);
+  assert.match(demo, /removeAllRanges/);
 });
 
 test("Absolute build covers structural right-click blockers", async () => {
