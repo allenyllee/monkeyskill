@@ -26,6 +26,7 @@ import {
 
 const PRIMARY_SKILL_ID = "restore-right-click";
 const PENDING_BUILDS_KEY = "pendingSkillBuilds";
+const GENERATION_JOBS_KEY = "generationJobs";
 let initializationPromise;
 let registrationQueue = Promise.resolve();
 let offscreenCreationPromise;
@@ -152,27 +153,53 @@ async function handleMessage(message) {
       return { ok: true, skill: installed[skillId] };
     }
     case "generate-bundled-skill": {
-      await ensureUserScriptsAvailable();
-      const registry = await loadJsonAsset("preinstalled-skills.json");
-      const entry = registry.find(candidate => candidate.package === `packages/${skillId}.mskill.json`);
-      if (!entry) throw new Error(`Bundled MSkill not found: ${skillId}`);
-      const packageDefinition = await loadBundledPackage(entry);
-      const generatedPackage = await generatePackage(packageDefinition);
-      await validateUserScriptBuild(generatedPackage);
-      generatedPackage.build.validation.push("chrome-userScripts-parse");
-      const behaviorResults = await validatePackagedBehavior(generatedPackage);
-      generatedPackage.build.behaviorTests = behaviorResults;
-      generatedPackage.build.validation.push(`behavior-tests:${behaviorResults.length}/${behaviorResults.length}`);
-      const stored = await chrome.storage.local.get(PENDING_BUILDS_KEY);
-      const pending = stored[PENDING_BUILDS_KEY] && typeof stored[PENDING_BUILDS_KEY] === "object"
-        ? stored[PENDING_BUILDS_KEY]
-        : {};
-      pending[skillId] = generatedPackage;
-      await chrome.storage.local.set({ [PENDING_BUILDS_KEY]: pending });
-      return {
-        ok: true,
-        draft: publicGeneratedDraft(generatedPackage)
-      };
+      const jobId = crypto.randomUUID();
+      await setGenerationJob(skillId, {
+        id: jobId,
+        state: "running",
+        startedAt: new Date().toISOString()
+      });
+      try {
+        await ensureUserScriptsAvailable();
+        const registry = await loadJsonAsset("preinstalled-skills.json");
+        const entry = registry.find(candidate => candidate.package === `packages/${skillId}.mskill.json`);
+        if (!entry) throw new Error(`Bundled MSkill not found: ${skillId}`);
+        const packageDefinition = await loadBundledPackage(entry);
+        const generatedPackage = await generatePackage(packageDefinition);
+        await validateUserScriptBuild(generatedPackage);
+        generatedPackage.build.validation.push("chrome-userScripts-parse");
+        const behaviorResults = await validatePackagedBehavior(generatedPackage);
+        generatedPackage.build.behaviorTests = behaviorResults;
+        generatedPackage.build.validation.push(`behavior-tests:${behaviorResults.length}/${behaviorResults.length}`);
+        const stored = await chrome.storage.local.get(PENDING_BUILDS_KEY);
+        const pending = stored[PENDING_BUILDS_KEY] && typeof stored[PENDING_BUILDS_KEY] === "object"
+          ? stored[PENDING_BUILDS_KEY]
+          : {};
+        pending[skillId] = generatedPackage;
+        await chrome.storage.local.set({ [PENDING_BUILDS_KEY]: pending });
+        await setGenerationJob(skillId, {
+          id: jobId,
+          state: "ready",
+          finishedAt: new Date().toISOString(),
+          validation: generatedPackage.build.validation
+        });
+        return {
+          ok: true,
+          draft: publicGeneratedDraft(generatedPackage)
+        };
+      } catch (error) {
+        await setGenerationJob(skillId, {
+          id: jobId,
+          state: "failed",
+          finishedAt: new Date().toISOString(),
+          error: error.message
+        });
+        throw error;
+      }
+    }
+    case "get-generation-status": {
+      const stored = await chrome.storage.local.get(GENERATION_JOBS_KEY);
+      return { ok: true, job: stored[GENERATION_JOBS_KEY]?.[skillId] ?? null };
     }
     case "get-pending-build": {
       const stored = await chrome.storage.local.get(PENDING_BUILDS_KEY);
@@ -193,6 +220,7 @@ async function handleMessage(message) {
       await saveInstalledSkills(installed);
       delete pending[skillId];
       await chrome.storage.local.set({ [PENDING_BUILDS_KEY]: pending });
+      await clearGenerationJob(skillId);
       return { ok: true, skill: installed[skillId] };
     }
     case "discard-generated-skill": {
@@ -200,6 +228,7 @@ async function handleMessage(message) {
       const pending = stored[PENDING_BUILDS_KEY] ?? {};
       delete pending[skillId];
       await chrome.storage.local.set({ [PENDING_BUILDS_KEY]: pending });
+      await clearGenerationJob(skillId);
       return { ok: true };
     }
     case "uninstall-skill": {
@@ -426,6 +455,24 @@ async function sha256(value) {
   const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function setGenerationJob(skillId, job) {
+  const stored = await chrome.storage.local.get(GENERATION_JOBS_KEY);
+  const jobs = stored[GENERATION_JOBS_KEY] && typeof stored[GENERATION_JOBS_KEY] === "object"
+    ? stored[GENERATION_JOBS_KEY]
+    : {};
+  jobs[skillId] = job;
+  await chrome.storage.local.set({ [GENERATION_JOBS_KEY]: jobs });
+}
+
+async function clearGenerationJob(skillId) {
+  const stored = await chrome.storage.local.get(GENERATION_JOBS_KEY);
+  const jobs = stored[GENERATION_JOBS_KEY] && typeof stored[GENERATION_JOBS_KEY] === "object"
+    ? stored[GENERATION_JOBS_KEY]
+    : {};
+  delete jobs[skillId];
+  await chrome.storage.local.set({ [GENERATION_JOBS_KEY]: jobs });
 }
 
 function publicGeneratedDraft(packageDefinition) {

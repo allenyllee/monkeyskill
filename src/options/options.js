@@ -23,7 +23,13 @@ const approveBuild = document.querySelector("#approve-build");
 const discardBuild = document.querySelector("#discard-build");
 let installed = false;
 
-void Promise.all([render(), renderApiSettings(), renderPendingBuild()]);
+void Promise.all([render(), renderApiSettings(), renderPendingBuild(), renderGenerationStatus()]);
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local") return;
+  if (changes.pendingSkillBuilds) void renderPendingBuild();
+  if (changes.generationJobs) void renderGenerationStatus();
+});
 
 resetButton.addEventListener("click", async () => {
   if (!installed) return;
@@ -207,6 +213,24 @@ async function renderPendingBuild() {
     return;
   }
   if (response.draft) showDraft(response.draft);
+}
+
+async function renderGenerationStatus() {
+  const response = await chrome.runtime.sendMessage({
+    type: "get-generation-status",
+    skillId: "restore-right-click"
+  });
+  if (!response.ok || !response.job) return;
+  if (response.job.state === "running") {
+    generationStatus.textContent = "生成與行為測試仍在背景執行，可安全重新整理此頁。";
+    generateSkill.disabled = true;
+  } else if (response.job.state === "failed") {
+    generationStatus.textContent = response.job.error;
+    generateSkill.disabled = false;
+  } else if (response.job.state === "ready") {
+    generationStatus.textContent = "生成與行為測試完成，請檢查草稿後核准。";
+    generateSkill.disabled = false;
+  }
 }
 
 function showDraft(value) {

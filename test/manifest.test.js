@@ -112,3 +112,14 @@ test("Absolute build covers structural right-click blockers", async () => {
   assert.match(absoluteSource, /insertFromPaste/);
   assert.match(absoluteStyles, /\*::selection/);
 });
+
+test("generation status survives an options-page refresh", async () => {
+  const background = await readFile(join(root, "src", "background.js"), "utf8");
+  const options = await readFile(join(root, "src", "options", "options.js"), "utf8");
+  assert.match(background, /const GENERATION_JOBS_KEY = "generationJobs"/);
+  assert.match(background, /state: "running"/);
+  assert.match(background, /state: "failed"/);
+  assert.match(background, /state: "ready"/);
+  assert.match(options, /changes\.generationJobs/);
+  assert.match(options, /get-generation-status/);
+});
