@@ -6,6 +6,7 @@ const manageButton = document.querySelector("#manage");
 const status = document.querySelector("#status");
 
 let activeTab;
+let installed = false;
 
 void initialize();
 
@@ -27,13 +28,38 @@ async function initialize() {
   });
   if (!response.ok) throw new Error(response.error);
 
-  siteMode.value = response.siteMode;
-  globalMode.value = response.settings.globalMode;
+  installed = Boolean(response.skill);
+  siteMode.disabled = !installed;
+  globalMode.disabled = !installed;
+  saveButton.textContent = installed ? "套用並重新整理" : "安裝這個 Skill";
+
+  if (installed) {
+    siteMode.value = response.siteMode;
+    globalMode.value = response.skill.config.globalMode;
+    setStatus("");
+  } else {
+    siteMode.value = "inherit";
+    globalMode.value = "off";
+    setStatus("這個 bundled Skill 目前未安裝。");
+  }
 }
 
 async function save() {
   try {
     saveButton.disabled = true;
+    if (!installed) {
+      setStatus("正在安裝 Skill package…");
+      const response = await chrome.runtime.sendMessage({
+        type: "install-bundled-skill",
+        skillId: "restore-right-click"
+      });
+      if (!response.ok) throw new Error(response.error);
+      await initialize();
+      saveButton.disabled = false;
+      setStatus("已安裝。選擇執行範圍後即可套用。");
+      return;
+    }
+
     setStatus("正在套用…");
 
     const requestedOrigins = [];

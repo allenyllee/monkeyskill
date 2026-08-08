@@ -33,4 +33,3 @@ Restore the browser context menu, text selection, copying, cutting, and dragging
 - A real user right-click can open the native context menu.
 - Dynamically added protected content is repaired.
 - Ordinary links, buttons, inputs, and editable fields still work.
-

@@ -12,7 +12,10 @@ No source code or visual assets from the referenced extension are included.
 - Per-site overrides over a global default.
 - Optional host permissions requested only when the user enables a scope.
 - Local-only settings; no analytics or network requests.
-- A human-readable `SKILL.md`, capability manifest, and acceptance-test specification.
+- A human-readable `SKILL.md`, capability manifest, and acceptance-test specification, stored separately from generated code.
+- A single `.mskill.json` package descriptor that joins the separate specification and build at install time.
+- A generic package installer used by bundled/preinstalled Skills and future imported `.mskill` packages.
+- Uninstall/reinstall behavior that does not silently restore a removed preinstalled Skill on restart.
 
 ## Load in Chrome
 
@@ -41,11 +44,34 @@ npm test
 npm run check
 ```
 
+## Skill package lifecycle
+
+Development follows the same lifecycle as a future user installation:
+
+```text
+skills/restore-right-click/            Human-readable specification
+        +
+generated/restore-right-click/1.0.0/   Compiled/generated artifacts
+        ↓
+packages/restore-right-click.mskill.json
+        ↓
+installSkillPackage()
+        ↓
+chrome.storage.local: installedSkills
+        ↓
+chrome.scripting registrations
+```
+
+`preinstalled-skills.json` does not bypass installation. It only selects `.mskill.json` package descriptors that should be passed through the normal installer the first time the extension is installed. If a user removes one, its seeded marker prevents it from being silently restored on the next startup. Reinstalling it explicitly uses the same installer again.
+
 ## Architecture
 
-- `src/background.js` keeps registered content scripts synchronized with user settings.
-- `src/lib/settings.js` contains pure settings and registration logic.
-- `src/skills/restore-right-click/` is the first Monkey Skill package.
+- `skills/restore-right-click/` contains only the first Monkey Skill specification, manifest, and tests.
+- `generated/restore-right-click/1.0.0/` contains only generated/compiled JavaScript, CSS, and its build manifest.
+- `packages/*.mskill.json` joins one specification and one generated build into a single installable package descriptor.
+- `preinstalled-skills.json` is the bundled catalog and preinstall policy.
+- `src/lib/skill-store.js` validates, installs, removes, configures, and builds registrations for Skill packages.
+- `src/background.js` loads packages through the common installer and synchronizes installed builds with Chrome.
 - `src/popup/` installs/configures the skill for the active site.
 - `src/options/` manages global settings and site overrides.
 
@@ -54,4 +80,3 @@ The first skill uses packaged scripts through `chrome.scripting`, so it works wi
 ## Security boundary
 
 This skill has no network, cookie, history, or download capability. Absolute mode intentionally changes page-level event behavior and can break legitimate custom context menus; disable it for affected sites.
-

@@ -103,4 +103,3 @@
 
   setInterval(clearAssignedHandlers, 1500);
 })();
-

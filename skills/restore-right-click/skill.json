@@ -10,4 +10,3 @@
   "entrypoint": "SKILL.md",
   "tests": "tests/acceptance.json"
 }
-

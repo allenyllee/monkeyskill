@@ -1,13 +1,27 @@
 const globalValue = document.querySelector("#global-value");
 const overrides = document.querySelector("#overrides");
 const resetButton = document.querySelector("#reset");
+const installToggle = document.querySelector("#install-toggle");
 const status = document.querySelector("#status");
+let installed = false;
 
 void render();
 
 resetButton.addEventListener("click", async () => {
+  if (!installed) return;
   const response = await chrome.runtime.sendMessage({ type: "reset-skill" });
   status.textContent = response.ok ? "已重設。" : response.error;
+  await render();
+});
+
+installToggle.addEventListener("click", async () => {
+  const response = await chrome.runtime.sendMessage({
+    type: installed ? "uninstall-skill" : "install-bundled-skill",
+    skillId: "restore-right-click"
+  });
+  status.textContent = response.ok
+    ? installed ? "已解除安裝。" : "已重新安裝。"
+    : response.error;
   await render();
 });
 
@@ -18,9 +32,13 @@ async function render() {
     return;
   }
 
-  globalValue.textContent = label(response.settings.globalMode);
+  installed = Boolean(response.skill);
+  installToggle.textContent = installed ? "解除安裝" : "重新安裝";
+  installToggle.classList.toggle("danger", installed);
+  resetButton.disabled = !installed;
+  globalValue.textContent = installed ? label(response.skill.config.globalMode) : "未安裝";
   overrides.replaceChildren();
-  const entries = Object.entries(response.settings.siteOverrides);
+  const entries = Object.entries(response.skill?.config.siteOverrides ?? {});
 
   if (entries.length === 0) {
     const empty = document.createElement("div");
@@ -65,4 +83,3 @@ function label(mode) {
     absolute: "Absolute 模式"
   })[mode] ?? mode;
 }
-

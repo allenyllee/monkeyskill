@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "id": "restore-right-click",
+  "skill": "skills/restore-right-click/skill.json",
+  "build": "generated/restore-right-click/1.0.0/build.json"
+}

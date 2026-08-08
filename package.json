@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "check": "node --check src/background.js && node --check src/lib/settings.js && node --check src/popup/popup.js && node --check src/options/options.js && node --check src/skills/restore-right-click/standard.js && node --check src/skills/restore-right-click/absolute.js",
+    "check": "node --check src/background.js && node --check src/lib/skill-store.js && node --check src/popup/popup.js && node --check src/options/options.js && node --check generated/restore-right-click/1.0.0/standard.js && node --check generated/restore-right-click/1.0.0/absolute.js",
     "serve:demo": "node scripts/serve-demo.mjs"
   }
 }
-
