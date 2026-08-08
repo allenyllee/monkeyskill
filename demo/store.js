@@ -78,9 +78,10 @@ async function beginInstall(skill) {
   setBusy(skill.id, true, "LLM 生成與驗證中…");
   showNotice("生成可能需要幾分鐘。你可以重新整理頁面，狀態不會遺失。", false);
   try {
-    const response = await rpc("generate", skill.id, 660000);
+    const response = await rpc("generate", skill.id, 15000);
     if (!response.ok) throw new Error(response.error);
-    await reviewDraft(response.draft);
+    const draft = await waitForGeneration(skill.id);
+    await reviewDraft(draft);
   } catch (error) {
     showNotice(error.message, true);
   } finally {
@@ -123,13 +124,38 @@ async function restoreWorkflow() {
     const job = statusResponse.job;
     if (job?.state === "running") {
       setBusy(skill.id, true, "LLM 生成與驗證中…");
-      showNotice("背景生成仍在進行；完成後重新整理即可查看結果。", false);
+      showNotice("背景生成仍在進行；此頁會自動顯示驗證結果。", false);
+      try {
+        const draft = await waitForGeneration(skill.id);
+        await reviewDraft(draft);
+      } catch (error) {
+        setBusy(skill.id, false, "生成失敗，可重新嘗試");
+        showNotice(error.message, true);
+      }
     } else if (job?.state === "failed") {
+      setBusy(skill.id, false, "生成失敗，可重新嘗試");
       showNotice(job.error, true);
     } else if (pendingResponse.draft) {
       await reviewDraft(pendingResponse.draft);
     }
   }
+}
+
+async function waitForGeneration(skillId) {
+  const deadline = Date.now() + 11 * 60 * 1000;
+  while (Date.now() < deadline) {
+    const statusResponse = await rpc("status", skillId);
+    if (!statusResponse.ok) throw new Error(statusResponse.error);
+    const job = statusResponse.job;
+    if (job?.state === "failed") throw new Error(job.error || "生成失敗。");
+    if (job?.state === "ready") {
+      const pendingResponse = await rpc("pending", skillId);
+      if (!pendingResponse.ok) throw new Error(pendingResponse.error);
+      if (pendingResponse.draft) return pendingResponse.draft;
+    }
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+  throw new Error("等待生成逾時，請重新嘗試。");
 }
 
 function rpc(action, skillId, timeoutMs = 10000) {

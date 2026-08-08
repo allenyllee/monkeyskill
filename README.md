@@ -19,7 +19,7 @@ No source code or visual assets from the referenced extension are included.
 - BYOK settings for an OpenAI-compatible Chat Completions endpoint, model, and API key.
 - A two-step LLM workflow: generate and validate a draft, then explicitly approve installation.
 - Sixteen fixed executable behavior tests packaged with the MSkill and run in isolated sandbox frames before both review and installation.
-- Persistent generation-job state, so refreshing the options page preserves running, failed, and ready outcomes.
+- Durable offscreen generation jobs, so multi-minute LLM requests survive MV3 service-worker suspension and Store refreshes preserve running, failed, and ready outcomes.
 - Runtime-generated builds installed through `chrome.userScripts` while packaged builds continue to use `chrome.scripting`.
 
 ## Load in Chrome

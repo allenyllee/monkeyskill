@@ -38,5 +38,18 @@ test("Store page provides two explicit approval decisions", async () => {
   assert.match(script, /是，核准安裝/);
   assert.match(script, /await rpc\("generate"/);
   assert.match(script, /await rpc\("approve"/);
+  assert.match(script, /waitForGeneration/);
+  assert.match(script, /job\?\.state === "ready"/);
   assert.match(server, /\/store\.html/);
+});
+
+test("long LLM requests run outside the ephemeral service worker", async () => {
+  const background = await readFile(new URL("src/background.js", root), "utf8");
+  const offscreen = await readFile(new URL("src/validation/offscreen.js", root), "utf8");
+  assert.match(background, /type: "generate-package"/);
+  assert.match(background, /message\?\.target === "generation-background"/);
+  assert.match(background, /GENERATION_STALE_MS/);
+  assert.match(offscreen, /async function runGenerationJob/);
+  assert.match(offscreen, /await fetch\(request\.endpoint/);
+  assert.match(offscreen, /type: "generation-complete"/);
 });

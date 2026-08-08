@@ -17,9 +17,7 @@ import {
   LLM_SETTINGS_KEY,
   buildGenerationMessages,
   endpointOriginPattern,
-  extractAssistantText,
   normalizeLlmSettings,
-  parseGeneratedBuild,
   publicLlmSettings,
   scanGeneratedBuild
 } from "./lib/llm.js";
@@ -27,6 +25,7 @@ import {
 const PRIMARY_SKILL_ID = "restore-right-click";
 const PENDING_BUILDS_KEY = "pendingSkillBuilds";
 const GENERATION_JOBS_KEY = "generationJobs";
+const GENERATION_STALE_MS = 7 * 60 * 1000;
 let initializationPromise;
 let registrationQueue = Promise.resolve();
 let offscreenCreationPromise;
@@ -47,6 +46,12 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.target === "validation-offscreen") return false;
+  if (message?.target === "generation-background") {
+    void ready()
+      .then(() => handleGenerationCompletion(message, _sender))
+      .then(sendResponse, error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
   void ready()
     .then(() => handleMessage(message, _sender))
     .then(sendResponse, error => sendResponse({ ok: false, error: error.message }));
@@ -189,28 +194,19 @@ async function handleMessage(message, sender) {
         const entry = registry.find(candidate => candidate.package === `packages/${skillId}.mskill.json`);
         if (!entry) throw new Error(`Bundled MSkill not found: ${skillId}`);
         const packageDefinition = await loadBundledPackage(entry);
-        const generatedPackage = await generatePackage(packageDefinition);
-        await validateUserScriptBuild(generatedPackage);
-        generatedPackage.build.validation.push("chrome-userScripts-parse");
-        const behaviorResults = await validatePackagedBehavior(generatedPackage);
-        generatedPackage.build.behaviorTests = behaviorResults;
-        generatedPackage.build.validation.push(`behavior-tests:${behaviorResults.length}/${behaviorResults.length}`);
-        const stored = await chrome.storage.local.get(PENDING_BUILDS_KEY);
-        const pending = stored[PENDING_BUILDS_KEY] && typeof stored[PENDING_BUILDS_KEY] === "object"
-          ? stored[PENDING_BUILDS_KEY]
-          : {};
-        pending[skillId] = generatedPackage;
-        await chrome.storage.local.set({ [PENDING_BUILDS_KEY]: pending });
-        await setGenerationJob(skillId, {
-          id: jobId,
-          state: "ready",
-          finishedAt: new Date().toISOString(),
-          validation: generatedPackage.build.validation
+        const { request, tests } = await prepareGenerationRequest(packageDefinition);
+        packageDefinition.tests = tests;
+        await ensureValidationDocument();
+        const accepted = await chrome.runtime.sendMessage({
+          target: "validation-offscreen",
+          type: "generate-package",
+          jobId,
+          skillId,
+          packageDefinition,
+          request
         });
-        return {
-          ok: true,
-          draft: publicGeneratedDraft(generatedPackage)
-        };
+        if (!accepted?.ok) throw new Error(accepted?.error || "Generation host did not accept the job.");
+        return { ok: true, job: { id: jobId, state: "running" } };
       } catch (error) {
         await setGenerationJob(skillId, {
           id: jobId,
@@ -223,7 +219,17 @@ async function handleMessage(message, sender) {
     }
     case "get-generation-status": {
       const stored = await chrome.storage.local.get(GENERATION_JOBS_KEY);
-      return { ok: true, job: stored[GENERATION_JOBS_KEY]?.[skillId] ?? null };
+      let job = stored[GENERATION_JOBS_KEY]?.[skillId] ?? null;
+      if (job?.state === "running" && Date.now() - Date.parse(job.startedAt) > GENERATION_STALE_MS) {
+        job = {
+          ...job,
+          state: "failed",
+          finishedAt: new Date().toISOString(),
+          error: "Generation was interrupted before completion. Please retry."
+        };
+        await setGenerationJob(skillId, job);
+      }
+      return { ok: true, job };
     }
     case "get-pending-build": {
       const stored = await chrome.storage.local.get(PENDING_BUILDS_KEY);
@@ -334,7 +340,7 @@ async function loadTextAsset(path) {
   return response.text();
 }
 
-async function generatePackage(packageDefinition) {
+async function prepareGenerationRequest(packageDefinition) {
   const stored = await chrome.storage.local.get(LLM_SETTINGS_KEY);
   const settings = normalizeLlmSettings(stored[LLM_SETTINGS_KEY]);
   if (!settings.model || !settings.apiKey) throw new Error("請先在設定頁保存自己的 LLM API。");
@@ -355,43 +361,69 @@ async function generatePackage(packageDefinition) {
     testRunner
   });
 
-  const response = await fetch(settings.endpoint, {
-    method: "POST",
-    headers: {
-      "authorization": `Bearer ${settings.apiKey}`,
-      "content-type": "application/json"
-    },
-    body: JSON.stringify({
+  return {
+    request: {
+      endpoint: settings.endpoint,
+      apiKey: settings.apiKey,
       model: settings.model,
-      messages,
-      temperature: 0,
-      response_format: { type: "json_object" }
-    })
-  });
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 500);
-    throw new Error(`LLM API request failed (${response.status}): ${detail}`);
+      body: {
+        model: settings.model,
+        messages,
+        temperature: 0,
+        response_format: { type: "json_object" }
+      }
+    },
+    tests: { suite: tests, runnerSource: testRunner }
+  };
+}
+
+async function handleGenerationCompletion(message, sender) {
+  if (sender?.url !== chrome.runtime.getURL("src/validation/offscreen.html")) {
+    throw new Error("Invalid generation completion sender.");
+  }
+  const storedJobs = await chrome.storage.local.get(GENERATION_JOBS_KEY);
+  const activeJob = storedJobs[GENERATION_JOBS_KEY]?.[message.skillId];
+  if (!activeJob || activeJob.id !== message.jobId || activeJob.state !== "running") {
+    return { ok: false, ignored: true };
+  }
+  if (!message.ok) {
+    await setGenerationJob(message.skillId, {
+      ...activeJob,
+      state: "failed",
+      finishedAt: new Date().toISOString(),
+      error: message.error || "Generation failed."
+    });
+    return { ok: true };
   }
 
-  const payload = await response.json();
-  const build = parseGeneratedBuild(extractAssistantText(payload), packageDefinition.skill);
-  build.validation = scanGeneratedBuild(build, packageDefinition.skill);
-  build.generation = {
-    provider: new URL(settings.endpoint).origin,
-    model: settings.model,
-    generatedAt: new Date().toISOString(),
-    hash: await sha256(JSON.stringify(build.modes))
-  };
-  return {
-    skill: packageDefinition.skill,
-    build,
-    source: {
-      type: "llm",
-      packagePath: packageDefinition.source.packagePath,
-      skillPath: packageDefinition.source.skillPath,
-      buildPath: null
-    }
-  };
+  try {
+    const generatedPackage = message.packageDefinition;
+    await validateUserScriptBuild(generatedPackage);
+    generatedPackage.build.validation.push("chrome-userScripts-parse");
+    const behaviorResults = generatedPackage.build.behaviorTests;
+    generatedPackage.build.validation.push(`behavior-tests:${behaviorResults.length}/${behaviorResults.length}`);
+    const stored = await chrome.storage.local.get(PENDING_BUILDS_KEY);
+    const pending = stored[PENDING_BUILDS_KEY] && typeof stored[PENDING_BUILDS_KEY] === "object"
+      ? stored[PENDING_BUILDS_KEY]
+      : {};
+    pending[message.skillId] = generatedPackage;
+    await chrome.storage.local.set({ [PENDING_BUILDS_KEY]: pending });
+    await setGenerationJob(message.skillId, {
+      id: message.jobId,
+      state: "ready",
+      finishedAt: new Date().toISOString(),
+      validation: generatedPackage.build.validation
+    });
+    return { ok: true };
+  } catch (error) {
+    await setGenerationJob(message.skillId, {
+      ...activeJob,
+      state: "failed",
+      finishedAt: new Date().toISOString(),
+      error: error.message
+    });
+    return { ok: true };
+  }
 }
 
 async function loadAgentSkill(skillId) {
@@ -473,12 +505,6 @@ async function ensureValidationDocument() {
     offscreenCreationPromise = null;
   });
   await offscreenCreationPromise;
-}
-
-async function sha256(value) {
-  const bytes = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function setGenerationJob(skillId, job) {
