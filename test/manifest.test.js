@@ -11,13 +11,23 @@ test("manifest references existing extension entrypoints", async () => {
   assert.equal(manifest.manifest_version, 3);
   assert.deepEqual(manifest.host_permissions, undefined);
   assert.ok(manifest.optional_host_permissions.includes("https://*/*"));
+  assert.ok(manifest.permissions.includes("userScripts"));
 
   await Promise.all([
     access(join(root, manifest.background.service_worker)),
     access(join(root, manifest.action.default_popup)),
     access(join(root, manifest.options_page)),
-    access(join(root, "preinstalled-skills.json"))
+    access(join(root, "preinstalled-skills.json")),
+    access(join(root, "agent-skills.json")),
+    access(join(root, "skills", "mskill-creator", "SKILL.md")),
+    access(join(root, "skills", "mskill-installer", "SKILL.md"))
   ]);
+});
+
+test("agent Skill catalog preinstalls creator and installer policies", async () => {
+  const catalog = JSON.parse(await readFile(join(root, "agent-skills.json"), "utf8"));
+  assert.deepEqual(catalog.map(entry => entry.id), ["mskill-creator", "mskill-installer"]);
+  await Promise.all(catalog.map(entry => access(join(root, entry.entrypoint))));
 });
 
 test("the packaged skill declares no network capability", async () => {

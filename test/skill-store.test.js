@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   MODES,
   buildRegistrations,
+  buildUserScriptRegistrations,
   installSkillPackage,
   normalizeConfig,
   sitePatternFromUrl,
@@ -87,4 +88,24 @@ test("buildRegistrations reads generated artifacts from the installed package", 
     "https://example.com/*"
   ]);
   assert.deepEqual(siteRegistration.js, ["generated/restore-right-click/1.0.0/absolute.js"]);
+});
+
+test("LLM builds become chrome.userScripts registrations with inline code", () => {
+  const runtimeBuild = {
+    schemaVersion: 1,
+    skillId: skill.id,
+    skillVersion: skill.version,
+    artifactType: "user-script",
+    execution: { runAt: "document_start", allFrames: true, world: "MAIN" },
+    modes: {
+      standard: { js: "(() => {})();", css: "body { user-select: text; }" },
+      absolute: { js: "(() => {})();", css: "* { user-select: text; }" }
+    }
+  };
+  const installed = installSkillPackage({}, { skill, build: runtimeBuild, source: { type: "llm" } });
+  installed[skill.id].config.siteOverrides["https://example.com/*"] = MODES.ABSOLUTE;
+  const [registration] = buildUserScriptRegistrations(installed);
+  assert.equal(registration.world, "MAIN");
+  assert.equal(registration.js[0].code, "(() => {})();");
+  assert.match(registration.js[1].code, /document\.createElement\("style"\)/);
 });

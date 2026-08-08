@@ -22,7 +22,7 @@
             <span class="eyebrow">SKILL 01</span>
             <h2>Restore right click & copy</h2>
           </div>
-          <span class="installed">Installed</span>
+          <span id="skill-state" class="installed">Installed</span>
         </div>
         <p class="copy">所有設定只保存在本機。標準模式適合一般網站；Absolute 模式會更積極阻止網站攔截事件。</p>
 
@@ -39,6 +39,68 @@
           <button id="install-toggle" class="danger">解除安裝</button>
         </div>
         <p id="status" role="status"></p>
+      </section>
+
+      <section>
+        <div class="section-title">
+          <div>
+            <span class="eyebrow">BYOK</span>
+            <h2>LLM API</h2>
+          </div>
+          <span id="api-state" class="installed">Not configured</span>
+        </div>
+        <p class="copy">API 設定只保存在本機。MonkeySkill 會把 MSkill 規格傳給你指定的 OpenAI-compatible Chat Completions endpoint。</p>
+
+        <form id="api-form">
+          <label>
+            <span>Endpoint</span>
+            <input id="api-endpoint" type="url" required value="https://api.openai.com/v1/chat/completions">
+          </label>
+          <label>
+            <span>Model</span>
+            <input id="api-model" required placeholder="例如 your-model-name">
+          </label>
+          <label>
+            <span>API key</span>
+            <input id="api-key" type="password" autocomplete="off" placeholder="尚未保存">
+          </label>
+          <div class="skill-actions">
+            <button type="submit">保存 API 設定</button>
+            <button id="delete-api" type="button" class="danger">刪除 API 設定</button>
+          </div>
+        </form>
+        <p id="api-status" role="status"></p>
+      </section>
+
+      <section>
+        <div class="section-title">
+          <div>
+            <span class="eyebrow">GENERATE</span>
+            <h2>從 MSkill 重新生成</h2>
+          </div>
+        </div>
+        <p class="copy">讀取 Restore right click & copy 的 MSkill 描述與測試，交給你的 LLM 生成程式碼。檢查完成後會先顯示草稿，只有你核准才安裝。需要先在擴充套件詳細頁開啟 Allow User Scripts。</p>
+        <div class="skill-actions">
+          <button id="generate-skill">用我的 LLM 生成並驗證</button>
+        </div>
+        <p id="generation-status" role="status"></p>
+        <div id="draft" class="draft" hidden>
+          <h3>等待核准的 Build</h3>
+          <p id="draft-summary" class="copy"></p>
+          <dl>
+            <div><dt>模型</dt><dd id="draft-model">—</dd></div>
+            <div><dt>安全檢查</dt><dd id="draft-validation">—</dd></div>
+            <div><dt>Hash</dt><dd id="draft-hash">—</dd></div>
+          </dl>
+          <details>
+            <summary>檢視生成程式碼</summary>
+            <pre id="draft-code"></pre>
+          </details>
+          <div class="skill-actions">
+            <button id="approve-build">核准並安裝</button>
+            <button id="discard-build" class="danger">捨棄草稿</button>
+          </div>
+        </div>
       </section>
     </main>
     <script type="module" src="options.js"></script>

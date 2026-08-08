@@ -1,11 +1,11 @@
 {
   "name": "monkeyskill",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "check": "node --check src/background.js && node --check src/lib/skill-store.js && node --check src/popup/popup.js && node --check src/options/options.js && node --check generated/restore-right-click/1.1.1/standard.js && node --check generated/restore-right-click/1.1.1/absolute.js",
+    "check": "node --check src/background.js && node --check src/lib/skill-store.js && node --check src/lib/llm.js && node --check src/popup/popup.js && node --check src/options/options.js && node --check generated/restore-right-click/1.1.1/standard.js && node --check generated/restore-right-click/1.1.1/absolute.js",
     "serve:demo": "node scripts/serve-demo.mjs"
   }
 }

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "mskill-creator",
+    "entrypoint": "skills/mskill-creator/SKILL.md",
+    "role": "create-specification",
+    "preinstall": true
+  },
+  {
+    "id": "mskill-installer",
+    "entrypoint": "skills/mskill-installer/SKILL.md",
+    "role": "compile-and-install",
+    "preinstall": true
+  }
+]

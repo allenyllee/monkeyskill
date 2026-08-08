@@ -6,7 +6,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; }
-main { width: min(760px, calc(100% - 36px)); margin: 48px auto; }
+main { display: grid; gap: 20px; width: min(760px, calc(100% - 36px)); margin: 48px auto; }
 header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
 .logo { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 15px; color: #d7ff69; background: #17211b; font-size: 22px; font-weight: 900; }
 h1, h2, h3, p { margin: 0; }
@@ -34,3 +34,14 @@ button { border: 0; border-radius: 9px; padding: 8px 10px; font: inherit; font-s
 .skill-actions button { color: #445047; background: #eef1ed; }
 .skill-actions .danger { color: #8b2525; background: #fff0f0; }
 #status { min-height: 20px; margin-top: 10px; color: #657168; font-size: 12px; }
+form { display: grid; gap: 14px; margin-top: 22px; }
+label { display: grid; gap: 6px; color: #5d6961; font-size: 12px; font-weight: 750; }
+input { width: 100%; border: 1px solid #d6dfd4; border-radius: 10px; padding: 11px 12px; color: #17211b; background: #fbfcfa; font: inherit; }
+input:focus { border-color: #8aaa2c; outline: 3px solid #eff7d7; }
+#api-status, #generation-status { min-height: 20px; margin-top: 10px; color: #657168; font-size: 12px; overflow-wrap: anywhere; }
+button:disabled { cursor: wait; opacity: .55; }
+.draft { margin-top: 18px; padding: 16px; border: 1px solid #d8e3d3; border-radius: 14px; background: #f8fbf6; }
+.draft dl { margin-bottom: 16px; }
+details { border-top: 1px solid #dce5d8; padding-top: 12px; }
+summary { cursor: pointer; color: #536159; font-size: 12px; font-weight: 800; }
+pre { max-height: 420px; overflow: auto; padding: 14px; border-radius: 10px; color: #dcebd6; background: #17211b; font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }

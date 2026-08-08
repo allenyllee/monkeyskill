@@ -101,6 +101,7 @@ export function buildRegistrations(installedSkills) {
 
   for (const record of Object.values(installed)) {
     const { skill, build, config } = record;
+    if (build.artifactType !== "packaged-content-script") continue;
     const overridePatterns = Object.keys(config.siteOverrides);
 
     if (skill.modes.includes(config.globalMode)) {
@@ -123,8 +124,37 @@ export function buildRegistrations(installedSkills) {
       }));
     }
 
-    if (build.artifactType !== "packaged-content-script") {
-      throw new Error(`Unsupported build artifact type: ${build.artifactType}`);
+  }
+
+  return registrations;
+}
+
+export function buildUserScriptRegistrations(installedSkills) {
+  const installed = normalizeInstalledSkills(installedSkills);
+  const registrations = [];
+
+  for (const record of Object.values(installed)) {
+    const { skill, build, config } = record;
+    if (build.artifactType !== "user-script") continue;
+    const overridePatterns = Object.keys(config.siteOverrides);
+
+    if (skill.modes.includes(config.globalMode)) {
+      registrations.push(makeUserScriptRegistration({
+        record,
+        id: `${REGISTRATION_PREFIX}${hash(skill.id)}-global`,
+        mode: config.globalMode,
+        matches: ["http://*/*", "https://*/*"],
+        excludeMatches: overridePatterns
+      }));
+    }
+    for (const [pattern, mode] of Object.entries(config.siteOverrides)) {
+      if (!skill.modes.includes(mode)) continue;
+      registrations.push(makeUserScriptRegistration({
+        record,
+        id: `${REGISTRATION_PREFIX}${hash(skill.id)}-site-${hash(pattern)}`,
+        mode,
+        matches: [pattern]
+      }));
     }
   }
 
@@ -169,18 +199,20 @@ function validateBuildManifest(value, skill) {
   if (value.skillId !== skill.id || value.skillVersion !== skill.version) {
     throw new Error("Build does not match its Skill manifest.");
   }
-  if (value.artifactType !== "packaged-content-script") {
-    throw new Error("Only packaged content-script builds are supported in this milestone.");
+  if (!["packaged-content-script", "user-script"].includes(value.artifactType)) {
+    throw new Error("Unsupported build artifact type.");
   }
 
   const modes = {};
   for (const mode of skill.modes) {
     const artifact = value.modes?.[mode];
     if (!artifact) throw new Error(`Missing build mode: ${mode}`);
-    modes[mode] = {
-      js: validateArtifactPaths(artifact.js, ".js"),
-      css: validateArtifactPaths(artifact.css ?? [], ".css")
-    };
+    modes[mode] = value.artifactType === "packaged-content-script"
+      ? {
+          js: validateArtifactPaths(artifact.js, ".js"),
+          css: validateArtifactPaths(artifact.css ?? [], ".css")
+        }
+      : validateUserScriptArtifact(artifact);
   }
 
   const execution = value.execution ?? {};
@@ -196,8 +228,21 @@ function validateBuildManifest(value, skill) {
       allFrames: Boolean(execution.allFrames),
       world: execution.world
     },
+    summary: typeof value.summary === "string" ? value.summary.slice(0, 500) : null,
+    validation: Array.isArray(value.validation) ? value.validation.filter(item => typeof item === "string") : [],
+    generation: value.generation && typeof value.generation === "object" ? structuredClone(value.generation) : null,
     modes
   };
+}
+
+function validateUserScriptArtifact(artifact) {
+  if (typeof artifact.js !== "string" || !artifact.js.trim() || artifact.js.length > 100_000) {
+    throw new Error("Invalid generated JavaScript artifact.");
+  }
+  if (typeof artifact.css !== "string" || artifact.css.length > 100_000) {
+    throw new Error("Invalid generated CSS artifact.");
+  }
+  return { js: artifact.js, css: artifact.css };
 }
 
 function validateArtifactPaths(paths, extension) {
@@ -235,6 +280,26 @@ function makeRegistration({ record, id, mode, matches, excludeMatches = [] }) {
     allFrames: record.build.execution.allFrames,
     world: record.build.execution.world
   };
+}
+
+function makeUserScriptRegistration({ record, id, mode, matches, excludeMatches = [] }) {
+  const artifact = record.build.modes[mode];
+  const js = [{ code: artifact.js }];
+  if (artifact.css) js.push({ code: makeStyleInjection(artifact.css, id) });
+  return {
+    id,
+    matches,
+    excludeMatches,
+    js,
+    runAt: record.build.execution.runAt,
+    allFrames: record.build.execution.allFrames,
+    world: record.build.execution.world
+  };
+}
+
+function makeStyleInjection(css, registrationId) {
+  const styleId = `${registrationId}-style`;
+  return `(() => {\n  const id = ${JSON.stringify(styleId)};\n  let style = document.getElementById(id);\n  if (!style) { style = document.createElement("style"); style.id = id; (document.head || document.documentElement).append(style); }\n  style.textContent = ${JSON.stringify(css)};\n})();`;
 }
 
 function isSupportedPattern(pattern) {

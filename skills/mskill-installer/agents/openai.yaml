@@ -1,0 +1,4 @@
+interface:
+  display_name: "MSkill Installer"
+  short_description: "Generate and validate installable MSkill builds"
+  default_prompt: "Use $mskill-installer to generate, validate, and install an MSkill build."

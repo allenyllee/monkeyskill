@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "MonkeySkill",
-  "version": "0.1.0",
-  "description": "Install small, site-specific browser abilities. First skill: restore right click, selection, and copying.",
+  "version": "0.2.0",
+  "description": "Install site-specific browser abilities from MSkill specifications, including builds generated with your own LLM API.",
   "minimum_chrome_version": "120",
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "userScripts"
   ],
   "optional_host_permissions": [
     "http://*/*",
@@ -23,4 +24,3 @@
   },
   "options_page": "src/options/options.html"
 }
-

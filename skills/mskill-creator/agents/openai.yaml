@@ -1,0 +1,4 @@
+interface:
+  display_name: "MSkill Creator"
+  short_description: "Create portable MonkeySkill specifications"
+  default_prompt: "Use $mskill-creator to create a safe, testable MSkill specification."
