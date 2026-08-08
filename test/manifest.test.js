@@ -54,3 +54,10 @@ test("preinstalled Skills point to separate specs and generated builds", async (
   const specificationFiles = await readdir(join(root, "skills", skill.id), { recursive: true });
   assert.equal(specificationFiles.some(path => /\.(?:js|css)$/i.test(path)), false);
 });
+
+test("demo exposes separate Standard and Absolute targets", async () => {
+  const demo = await readFile(join(root, "demo", "blocked.html"), "utf8");
+  assert.match(demo, /id="standard-target"/);
+  assert.match(demo, /id="absolute-target"/);
+  assert.match(demo, /selectionchange/);
+});

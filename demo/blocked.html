@@ -1,49 +1,88 @@
 <!doctype html>
-<html lang="zh-Hant" oncontextmenu="return false" onselectstart="return false" oncopy="return false">
+<html lang="zh-Hant">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>MonkeySkill Right-click Test</title>
+    <title>MonkeySkill Mode Test</title>
     <style>
-      body { max-width: 720px; margin: 60px auto; padding: 0 24px; font: 16px/1.7 system-ui, sans-serif; color: #17211b; background: #f3f6f1; user-select: none; }
+      * { box-sizing: border-box; }
+      body { max-width: 860px; margin: 48px auto; padding: 0 24px; font: 16px/1.7 system-ui, sans-serif; color: #17211b; background: #f3f6f1; }
       main { padding: 28px; border-radius: 18px; background: white; box-shadow: 0 16px 40px rgba(30, 50, 36, .1); }
-      h1 { margin-top: 0; }
-      .blocked { padding: 16px; border-left: 4px solid #93bb24; background: #f4fbdc; }
-      button { padding: 10px 14px; border: 0; border-radius: 10px; background: #c8f24f; font-weight: 750; cursor: pointer; }
-      #log { color: #667169; font-family: ui-monospace, monospace; font-size: 13px; }
+      h1 { margin: 0; }
+      h2 { margin: 0 0 6px; font-size: 20px; }
+      .intro { margin-bottom: 24px; color: #536058; }
+      .tests { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+      .test { padding: 20px; border: 1px solid #dce5da; border-radius: 14px; }
+      .standard { border-top: 5px solid #93bb24; }
+      .absolute { border-top: 5px solid #ed9d3e; }
+      .badge { display: inline-block; margin-bottom: 10px; padding: 2px 9px; border-radius: 999px; background: #edf5d5; font-size: 12px; font-weight: 800; letter-spacing: .04em; }
+      .absolute .badge { background: #fff0dc; }
+      .target { min-height: 128px; padding: 16px; border-radius: 10px; background: #f5f7f4; }
+      .absolute-target { user-select: none; }
+      .expectation { color: #536058; font-size: 14px; }
+      .log { min-height: 24px; margin-bottom: 0; color: #667169; font-family: ui-monospace, monospace; font-size: 13px; }
+      .checklist { margin-top: 24px; padding: 16px 20px; border-radius: 12px; background: #18231c; color: #eff6ea; }
+      .checklist strong { color: #c8f24f; }
     </style>
   </head>
   <body>
     <main>
-      <h1>被網站限制的頁面</h1>
-      <p class="blocked" oncontextmenu="return false" oncopy="return false">
-        請嘗試選取並複製這段文字，然後在這裡按右鍵。未啟用 MonkeySkill 時，網站會阻止這些操作。
-      </p>
-      <button id="add">加入動態受保護內容</button>
-      <p id="log">等待測試…</p>
+      <h1>MonkeySkill 模式測試</h1>
+      <p class="intro">先關閉 Skill 確認限制存在，再分別啟用 Standard 與 Absolute 並重新整理頁面。</p>
+
+      <div class="tests">
+        <section class="test standard">
+          <span class="badge">STANDARD TEST</span>
+          <h2>一般靜態阻擋</h2>
+          <p class="expectation">Standard 應該足以恢復右鍵、文字選取與複製。</p>
+          <p
+            id="standard-target"
+            class="target"
+            style="user-select: none"
+            unselectable="on"
+            oncontextmenu="return blockStandard(event, '網站攔截了右鍵')"
+            oncopy="return blockStandard(event, '網站攔截了複製')"
+            onselectstart="return blockStandard(event, '網站攔截了文字選取')"
+          >
+            這一區使用常見的 inline handler、unselectable 屬性及 inline user-select 樣式。請選取這段文字、按 Ctrl+C，並在區塊中按右鍵。
+          </p>
+          <p id="standard-log" class="log">等待 Standard 測試…</p>
+        </section>
+
+        <section class="test absolute">
+          <span class="badge">ABSOLUTE TEST</span>
+          <h2>持續清除文字選取</h2>
+          <p class="expectation">Standard 預期仍然無法穩定選取；Absolute 才應恢復。</p>
+          <p id="absolute-target" class="target absolute-target">
+            這一區用 CSS class 禁止選取，並監聽 selectionchange 持續清除選取範圍。請嘗試反白這整段文字並維持選取。
+          </p>
+          <p id="absolute-log" class="log">等待 Absolute 測試…</p>
+        </section>
+      </div>
+
+      <div class="checklist">
+        <strong>預期結果：</strong>
+        關閉時兩區都失敗；Standard 只通過左側；Absolute 兩側都通過。
+      </div>
     </main>
+
     <script>
-      document.addEventListener("contextmenu", event => {
+      const standardLog = document.querySelector("#standard-log");
+      const absoluteLog = document.querySelector("#absolute-log");
+      const absoluteTarget = document.querySelector("#absolute-target");
+
+      window.blockStandard = (event, message) => {
         event.preventDefault();
-        document.querySelector("#log").textContent = "網站攔截了右鍵事件";
-      });
-      document.addEventListener("copy", event => {
-        event.preventDefault();
-        document.querySelector("#log").textContent = "網站攔截了複製事件";
-      });
+        standardLog.textContent = message;
+        return false;
+      };
+
       document.addEventListener("selectionchange", () => {
         const selection = document.getSelection();
-        if (selection && !selection.isCollapsed) selection.removeAllRanges();
-      });
-      document.querySelector("#add").addEventListener("click", () => {
-        const paragraph = document.createElement("p");
-        paragraph.setAttribute("oncontextmenu", "return false");
-        paragraph.setAttribute("oncopy", "return false");
-        paragraph.setAttribute("unselectable", "on");
-        paragraph.textContent = "這是動態加入、同樣禁止右鍵與複製的文字。";
-        document.querySelector("main").append(paragraph);
+        if (!selection || selection.isCollapsed || !absoluteTarget.contains(selection.anchorNode)) return;
+        absoluteLog.textContent = "網站清除了 Absolute 測試區的選取";
+        selection.removeAllRanges();
       });
     </script>
   </body>
 </html>
-

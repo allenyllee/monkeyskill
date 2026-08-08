@@ -2,16 +2,24 @@
   "schemaVersion": 1,
   "tests": [
     {
-      "id": "contextmenu-not-cancelled",
+      "id": "standard-contextmenu-not-cancelled",
       "type": "eventDefaultPrevented",
       "event": "contextmenu",
-      "target": "body",
+      "target": "#standard-target",
       "expected": false
     },
     {
-      "id": "body-text-selectable",
+      "id": "standard-text-selectable",
       "type": "computedStyleNotEquals",
-      "target": "body",
+      "target": "#standard-target",
+      "property": "user-select",
+      "value": "none"
+    },
+    {
+      "id": "absolute-text-selectable",
+      "type": "computedStyleNotEquals",
+      "mode": "absolute",
+      "target": "#absolute-target",
       "property": "user-select",
       "value": "none"
     },
