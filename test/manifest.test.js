@@ -61,3 +61,19 @@ test("demo exposes separate Standard and Absolute targets", async () => {
   assert.match(demo, /id="absolute-target"/);
   assert.match(demo, /selectionchange/);
 });
+
+test("Absolute build covers structural right-click blockers", async () => {
+  const packageDescriptor = JSON.parse(await readFile(
+    join(root, "packages", "restore-right-click.mskill.json"),
+    "utf8"
+  ));
+  const build = JSON.parse(await readFile(join(root, packageDescriptor.build), "utf8"));
+  const absoluteSource = await readFile(join(root, build.modes.absolute.js[0]), "utf8");
+  const absoluteStyles = await readFile(join(root, build.modes.absolute.css[0]), "utf8");
+
+  assert.match(absoluteSource, /pointer-events/);
+  assert.match(absoluteSource, /substantiallyOverlaps/);
+  assert.match(absoluteSource, /\["mouseup", "keyup", "touchend"\]/);
+  assert.match(absoluteSource, /insertFromPaste/);
+  assert.match(absoluteStyles, /\*::selection/);
+});

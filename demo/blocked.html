@@ -19,6 +19,10 @@
       .absolute .badge { background: #fff0dc; }
       .target { min-height: 128px; padding: 16px; border-radius: 10px; background: #f5f7f4; }
       .absolute-target { user-select: none; }
+      .media-test { position: relative; margin-top: 12px; }
+      .media-test input { width: 100%; padding: 10px; }
+      .blocking-overlay { position: absolute; inset: 0; }
+      .pointer-media { display: block; width: 72px; height: 48px; margin-top: 12px; pointer-events: none; background: #dce8d7; }
       .expectation { color: #536058; font-size: 14px; }
       .log { min-height: 24px; margin-bottom: 0; color: #667169; font-family: ui-monospace, monospace; font-size: 13px; }
       .checklist { margin-top: 24px; padding: 16px 20px; border-radius: 12px; background: #18231c; color: #eff6ea; }
@@ -56,6 +60,11 @@
           <p id="absolute-target" class="target absolute-target">
             這一區用 CSS class 禁止選取，並監聽 selectionchange 持續清除選取範圍。請嘗試反白這整段文字並維持選取。
           </p>
+          <div class="media-test">
+            <input value="這個輸入框被透明 overlay 覆蓋">
+            <div class="blocking-overlay" data-test="blocking-overlay"></div>
+          </div>
+          <img class="pointer-media" data-test="pointer-blocked-media" alt="pointer-events 測試媒體" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='48'%3E%3Crect width='72' height='48' rx='8' fill='%23dce8d7'/%3E%3C/svg%3E">
           <p id="absolute-log" class="log">等待 Absolute 測試…</p>
         </section>
       </div>

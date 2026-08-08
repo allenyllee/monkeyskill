@@ -51,7 +51,7 @@ Development follows the same lifecycle as a future user installation:
 ```text
 skills/restore-right-click/            Human-readable specification
         +
-generated/restore-right-click/1.0.0/   Compiled/generated artifacts
+generated/restore-right-click/1.1.0/   Compiled/generated artifacts
         ↓
 packages/restore-right-click.mskill.json
         ↓
@@ -67,7 +67,7 @@ chrome.scripting registrations
 ## Architecture
 
 - `skills/restore-right-click/` contains only the first Monkey Skill specification, manifest, and tests.
-- `generated/restore-right-click/1.0.0/` contains only generated/compiled JavaScript, CSS, and its build manifest.
+- `generated/restore-right-click/1.1.0/` contains the current generated/compiled JavaScript, CSS, and its build manifest.
 - `packages/*.mskill.json` joins one specification and one generated build into a single installable package descriptor.
 - `preinstalled-skills.json` is the bundled catalog and preinstall policy.
 - `src/lib/skill-store.js` validates, installs, removes, configures, and builds registrations for Skill packages.

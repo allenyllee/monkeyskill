@@ -24,6 +24,29 @@
       "value": "none"
     },
     {
+      "id": "absolute-pointer-target-restored",
+      "type": "computedStyleNotEquals",
+      "mode": "absolute",
+      "target": "[data-test='pointer-blocked-media']",
+      "property": "pointer-events",
+      "value": "none"
+    },
+    {
+      "id": "absolute-overlay-bypassed",
+      "type": "computedStyleEquals",
+      "mode": "absolute",
+      "target": "[data-test='blocking-overlay']",
+      "property": "pointer-events",
+      "value": "none"
+    },
+    {
+      "id": "absolute-selection-survives-release",
+      "type": "selectionSurvivesEvents",
+      "mode": "absolute",
+      "target": "#absolute-target",
+      "events": ["mouseup", "keyup", "touchend"]
+    },
+    {
       "id": "no-network-capability",
       "type": "capabilityDenied",
       "capability": "network"

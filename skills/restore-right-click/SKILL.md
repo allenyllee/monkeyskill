@@ -2,7 +2,7 @@
 
 ## Goal
 
-Restore the browser context menu, text selection, copying, cutting, and dragging on pages that intentionally block those native interactions.
+Restore the browser context menu, text selection, copying, cutting, pasting, and dragging on pages that intentionally block those native interactions.
 
 ## Standard mode
 
@@ -18,6 +18,10 @@ Restore the browser context menu, text selection, copying, cutting, and dragging
 - Prevent page scripts from cancelling protected events.
 - Restore selection broadly across the page.
 - Block right-button mouse handlers while leaving left-button interactions intact.
+- Preserve a live selection when release events try to clear it.
+- Restore pointer events on blocked media and bypass empty overlays covering media or editable controls.
+- Restore visible selection colors when a page makes `::selection` transparent.
+- Stop paste-specific handlers without reading clipboard contents.
 
 ## Safety constraints
 
@@ -32,4 +36,5 @@ Restore the browser context menu, text selection, copying, cutting, and dragging
 - Copy and cut keyboard shortcuts reach the browser default behavior.
 - A real user right-click can open the native context menu.
 - Dynamically added protected content is repaired.
+- Empty blocking overlays and `pointer-events: none` media are repaired.
 - Ordinary links, buttons, inputs, and editable fields still work.
