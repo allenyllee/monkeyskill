@@ -48,7 +48,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.target === "validation-offscreen") return false;
   void ready()
-    .then(() => handleMessage(message))
+    .then(() => handleMessage(message, _sender))
     .then(sendResponse, error => sendResponse({ ok: false, error: error.message }));
   return true;
 });
@@ -102,10 +102,34 @@ async function initializeStore() {
   await queueRegistrationSync(installed);
 }
 
-async function handleMessage(message) {
+async function handleMessage(message, sender) {
+  if (message?.type?.startsWith("store-")) {
+    assertStoreSender(sender);
+    message = { ...message, type: message.type.slice("store-".length) };
+  }
   const skillId = message?.skillId ?? PRIMARY_SKILL_ID;
 
   switch (message?.type) {
+    case "list-skills": {
+      const [registry, installed] = await Promise.all([
+        loadJsonAsset("preinstalled-skills.json"),
+        getInstalledSkills()
+      ]);
+      const skills = await Promise.all(registry.map(async entry => {
+        const packageDefinition = await loadBundledPackage(entry);
+        const skill = packageDefinition.skill;
+        return {
+          id: skill.id,
+          name: skill.name,
+          version: skill.version,
+          description: skill.description,
+          modes: skill.modes,
+          installed: Boolean(installed[skill.id]),
+          source: installed[skill.id]?.source?.type ?? null
+        };
+      }));
+      return { ok: true, skills };
+    }
     case "get-state": {
       const installed = await getInstalledSkills();
       const skill = installed[skillId] ?? null;
@@ -389,7 +413,7 @@ async function ensureUserScriptsAvailable() {
 async function validateUserScriptBuild(packageDefinition) {
   const records = installSkillPackage({}, packageDefinition);
   const configured = updateSkillConfig(records, packageDefinition.skill.id, config => {
-    config.siteOverrides["https://monkeyskill-validation.invalid/*"] = packageDefinition.skill.modes[0];
+    config.siteOverrides["http://127.0.0.1:4173/*"] = packageDefinition.skill.modes[0];
   });
   const scripts = buildUserScriptRegistrations(configured).map((script, index) => ({
     ...script,
@@ -490,6 +514,18 @@ function publicGeneratedDraft(packageDefinition) {
       cssBytes: new TextEncoder().encode(artifact.css).length
     }]))
   };
+}
+
+function assertStoreSender(sender) {
+  let url;
+  try {
+    url = new URL(sender?.url);
+  } catch {
+    throw new Error("Invalid MSkill Store sender.");
+  }
+  const localStore = ["http://127.0.0.1:4173", "http://localhost:4173"].includes(url.origin)
+    && url.pathname === "/store.html";
+  if (!localStore) throw new Error("This request is not from an approved MSkill Store.");
 }
 
 async function getInstalledSkills() {

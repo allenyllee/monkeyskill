@@ -19,6 +19,16 @@
     "service_worker": "src/background.js",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://127.0.0.1:4173/store.html",
+        "http://localhost:4173/store.html"
+      ],
+      "js": ["src/store/bridge.js"],
+      "run_at": "document_start"
+    }
+  ],
   "action": {
     "default_popup": "src/popup/popup.html",
     "default_title": "MonkeySkill"

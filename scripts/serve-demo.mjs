@@ -4,28 +4,35 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const html = await readFile(join(root, "demo", "blocked.html"));
-const background = await readFile(join(root, "demo", "test-background.svg"));
 const port = Number(process.env.MONKEYSKILL_DEMO_PORT || 4173);
+const routes = new Map([
+  ["/", ["demo/store.html", "text/html; charset=utf-8"]],
+  ["/store.html", ["demo/store.html", "text/html; charset=utf-8"]],
+  ["/store.css", ["demo/store.css", "text/css; charset=utf-8"]],
+  ["/store.js", ["demo/store.js", "text/javascript; charset=utf-8"]],
+  ["/blocked.html", ["demo/blocked.html", "text/html; charset=utf-8"]],
+  ["/test-background.svg", ["demo/test-background.svg", "image/svg+xml; charset=utf-8"]]
+]);
 
-createServer((request, response) => {
-  if (request.url === "/test-background.svg") {
-    response.writeHead(200, {
-      "content-type": "image/svg+xml; charset=utf-8",
-      "cache-control": "no-store"
-    });
-    response.end(background);
-    return;
-  }
-  if (request.url !== "/" && request.url !== "/blocked.html") {
+createServer(async (request, response) => {
+  const pathname = new URL(request.url, "http://127.0.0.1").pathname;
+  const route = routes.get(pathname);
+  if (!route) {
     response.writeHead(404).end("Not found");
     return;
   }
-  response.writeHead(200, {
-    "content-type": "text/html; charset=utf-8",
-    "cache-control": "no-store"
-  });
-  response.end(html);
+  try {
+    const body = await readFile(join(root, route[0]));
+    response.writeHead(200, {
+      "content-type": route[1],
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff"
+    });
+    response.end(body);
+  } catch (error) {
+    response.writeHead(500).end(error.message);
+  }
 }).listen(port, "127.0.0.1", () => {
+  console.log(`MonkeySkill Store: http://127.0.0.1:${port}/store.html`);
   console.log(`MonkeySkill demo: http://127.0.0.1:${port}/blocked.html`);
 });

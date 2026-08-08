@@ -91,10 +91,6 @@ generateSkill.addEventListener("click", async () => {
     } catch {
       throw new Error("請先在擴充套件詳細頁開啟 Allow User Scripts。");
     }
-    const granted = await chrome.permissions.request({
-      origins: ["https://monkeyskill-validation.invalid/*"]
-    });
-    if (!granted) throw new Error("未取得暫存語法驗證所需權限。");
     const response = await chrome.runtime.sendMessage({
       type: "generate-bundled-skill",
       skillId: "restore-right-click"

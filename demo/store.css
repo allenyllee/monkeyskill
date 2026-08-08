@@ -1,0 +1,45 @@
+:root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #17211b; background: #f3f6ef; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 82% 4%, rgba(201,242,79,.42), transparent 25%), #f3f6ef; }
+button { border: 0; font: inherit; cursor: pointer; }
+.hero { min-height: 440px; padding: 24px max(28px, calc((100vw - 1120px)/2)); color: #ecf7e8; background: #17211b; clip-path: polygon(0 0,100% 0,100% 88%,0 100%); }
+nav { display: flex; align-items: center; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 850; letter-spacing: -.2px; }
+.brand b,.skill-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; color: #17211b; background: #c8f24f; font-weight: 950; }
+.connection { padding: 7px 11px; border: 1px solid #425047; border-radius: 999px; color: #aebbb2; font-size: 11px; }
+.connection.ready { color: #dfff85; border-color: #789a28; }
+.hero-copy { max-width: 720px; padding: 76px 0 80px; }
+.eyebrow { color: #779918; font-size: 10px; font-weight: 900; letter-spacing: 1.6px; }
+.hero .eyebrow { color: #c8f24f; }
+h1,h2,h3,p { margin: 0; }
+h1 { margin-top: 15px; font-size: clamp(46px,7vw,78px); line-height: .98; letter-spacing: -4px; }
+.hero p { max-width: 600px; margin-top: 24px; color: #aebbb2; font-size: 16px; line-height: 1.7; }
+main { width: min(1120px,calc(100% - 40px)); margin: -10px auto 80px; }
+.catalog-heading { display: flex; align-items: end; justify-content: space-between; margin-bottom: 24px; }
+.catalog-heading h2 { margin-top: 7px; font-size: 30px; letter-spacing: -1px; }
+.count { color: #6d786f; font-size: 12px; }
+.notice { margin-bottom: 18px; padding: 14px 16px; border: 1px solid #ead7a8; border-radius: 12px; color: #765919; background: #fff9e9; font-size: 13px; white-space: pre-wrap; }
+.notice.error { color: #8a2c2c; border-color: #efcaca; background: #fff2f2; }
+.catalog { display: grid; grid-template-columns: repeat(auto-fit,minmax(310px,1fr)); gap: 18px; }
+.skill-card { display: grid; gap: 24px; min-height: 350px; padding: 24px; border: 1px solid #dbe3d7; border-radius: 22px; background: rgba(255,255,255,.94); box-shadow: 0 18px 45px rgba(30,55,36,.08); }
+.skill-top,.card-footer { display: flex; align-items: center; justify-content: space-between; }
+.badge { padding: 6px 9px; border-radius: 999px; color: #617b16; background: #effbcf; font-size: 10px; font-weight: 850; }
+.version { color: #819087; font: 10px ui-monospace,monospace; }
+h3 { margin-top: 6px; font-size: 23px; letter-spacing: -.6px; }
+.description { margin-top: 12px; color: #68736b; font-size: 13px; line-height: 1.65; }
+.modes { display: flex; align-items: flex-start; gap: 7px; }
+.modes span { padding: 5px 8px; border: 1px solid #dce4da; border-radius: 8px; color: #657168; font-size: 10px; }
+.skill-status { color: #6f7a72; font-size: 11px; }
+.primary,.secondary { padding: 11px 15px; border-radius: 10px; font-size: 12px; font-weight: 850; }
+.primary { color: #17211b; background: #c8f24f; }
+.primary:hover { background: #b9e43c; }
+.secondary { color: #4c5850; background: #edf1eb; }
+button:disabled { cursor: wait; opacity: .55; }
+dialog { width: min(620px,calc(100% - 32px)); border: 0; border-radius: 22px; padding: 0; color: #17211b; box-shadow: 0 30px 100px rgba(5,20,10,.35); }
+dialog::backdrop { background: rgba(13,25,17,.68); backdrop-filter: blur(5px); }
+dialog form { padding: 28px; }
+dialog h2 { margin-top: 8px; font-size: 28px; }
+#dialog-copy { margin-top: 14px; color: #647068; font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
+.dialog-details { margin-top: 18px; padding: 14px; border-radius: 12px; background: #f3f6f1; color: #4e5a52; font: 11px/1.6 ui-monospace,monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 24px; }
+@media (max-width:600px) { .hero { clip-path:none; min-height:auto; } .hero-copy { padding:60px 0; } h1 { letter-spacing:-2.5px; } main { margin-top:38px; } }

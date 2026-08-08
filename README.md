@@ -54,7 +54,9 @@ Run:
 npm run serve:demo
 ```
 
-Then open `http://127.0.0.1:4173/blocked.html`. Try selection, copying, and right-click before and after enabling Standard and Absolute modes.
+Then open `http://127.0.0.1:4173/store.html` for the local MSkill Store, or `http://127.0.0.1:4173/blocked.html` for the 16-method behavior matrix.
+
+The Store reads the Extension's packaged catalog, asks before sending an MSkill to the configured LLM, waits for static and packaged behavior validation, shows the model/hash/validation summary, asks for final approval, and only then installs the generated build. Its page bridge is injected only on the two local Store URLs declared in `manifest.json`; background handlers independently verify the sender URL.
 
 ## Local agent API
 
