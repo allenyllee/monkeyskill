@@ -12,6 +12,11 @@ test("manifest references existing extension entrypoints", async () => {
   assert.deepEqual(manifest.host_permissions, undefined);
   assert.ok(manifest.optional_host_permissions.includes("https://*/*"));
   assert.ok(manifest.permissions.includes("userScripts"));
+  assert.ok(manifest.permissions.includes("offscreen"));
+  assert.ok(manifest.sandbox.pages.includes("src/validation/sandbox.html"));
+  assert.match(manifest.content_security_policy.sandbox, /'unsafe-inline'/);
+  assert.match(manifest.content_security_policy.sandbox, /'unsafe-eval'/);
+  assert.match(manifest.content_security_policy.sandbox, /connect-src 'none'/);
 
   await Promise.all([
     access(join(root, manifest.background.service_worker)),
@@ -20,7 +25,9 @@ test("manifest references existing extension entrypoints", async () => {
     access(join(root, "preinstalled-skills.json")),
     access(join(root, "agent-skills.json")),
     access(join(root, "skills", "mskill-creator", "SKILL.md")),
-    access(join(root, "skills", "mskill-installer", "SKILL.md"))
+    access(join(root, "skills", "mskill-installer", "SKILL.md")),
+    access(join(root, "src", "validation", "offscreen.html")),
+    access(join(root, "src", "validation", "sandbox.html"))
   ]);
 });
 
@@ -62,7 +69,17 @@ test("preinstalled Skills point to separate specs and generated builds", async (
   await Promise.all(artifactPaths.map(path => access(join(root, path))));
 
   const specificationFiles = await readdir(join(root, "skills", skill.id), { recursive: true });
-  assert.equal(specificationFiles.some(path => /\.(?:js|css)$/i.test(path)), false);
+  const runtimeSource = specificationFiles.filter(path => /\.(?:js|css)$/i.test(path))
+    .filter(path => !String(path).replaceAll("\\", "/").startsWith("tests/"));
+  assert.deepEqual(runtimeSource, []);
+
+  const acceptance = JSON.parse(await readFile(join(root, "skills", skill.id, skill.tests), "utf8"));
+  assert.equal(acceptance.tests.filter(test => !test.type).length, 16);
+  await access(join(root, "skills", skill.id, acceptance.runner));
+  const runner = await readFile(join(root, "skills", skill.id, acceptance.runner), "utf8");
+  for (const test of acceptance.tests.filter(test => !test.type)) {
+    assert.match(runner, new RegExp(`"${test.id}"`));
+  }
 });
 
 test("demo exposes all 16 methods on one page", async () => {

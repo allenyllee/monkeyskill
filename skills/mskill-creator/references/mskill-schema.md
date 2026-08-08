@@ -17,4 +17,16 @@
 }
 ```
 
-Acceptance tests use a JSON object with `schemaVersion` and a `tests` array. Each test needs a stable ID, a machine-readable type, inputs or targets, and an expected result. Keep targets generic or provide a dedicated local fixture when a real site is unstable.
+Acceptance tests use a JSON object with `schemaVersion`, an executable `runner`, and a `tests` array:
+
+```json
+{
+  "schemaVersion": 1,
+  "runner": "tests/browser.js",
+  "tests": [
+    { "id": "stable-test-id", "mode": "standard" }
+  ]
+}
+```
+
+Every browser-test ID must have a matching function in the fixed runner source. The runner executes the generated build in an isolated sandbox and must assert observable outcomes. Capability-denial checks may remain declarative because the installer performs those checks itself. Keep fixtures local and deterministic; do not depend on a real website.

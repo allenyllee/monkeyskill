@@ -33,10 +33,12 @@ test("generation prompt includes every declared mode", () => {
     installerInstructions: "policy",
     skillInstructions: "behavior",
     skill,
-    tests: { tests: [] }
+    tests: { tests: [] },
+    testRunner: "method-11-keyboard-copy"
   });
   assert.equal(messages[0].role, "system");
   assert.match(messages[1].content, /"standard"/);
+  assert.match(messages[1].content, /method-11-keyboard-copy/);
 });
 
 test("generated JSON becomes a user-script build", () => {

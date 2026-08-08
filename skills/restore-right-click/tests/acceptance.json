@@ -1,63 +1,23 @@
 {
   "schemaVersion": 1,
+  "runner": "tests/browser.js",
   "tests": [
-    {
-      "id": "standard-contextmenu-not-cancelled",
-      "type": "eventDefaultPrevented",
-      "event": "contextmenu",
-      "target": "#standard-target",
-      "expected": false
-    },
-    {
-      "id": "standard-text-selectable",
-      "type": "computedStyleNotEquals",
-      "target": "#standard-target",
-      "property": "user-select",
-      "value": "none"
-    },
-    {
-      "id": "absolute-text-selectable",
-      "type": "computedStyleNotEquals",
-      "mode": "absolute",
-      "target": "#absolute-target",
-      "property": "user-select",
-      "value": "none"
-    },
-    {
-      "id": "absolute-pointer-target-restored",
-      "type": "computedStyleNotEquals",
-      "mode": "absolute",
-      "target": "[data-test='pointer-blocked-media']",
-      "property": "pointer-events",
-      "value": "none"
-    },
-    {
-      "id": "absolute-overlay-bypassed",
-      "type": "computedStyleEquals",
-      "mode": "absolute",
-      "target": "[data-test='blocking-overlay']",
-      "property": "pointer-events",
-      "value": "none"
-    },
-    {
-      "id": "absolute-selection-survives-release",
-      "type": "selectionSurvivesEvents",
-      "mode": "absolute",
-      "target": "#absolute-target",
-      "events": ["mouseup", "keyup", "touchend"]
-    },
-    {
-      "id": "css-background-remains-a-background",
-      "type": "computedStyleContains",
-      "target": "#background-image-target",
-      "property": "background-image",
-      "value": "test-background.svg",
-      "note": "The native context menu opens, but Chrome saves the HTML because this is not an img element."
-    },
-    {
-      "id": "no-network-capability",
-      "type": "capabilityDenied",
-      "capability": "network"
-    }
+    { "id": "method-01-inline-event-blocking", "mode": "standard" },
+    { "id": "method-02-input-event-listener", "mode": "standard" },
+    { "id": "method-03-paste-event", "mode": "absolute" },
+    { "id": "method-04-image-event-listener", "mode": "standard" },
+    { "id": "method-05-alert-blocker", "mode": "standard" },
+    { "id": "method-06-pointer-events", "mode": "absolute" },
+    { "id": "method-07-overlay-event", "mode": "absolute" },
+    { "id": "method-08-overlay-pointer-events", "mode": "absolute" },
+    { "id": "method-09-selectstart-event", "mode": "standard" },
+    { "id": "method-10-selection-survives-release", "mode": "absolute" },
+    { "id": "method-11-keyboard-copy", "mode": "standard" },
+    { "id": "method-12-visible-selection", "mode": "absolute" },
+    { "id": "method-13-input-overlay", "mode": "absolute" },
+    { "id": "method-14-paste-rollback", "mode": "absolute" },
+    { "id": "method-15-canvas-overlay", "mode": "absolute" },
+    { "id": "method-16-css-background", "mode": "standard" },
+    { "id": "no-network-capability", "type": "capabilityDenied", "capability": "network" }
   ]
 }

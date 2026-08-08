@@ -6,6 +6,7 @@
   "minimum_chrome_version": "120",
   "permissions": [
     "activeTab",
+    "offscreen",
     "scripting",
     "storage",
     "userScripts"
@@ -22,5 +23,11 @@
     "default_popup": "src/popup/popup.html",
     "default_title": "MonkeySkill"
   },
-  "options_page": "src/options/options.html"
+  "options_page": "src/options/options.html",
+  "content_security_policy": {
+    "sandbox": "sandbox allow-scripts; default-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; media-src 'none'; object-src 'none';"
+  },
+  "sandbox": {
+    "pages": ["src/validation/sandbox.html"]
+  }
 }

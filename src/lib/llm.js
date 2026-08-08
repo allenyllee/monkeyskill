@@ -26,7 +26,7 @@ export function endpointOriginPattern(endpoint) {
   return `${url.protocol}//${url.host}/*`;
 }
 
-export function buildGenerationMessages({ installerInstructions, skillInstructions, skill, tests }) {
+export function buildGenerationMessages({ installerInstructions, skillInstructions, skill, tests, testRunner = "" }) {
   return [
     {
       role: "system",
@@ -49,7 +49,9 @@ export function buildGenerationMessages({ installerInstructions, skillInstructio
         "SKILL.md:",
         skillInstructions,
         "Acceptance tests:",
-        JSON.stringify(tests)
+        JSON.stringify(tests),
+        "Executable acceptance-test source (read-only; do not copy it into the build):",
+        testRunner
       ].join("\n\n")
     }
   ];

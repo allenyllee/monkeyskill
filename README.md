@@ -18,6 +18,7 @@ No source code or visual assets from the referenced extension are included.
 - Uninstall/reinstall behavior that does not silently restore a removed preinstalled Skill on restart.
 - BYOK settings for an OpenAI-compatible Chat Completions endpoint, model, and API key.
 - A two-step LLM workflow: generate and validate a draft, then explicitly approve installation.
+- Sixteen fixed executable behavior tests packaged with the MSkill and run in isolated sandbox frames before both review and installation.
 - Runtime-generated builds installed through `chrome.userScripts` while packaged builds continue to use `chrome.scripting`.
 
 ## Load in Chrome
@@ -38,8 +39,9 @@ For LLM-generated builds, open the extension's details page and enable **Allow U
 2. Enter an OpenAI-compatible Chat Completions endpoint, model name, and your own API key.
 3. Save the settings and approve access only to that API origin.
 4. Select **Generate and validate with my LLM**.
-5. Review the summary, validation results, hash, and complete generated JS/CSS.
-6. Select **Approve and install** or discard the draft.
+5. MonkeySkill runs the packaged behavior suite in isolated frames; a failing build is rejected before review.
+6. Review the summary, validation results, hash, and complete generated JS/CSS.
+7. Select **Approve and install** or discard the draft. The same build is tested again immediately before installation.
 
 The API key is kept in `chrome.storage.local`, restricted to trusted extension contexts, and is never returned to the options UI after saving. This protects it from page scripts, but browser-local storage is not a hardware-backed secret store.
 
@@ -96,7 +98,7 @@ Development follows the same lifecycle as a future user installation:
 ```text
 skills/restore-right-click/            Human-readable specification
         +
-generated/restore-right-click/1.1.1/   Compiled/generated artifacts
+generated/restore-right-click/1.2.0/   Build descriptor for the current tested Skill version
         ↓
 packages/restore-right-click.mskill.json
         ↓
@@ -114,7 +116,7 @@ chrome.scripting registrations
 - `skills/restore-right-click/` contains only the first Monkey Skill specification, manifest, and tests.
 - `skills/mskill-creator/` defines how an agent authors implementation-independent MSkill specifications.
 - `skills/mskill-installer/` is the policy prompt used when the user's LLM compiles a specification.
-- `generated/restore-right-click/1.1.1/` contains the current generated JavaScript and build manifest; unchanged CSS may be reused from the prior generated version.
+- `generated/restore-right-click/1.2.0/` contains the current build descriptor; unchanged runtime JS/CSS may be reused from prior generated versions while the fixed tests remain under the versioned MSkill source.
 - `packages/*.mskill.json` joins one specification and one generated build into a single installable package descriptor.
 - `preinstalled-skills.json` is the bundled catalog and preinstall policy.
 - `agent-skills.json` catalogs the preinstalled creator and installer policies used by LLM workflows.
@@ -128,4 +130,4 @@ The preinstalled build uses packaged scripts through `chrome.scripting`, so it w
 
 ## Security boundary
 
-The Restore right click skill has no network, cookie, history, or download capability. Generated code is rejected when basic static checks detect forbidden APIs or remote content, and Chrome parses it through a temporary `userScripts` registration before approval. These checks reduce risk but do not prove arbitrary JavaScript safe, so installation remains a separate explicit user action. Absolute mode intentionally changes page-level event behavior and can break legitimate custom context menus; disable it for affected sites.
+The Restore right click skill has no network, cookie, history, or download capability. Generated code is rejected when basic static checks detect forbidden APIs or remote content, Chrome parses it through a temporary `userScripts` registration, and the MSkill's fixed behavior suite runs in sandboxed frames before review and again before installation. These checks reduce risk but do not prove arbitrary JavaScript safe, so installation remains a separate explicit user action. Absolute mode intentionally changes page-level event behavior and can break legitimate custom context menus; disable it for affected sites.

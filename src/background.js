@@ -28,6 +28,7 @@ const PRIMARY_SKILL_ID = "restore-right-click";
 const PENDING_BUILDS_KEY = "pendingSkillBuilds";
 let initializationPromise;
 let registrationQueue = Promise.resolve();
+let offscreenCreationPromise;
 
 chrome.runtime.onInstalled.addListener(() => {
   initializationPromise = initializeStore();
@@ -44,6 +45,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.target === "validation-offscreen") return false;
   void ready()
     .then(() => handleMessage(message))
     .then(sendResponse, error => sendResponse({ ok: false, error: error.message }));
@@ -158,6 +160,9 @@ async function handleMessage(message) {
       const generatedPackage = await generatePackage(packageDefinition);
       await validateUserScriptBuild(generatedPackage);
       generatedPackage.build.validation.push("chrome-userScripts-parse");
+      const behaviorResults = await validatePackagedBehavior(generatedPackage);
+      generatedPackage.build.behaviorTests = behaviorResults;
+      generatedPackage.build.validation.push(`behavior-tests:${behaviorResults.length}/${behaviorResults.length}`);
       const stored = await chrome.storage.local.get(PENDING_BUILDS_KEY);
       const pending = stored[PENDING_BUILDS_KEY] && typeof stored[PENDING_BUILDS_KEY] === "object"
         ? stored[PENDING_BUILDS_KEY]
@@ -182,6 +187,8 @@ async function handleMessage(message) {
       if (!packageDefinition) throw new Error("沒有等待核准的 generated build。");
       scanGeneratedBuild(packageDefinition.build, packageDefinition.skill);
       await validateUserScriptBuild(packageDefinition);
+      const behaviorResults = await validatePackagedBehavior(packageDefinition);
+      packageDefinition.build.behaviorTests = behaviorResults;
       const installed = installSkillPackage(await getInstalledSkills(), packageDefinition);
       await saveInstalledSkills(installed);
       delete pending[skillId];
@@ -286,11 +293,13 @@ async function generatePackage(packageDefinition) {
     loadTextAsset(`${skillRoot}${packageDefinition.skill.entrypoint}`),
     loadJsonAsset(`${skillRoot}${packageDefinition.skill.tests}`)
   ]);
+  const testRunner = tests.runner ? await loadTextAsset(`${skillRoot}${tests.runner}`) : "";
   const messages = buildGenerationMessages({
     installerInstructions,
     skillInstructions,
     skill: packageDefinition.skill,
-    tests
+    tests,
+    testRunner
   });
 
   const response = await fetch(settings.endpoint, {
@@ -364,6 +373,53 @@ async function validateUserScriptBuild(packageDefinition) {
       await chrome.userScripts.unregister({ ids: scripts.map(script => script.id) }).catch(() => undefined);
     }
   }
+}
+
+async function validatePackagedBehavior(packageDefinition) {
+  const skillPath = packageDefinition.source.skillPath;
+  if (!skillPath) throw new Error("Generated Skill is missing its packaged test location.");
+  const skillRoot = skillPath.slice(0, skillPath.lastIndexOf("/") + 1);
+  const suite = await loadJsonAsset(`${skillRoot}${packageDefinition.skill.tests}`);
+  if (typeof suite.runner !== "string" || !suite.runner || !Array.isArray(suite.tests)) {
+    throw new Error("MSkill must include an executable browser test suite.");
+  }
+  const runnerSource = await loadTextAsset(`${skillRoot}${suite.runner}`);
+  await ensureValidationDocument();
+  const response = await chrome.runtime.sendMessage({
+    target: "validation-offscreen",
+    type: "run-behavior-tests",
+    suite,
+    runnerSource,
+    build: packageDefinition.build
+  });
+  if (!response?.results) throw new Error(response?.error || "Behavior test runner did not respond.");
+  const failed = response.results.filter(result => !result.ok);
+  if (failed.length > 0) {
+    const detail = failed.map(result => `${result.id}: ${result.error}`).join("; ");
+    throw new Error(`Generated build failed behavior tests (${failed.length}/${response.results.length}): ${detail}`);
+  }
+  return response.results;
+}
+
+async function ensureValidationDocument() {
+  const url = chrome.runtime.getURL("src/validation/offscreen.html");
+  if (chrome.runtime.getContexts) {
+    const contexts = await chrome.runtime.getContexts({
+      contextTypes: ["OFFSCREEN_DOCUMENT"],
+      documentUrls: [url]
+    });
+    if (contexts.length > 0) return;
+  } else if (await chrome.offscreen.hasDocument()) {
+    return;
+  }
+  offscreenCreationPromise ??= chrome.offscreen.createDocument({
+    url: "src/validation/offscreen.html",
+    reasons: ["IFRAME_SCRIPTING"],
+    justification: "Run packaged MSkill acceptance tests in isolated sandbox frames before installation."
+  }).finally(() => {
+    offscreenCreationPromise = null;
+  });
+  await offscreenCreationPromise;
 }
 
 async function sha256(value) {
