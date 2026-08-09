@@ -37,6 +37,7 @@
       .background-target { min-height: 100px; border: 1px solid #d98c02; border-radius: 9px; background: #dce8d7 url("/test-background.svg") center / cover no-repeat; }
       .result { min-height: 20px; margin-top: 9px; color: #6b756e; font: 11px/1.4 ui-monospace, monospace; }
       .result.blocked { color: #a03535; font-weight: 750; }
+      .result.passed { color: #34711f; font-weight: 750; }
       .result.info { color: #2e6491; }
       .checklist { margin-top: 18px; padding: 16px 20px; border-radius: 13px; color: #eff6ea; background: #17211b; }
       .checklist strong { color: #c8f24f; }
@@ -194,6 +195,15 @@
         if (!selection || selection.isCollapsed || !selectionTarget.contains(selection.anchorNode)) return;
         markBlocked(10, "removeAllRanges 清除了選取");
         selection.removeAllRanges();
+        setTimeout(() => {
+          const restored = document.getSelection();
+          const insideTarget = restored && !restored.isCollapsed
+            && selectionTarget.contains(restored.anchorNode)
+            && selectionTarget.contains(restored.focusNode);
+          if (!insideTarget) return;
+          result(10).textContent = "通過：Skill 在 removeAllRanges 後恢復了選取";
+          result(10).className = "result passed";
+        }, 300);
       };
       for (const type of ["mouseup", "keyup", "contextmenu", "touchend"]) {
         selectionTarget.addEventListener(type, clearSelection);

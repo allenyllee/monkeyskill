@@ -89,6 +89,8 @@ test("demo exposes all 16 methods on one page", async () => {
   assert.match(demo, /id="absolute-target"/);
   assert.match(demo, /id="background-image-target"/);
   assert.match(demo, /removeAllRanges/);
+  assert.match(demo, /Skill 在 removeAllRanges 後恢復了選取/);
+  assert.match(demo, /className = "result passed"/);
   assert.match(demo, /event\.key\.toLowerCase\(\) !== "c"/);
 });
 
