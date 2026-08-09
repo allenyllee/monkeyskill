@@ -1,6 +1,21 @@
 (() => {
   const nonce = crypto.randomUUID();
   const nativeEval = eval;
+  const nativeFocus = HTMLElement.prototype.focus;
+  const nativeBlur = HTMLElement.prototype.blur;
+  let trackedActiveElement = null;
+
+  HTMLElement.prototype.focus = function trackedFocus(...args) {
+    const result = nativeFocus.apply(this, args);
+    if (this.isConnected && isFocusableElement(this)) trackedActiveElement = this;
+    return result;
+  };
+
+  HTMLElement.prototype.blur = function trackedBlur(...args) {
+    const result = nativeBlur.apply(this, args);
+    if (trackedActiveElement === this) trackedActiveElement = null;
+    return result;
+  };
 
   async function onRunTest(event) {
     const message = event.data;
@@ -8,8 +23,11 @@
     window.removeEventListener("message", onRunTest);
     let result;
     try {
-      installArtifact(message.artifact);
-      result = await executeTest(message.test);
+      if (message.capability) result = await executeCapabilitySelfTest(message.capability);
+      else {
+        installArtifact(message.artifact);
+        result = await executeTest(message.test);
+      }
     } catch {
       result = { ok: false, category: "dom-state" };
     }
@@ -236,7 +254,9 @@
     const target = state.nodes.get(assertion.target);
     if (assertion.type === "dom-present") return Boolean(target?.isConnected) === assertion.expected;
     if (!target) return false;
-    if (assertion.type === "active-element") return (document.activeElement === target) === assertion.expected;
+    if (assertion.type === "active-element") {
+      return (document.activeElement === target || trackedActiveElement === target) === assertion.expected;
+    }
     if (assertion.type === "visible") return isVisible(target) === assertion.expected;
     if (assertion.type === "hit-test") return isTopmostAt(target, assertion.point) === assertion.expected;
     if (assertion.type === "computed-style") {
@@ -321,6 +341,31 @@
 
   function diagnosticValue(value) {
     return String(value).replace(/[\r\n]/g, " ").slice(0, 120);
+  }
+
+  async function executeCapabilitySelfTest(capability) {
+    if (capability !== "focus") return { ok: false, capability, category: "dom-state" };
+    const input = document.createElement("input");
+    const editable = document.createElement("div");
+    editable.setAttribute("contenteditable", "true");
+    document.querySelector("#fixture").replaceChildren(input, editable);
+    input.focus();
+    const inputTracked = trackedActiveElement === input;
+    const inputNative = document.activeElement === input;
+    editable.focus();
+    const editableTracked = trackedActiveElement === editable;
+    const editableNative = document.activeElement === editable;
+    editable.blur();
+    const blurTracked = trackedActiveElement === null;
+    return {
+      ok: inputTracked && editableTracked && blurTracked,
+      capability,
+      nativeSupported: inputNative && editableNative
+    };
+  }
+
+  function isFocusableElement(element) {
+    return element.matches("a[href],button,input,textarea,select,[tabindex],[contenteditable]:not([contenteditable='false'])");
   }
 
   function matchesWhen(event, when) {

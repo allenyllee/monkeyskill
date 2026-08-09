@@ -52,12 +52,15 @@ test("long LLM requests run outside the ephemeral service worker", async () => {
   assert.match(background, /type: "generate-package"/);
   assert.match(background, /message\?\.target === "generation-background"/);
   assert.match(background, /GENERATION_STALE_MS/);
+  assert.match(background, /!result\.ok && !result\.inconclusive/);
   assert.match(offscreen, /async function runGenerationJob/);
   assert.match(offscreen, /await fetch\(request\.endpoint/);
   assert.match(offscreen, /builderSessionId = `builder-\$\{jobId\}`/);
   assert.match(offscreen, /testerSessionId = `tester-\$\{jobId\}`/);
   assert.match(offscreen, /headers\["x-monkeyskill-session"\] = sessionId/);
   assert.match(offscreen, /type: "generation-complete"/);
+  const store = await readFile(new URL("demo/store.js", root), "utf8");
+  assert.match(store, /Inconclusive tests:/);
 });
 
 test("independent TestSpec feedback cannot expose tester-controlled text", async () => {
@@ -67,9 +70,13 @@ test("independent TestSpec feedback cannot expose tester-controlled text", async
   assert.match(offscreen, /request\.builderBody/);
   assert.match(offscreen, /request\.testerBody/);
   assert.match(offscreen, /buildRepairMessage\(failed\)/);
+  assert.match(offscreen, /!result\.ok && !result\.inconclusive/);
+  assert.match(offscreen, /runCapabilitySelfTests\(testSpec\)/);
   assert.doesNotMatch(offscreen, /buildRepairMessage\([^)]*(?:error|testSpec|test\.id)/);
   assert.doesNotMatch(sandbox, /runnerSource|monkeySkillAcceptanceTests/);
   assert.match(sandbox, /executeTest\(message\.test\)/);
+  assert.match(sandbox, /executeCapabilitySelfTest\(message\.capability\)/);
+  assert.match(sandbox, /trackedActiveElement/);
   assert.match(sandbox, /removeEventListener\("message", onRunTest\)/);
   assert.doesNotMatch(sandbox, /\{ once: true \}/);
 });

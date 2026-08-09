@@ -421,7 +421,10 @@ async function handleGenerationCompletion(message, sender) {
     await validateUserScriptBuild(generatedPackage);
     generatedPackage.build.validation.push("chrome-userScripts-parse");
     const behaviorResults = generatedPackage.build.behaviorTests;
-    generatedPackage.build.validation.push(`behavior-tests:${behaviorResults.length}/${behaviorResults.length}`);
+    const inconclusiveCount = behaviorResults.filter(result => result.inconclusive).length;
+    const passedCount = behaviorResults.filter(result => result.ok).length;
+    generatedPackage.build.validation.push(`behavior-tests:${passedCount}/${behaviorResults.length}`);
+    if (inconclusiveCount > 0) generatedPackage.build.validation.push(`behavior-inconclusive:${inconclusiveCount}`);
     const stored = await chrome.storage.local.get(PENDING_BUILDS_KEY);
     const pending = stored[PENDING_BUILDS_KEY] && typeof stored[PENDING_BUILDS_KEY] === "object"
       ? stored[PENDING_BUILDS_KEY]
@@ -498,7 +501,7 @@ async function validatePackagedBehavior(packageDefinition) {
     build: packageDefinition.build
   });
   if (!response?.results) throw new Error(response?.error || "Behavior test runner did not respond.");
-  const failed = response.results.filter(result => !result.ok);
+  const failed = response.results.filter(result => !result.ok && !result.inconclusive);
   if (failed.length > 0) {
     const detail = failed.map(result => `${result.criterion}:${result.category}`).join("; ");
     throw new Error(`Generated build failed behavior tests (${failed.length}/${response.results.length}): ${detail}`);
@@ -554,6 +557,9 @@ function publicGeneratedDraft(packageDefinition) {
     validation: build.validation,
     generation: build.generation,
     testCount: Array.isArray(build.testSpec?.tests) ? build.testSpec.tests.length : 0,
+    inconclusiveCount: Array.isArray(build.behaviorTests)
+      ? build.behaviorTests.filter(result => result.inconclusive).length
+      : 0,
     modes: Object.fromEntries(Object.entries(build.modes).map(([mode, artifact]) => [mode, {
       js: artifact.js,
       css: artifact.css,

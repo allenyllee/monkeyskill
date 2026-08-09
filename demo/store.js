@@ -98,7 +98,8 @@ async function reviewDraft(draft) {
       `Model: ${draft.generation.model}`,
       `Tester: ${draft.generation.testerModel}`,
       `Generation attempts: ${draft.generation.attempts}`,
-      `Independent tests: ${draft.testCount}`,
+      `Independent tests: ${draft.testCount - (draft.inconclusiveCount || 0)}/${draft.testCount}`,
+      `Inconclusive tests: ${draft.inconclusiveCount || 0}`,
       `Hash: ${draft.generation.hash.slice(0, 16)}`,
       `Validation: ${draft.validation.join(", ")}`,
       ...Object.entries(draft.modes).map(([mode, value]) => `${mode}: JS ${value.jsBytes} bytes / CSS ${value.cssBytes} bytes`)

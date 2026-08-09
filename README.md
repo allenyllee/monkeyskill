@@ -22,6 +22,8 @@ No source code or visual assets from the referenced extension are included.
 - Durable offscreen generation jobs, so multi-minute LLM requests survive MV3 service-worker suspension and Store refreshes preserve running, failed, and ready outcomes.
 - Independent local testing: isolated Builder and Tester LLM conversations read the same human specification; only the Tester produces a constrained TestSpec, and the Builder never receives it.
 - A non-executable test DSL covering DOM, events, forms, computed styles, geometry, relative layout, visibility, hit-testing, focus, scrolling, contrast, and ARIA ID relationships.
+- Runner capability self-tests and a trusted focus tracker prevent hidden/offscreen browser limitations from being misreported as Builder failures; unsupported primitives are surfaced as inconclusive instead of entering the repair prompt.
+- Diagnostic-driven generation retries use three attempts by default, extend to five only when failures are changing, and stop early when the build hash or diagnostics stop improving.
 - Runtime-generated builds installed through `chrome.userScripts` while packaged builds continue to use `chrome.scripting`.
 
 ## Load in Chrome
@@ -87,7 +89,7 @@ npm run serve:agent
 
 Optional variables are `MONKEYSKILL_UPSTREAM_ENDPOINT`, `MONKEYSKILL_LOCAL_TOKEN`, `MONKEYSKILL_AGENT_PORT`, and the subagent queue timeout `MONKEYSKILL_AGENT_TIMEOUT_MS`. The upstream key stays in the local server process and is not stored by the Extension.
 
-For an interactive Codex-only experiment, `MONKEYSKILL_AGENT_MODE=subagent` exposes protected role queues at `/agent/jobs/next?role=builder&worker=<stable-worker-id>` and `/agent/jobs/next?role=tester&worker=<stable-worker-id>`. Builder and Tester workers cannot consume each other's jobs. The Extension gives every generation run stable local Builder and Tester session IDs, so Builder repairs remain leased to the Builder worker that produced the initial candidate. Complete a leased job by posting `{ "worker": "<same-worker-id>", "content": "..." }` to `/agent/jobs/{id}/complete`; a different worker receives HTTP 409. This mode is intentionally not presented as a standalone background service.
+For an interactive Codex-only experiment, `MONKEYSKILL_AGENT_MODE=subagent` exposes protected role queues at `/agent/jobs/next?role=builder&worker=<stable-worker-id>` and `/agent/jobs/next?role=tester&worker=<stable-worker-id>`. Builder and Tester workers cannot consume each other's jobs. The Extension gives every generation run stable local Builder and Tester session IDs, so Builder repairs remain leased to the Builder worker that produced the initial candidate. A Builder worker should remain available for up to five total attempts. Complete a leased job by posting `{ "worker": "<same-worker-id>", "content": "..." }` to `/agent/jobs/{id}/complete`; a different worker receives HTTP 409. This mode is intentionally not presented as a standalone background service.
 
 ## Development
 

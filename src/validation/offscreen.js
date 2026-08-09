@@ -5,8 +5,12 @@ import {
   scanGeneratedBuild
 } from "../lib/llm.js";
 import { parseGeneratedTestSpec, validateTestSpec } from "../lib/test-spec.js";
+import {
+  MAX_GENERATION_ATTEMPTS,
+  createRetryState,
+  evaluateGenerationRetry
+} from "../lib/generation-policy.js";
 
-const MAX_GENERATION_ATTEMPTS = 3;
 const MAX_TESTER_ATTEMPTS = 2;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -35,6 +39,7 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
       generateTestSpec(request, packageDefinition, testerSessionId)
     ]);
     let assistantText = initialBuilderText;
+    let retryState = createRetryState();
 
     for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
       const build = parseGeneratedBuild(assistantText, packageDefinition.skill);
@@ -48,14 +53,15 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
         hash: await sha256(JSON.stringify(build.modes))
       };
       const behaviorResponse = await runTestSpec({ testSpec, build });
-      const failed = behaviorResponse.results.filter(result => !result.ok);
+      const failed = behaviorResponse.results.filter(result => !result.ok && !result.inconclusive);
       if (failed.length === 0) {
         const generatedPackage = {
           skill: packageDefinition.skill,
           build: {
             ...build,
             testSpec,
-            behaviorTests: behaviorResponse.results
+            behaviorTests: behaviorResponse.results,
+            runnerCapabilities: behaviorResponse.capabilities
           },
           source: {
             type: "llm",
@@ -74,9 +80,15 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
         });
         return;
       }
-      if (attempt === MAX_GENERATION_ATTEMPTS) {
+      const retryDecision = evaluateGenerationRetry(retryState, {
+        attempt,
+        hash: build.generation.hash,
+        failures: failed
+      });
+      retryState = retryDecision.state;
+      if (!retryDecision.retry) {
         const detail = failed.map(formatLocalFailure).join("; ");
-        throw new Error(`Generated build failed ${failed.length}/${behaviorResponse.results.length} independent checks after ${attempt} attempts: ${detail}`);
+        throw new Error(`Generated build failed ${failed.length}/${behaviorResponse.results.length} independent checks after ${attempt} attempts (${retryDecision.reason}): ${detail}`);
       }
       builderMessages.push(
         { role: "assistant", content: assistantText },
@@ -161,10 +173,22 @@ async function runValidatedTestSpec({ testSpec, criteria, skill, build }) {
 }
 
 async function runTestSpec({ testSpec, build }) {
+  const capabilities = await runCapabilitySelfTests(testSpec);
   const results = [];
   for (const test of testSpec.tests) {
     if (test.kind === "policy") {
       results.push({ criterion: test.criterion, ok: true, category: "policy-state" });
+      continue;
+    }
+    const unsupportedCapability = requiredCapabilities(test).find(capability => !capabilities[capability]?.ok);
+    if (unsupportedCapability) {
+      results.push({
+        criterion: test.criterion,
+        ok: false,
+        inconclusive: true,
+        category: unsupportedCapability === "focus" ? "focus-state" : "dom-state",
+        capability: unsupportedCapability
+      });
       continue;
     }
     const artifact = build.modes[test.mode];
@@ -180,7 +204,25 @@ async function runTestSpec({ testSpec, build }) {
       diagnostic: result.diagnostic || null
     });
   }
-  return { ok: results.every(result => result.ok), results };
+  return {
+    ok: results.every(result => result.ok || result.inconclusive),
+    results,
+    capabilities
+  };
+}
+
+async function runCapabilitySelfTests(testSpec) {
+  const names = new Set(testSpec.tests.flatMap(requiredCapabilities));
+  const entries = await Promise.all([...names].map(async capability => [
+    capability,
+    await runCase({ capability })
+  ]));
+  return Object.fromEntries(entries);
+}
+
+function requiredCapabilities(test) {
+  if (test.kind !== "behavior") return [];
+  return test.assertions.some(assertion => assertion.type === "active-element") ? ["focus"] : [];
 }
 
 function formatLocalFailure(failure) {

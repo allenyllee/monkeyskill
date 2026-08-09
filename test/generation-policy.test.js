@@ -1,0 +1,58 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  createRetryState,
+  evaluateGenerationRetry
+} from "../src/lib/generation-policy.js";
+
+const focusFailure = [{ criterion: "preserve-controls", category: "focus-state" }];
+
+function decide(state, attempt, hash, failures = focusFailure) {
+  return evaluateGenerationRetry(state, { attempt, hash, failures });
+}
+
+test("unchanged diagnostics stop after the default three attempts", () => {
+  let state = createRetryState();
+  let decision = decide(state, 1, "hash-1");
+  assert.equal(decision.retry, true);
+  assert.equal(decision.limit, 3);
+  state = decision.state;
+
+  decision = decide(state, 2, "hash-2");
+  assert.equal(decision.retry, true);
+  state = decision.state;
+
+  decision = decide(state, 3, "hash-3");
+  assert.equal(decision.retry, false);
+  assert.equal(decision.reason, "repeated-diagnostics");
+});
+
+test("changing diagnostics can extend generation to five attempts", () => {
+  let state = createRetryState();
+  let decision = decide(state, 1, "hash-1");
+  state = decision.state;
+
+  decision = decide(state, 2, "hash-2", [{ criterion: "paste", category: "event-state" }]);
+  assert.equal(decision.retry, true);
+  assert.equal(decision.limit, 5);
+  state = decision.state;
+
+  decision = decide(state, 3, "hash-3", [{ criterion: "paste", category: "focus-state" }]);
+  assert.equal(decision.retry, true);
+  state = decision.state;
+  decision = decide(state, 4, "hash-4", [{ criterion: "context-menu", category: "event-state" }]);
+  assert.equal(decision.retry, true);
+  state = decision.state;
+  decision = decide(state, 5, "hash-5", [{ criterion: "selection-visibility", category: "computed-style" }]);
+  assert.equal(decision.retry, false);
+  assert.equal(decision.reason, "attempt-limit");
+});
+
+test("an unchanged build hash stops without wasting another repair", () => {
+  let state = createRetryState();
+  let decision = decide(state, 1, "same-hash");
+  state = decision.state;
+  decision = decide(state, 2, "same-hash");
+  assert.equal(decision.retry, false);
+  assert.equal(decision.reason, "unchanged-build");
+});
