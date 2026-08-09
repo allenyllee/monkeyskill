@@ -3,6 +3,7 @@
   const nativeEval = eval;
   const nativeFocus = HTMLElement.prototype.focus;
   const nativeBlur = HTMLElement.prototype.blur;
+  const releaseClearEvents = new Set(["mouseup", "pointerup", "keyup", "touchend", "contextmenu"]);
   let trackedActiveElement = null;
 
   HTMLElement.prototype.focus = function trackedFocus(...args) {
@@ -132,7 +133,10 @@
     state.blockerCalls.set(blocker.id, (state.blockerCalls.get(blocker.id) || 0) + 1);
     if (blocker.effect === "prevent-default" || blocker.effect === "prevent-default-and-stop") event.preventDefault();
     if (blocker.effect === "prevent-default-and-stop") event.stopImmediatePropagation();
-    if (blocker.effect === "clear-selection") getSelection()?.removeAllRanges();
+    if (blocker.effect === "clear-selection") {
+      if (releaseClearEvents.has(event.type)) queueMicrotask(() => getSelection()?.removeAllRanges());
+      else getSelection()?.removeAllRanges();
+    }
     if (blocker.effect === "rollback-value" && "value" in event.target) event.target.value = blocker.initialValue || "";
   }
 

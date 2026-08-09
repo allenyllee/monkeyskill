@@ -24,6 +24,7 @@ No source code or visual assets from the referenced extension are included.
 - A non-executable test DSL covering DOM, events, forms, computed styles, geometry, relative layout, visibility, hit-testing, focus, scrolling, contrast, and ARIA ID relationships.
 - High-level `paste-text` and `drag-select-text` DSL workflows replay complete browser interaction sequences; schema validation rejects weaker hand-written substitutes when paste or selection blockers are present.
 - A `click-control` workflow verifies that restoring a protected page selection never steals focus back from a deliberately clicked input, editable field, button, or link.
+- Release-time selection blockers are replayed across a page-world callback checkpoint, preventing capture-phase microtask restoration from receiving a false pass that does not match real Chrome ordering.
 - Runner capability self-tests and a trusted focus tracker prevent hidden/offscreen browser limitations from being misreported as Builder failures; unsupported primitives are surfaced as inconclusive instead of entering the repair prompt.
 - Diagnostic-driven generation retries use three attempts by default, extend to the full five after a diagnostic improvement, and stop immediately when the generated build hash is unchanged.
 - Runtime-generated builds installed through `chrome.userScripts` while packaged builds continue to use `chrome.scripting`.
