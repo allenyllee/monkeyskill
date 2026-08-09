@@ -42,7 +42,11 @@
     for (const step of test.steps) state.stepResults.push(await executeStep(step, state));
     for (const assertion of test.assertions) {
       if (!evaluateAssertion(assertion, state)) {
-        return { ok: false, category: assertionCategory(assertion.type) };
+        return {
+          ok: false,
+          category: assertionCategory(assertion.type),
+          diagnostic: assertionDiagnostic(assertion, state)
+        };
       }
     }
     return { ok: true, category: "dom-state" };
@@ -295,6 +299,24 @@
     if (type === "text-content") return "value-state";
     if (type === "attribute") return "attribute-state";
     return "dom-state";
+  }
+
+  function assertionDiagnostic(assertion, state) {
+    if (assertion.type !== "computed-style") return null;
+    const target = state.nodes.get(assertion.target);
+    const actual = target
+      ? getComputedStyle(target, assertion.pseudo)[assertion.property]
+      : "<missing-target>";
+    return {
+      property: assertion.property,
+      operator: assertion.operator,
+      actual: diagnosticValue(actual),
+      expected: diagnosticValue(assertion.value)
+    };
+  }
+
+  function diagnosticValue(value) {
+    return String(value).replace(/[\r\n]/g, " ").slice(0, 120);
   }
 
   function matchesWhen(event, when) {

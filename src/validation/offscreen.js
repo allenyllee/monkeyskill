@@ -73,7 +73,8 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
         return;
       }
       if (attempt === MAX_GENERATION_ATTEMPTS) {
-        throw new Error(`Generated build failed ${failed.length}/${behaviorResponse.results.length} independent checks after ${attempt} attempts.`);
+        const detail = failed.map(formatLocalFailure).join("; ");
+        throw new Error(`Generated build failed ${failed.length}/${behaviorResponse.results.length} independent checks after ${attempt} attempts: ${detail}`);
       }
       builderMessages.push(
         { role: "assistant", content: assistantText },
@@ -163,10 +164,17 @@ async function runTestSpec({ testSpec, build }) {
     results.push({
       criterion: test.criterion,
       ok: Boolean(result.ok),
-      category: result.category || "dom-state"
+      category: result.category || "dom-state",
+      diagnostic: result.diagnostic || null
     });
   }
   return { ok: results.every(result => result.ok), results };
+}
+
+function formatLocalFailure(failure) {
+  const diagnostic = failure.diagnostic;
+  if (!diagnostic) return `${failure.criterion}:${failure.category}`;
+  return `${failure.criterion}:${failure.category} (${diagnostic.property} actual=${JSON.stringify(diagnostic.actual)} ${diagnostic.operator} expected=${JSON.stringify(diagnostic.expected)})`;
 }
 
 function runCase(payload) {
