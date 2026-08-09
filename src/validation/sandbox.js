@@ -174,6 +174,7 @@
     if (step.action === "drag-select-text") return dragSelectText(target);
     if (step.action === "paste-text") return pasteText(target, step.value);
     if (step.action === "click-control") return clickControl(target);
+    if (step.action === "click-page") return clickPage(target);
     if (step.action === "focus") {
       target.focus();
       return null;
@@ -273,6 +274,14 @@
   }
 
   async function clickControl(target) {
+    return primaryClick(target, true);
+  }
+
+  async function clickPage(target) {
+    return primaryClick(target, false);
+  }
+
+  async function primaryClick(target, focusTarget) {
     const down = { button: 0, buttons: 1 };
     const pointerDown = createEvent("pointerdown", down);
     const mouseDown = createEvent("mousedown", down);
@@ -280,7 +289,7 @@
     target.dispatchEvent(mouseDown);
     if (!pointerDown.defaultPrevented && !mouseDown.defaultPrevented) {
       getSelection()?.removeAllRanges();
-      target.focus();
+      if (focusTarget) target.focus();
     }
     target.dispatchEvent(createEvent("pointerup", { button: 0, buttons: 0 }));
     target.dispatchEvent(createEvent("mouseup", { button: 0, buttons: 0 }));

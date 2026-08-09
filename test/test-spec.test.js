@@ -140,6 +140,16 @@ test("preserve-controls fixture models a real click after page selection", () =>
   assert.ok(preserve.assertions.some(assertion => assertion.type === "active-element" && assertion.expected));
 });
 
+test("selection-dismissal fixture models a real page click after selection", () => {
+  const spec = parseGeneratedTestSpec(fixtureText, skill, criteria);
+  const dismissal = spec.tests.find(candidate => candidate.criterion === "selection-dismissal");
+  assert.deepEqual(dismissal.steps.map(step => step.action), [
+    "drag-select-text",
+    "click-page"
+  ]);
+  assert.ok(dismissal.assertions.some(assertion => assertion.type === "selection-collapsed" && assertion.expected));
+});
+
 test("TestSpec can observe data-driven generated UI without implementation-specific selectors", () => {
   const spec = JSON.parse(fixtureText);
   const behavior = spec.tests.find(candidate => candidate.kind === "behavior");

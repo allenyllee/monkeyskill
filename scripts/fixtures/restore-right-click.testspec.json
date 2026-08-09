@@ -95,6 +95,28 @@
       ]
     },
     {
+      "id": "selection-dismissal",
+      "kind": "behavior",
+      "criterion": "selection-dismissal",
+      "mode": "absolute",
+      "fixture": {
+        "nodes": [
+          { "id": "selected-text", "tag": "p", "parent": null, "text": "selected page text", "attributes": {}, "styles": {} },
+          { "id": "page-area", "tag": "div", "parent": null, "text": "ordinary page area", "attributes": {}, "styles": { "minHeight": "40px" } }
+        ],
+        "rules": []
+      },
+      "blockers": [],
+      "steps": [
+        { "action": "drag-select-text", "target": "selected-text" },
+        { "action": "click-page", "target": "page-area" }
+      ],
+      "assertions": [
+        { "type": "event-default-prevented", "step": 1, "expected": false },
+        { "type": "selection-collapsed", "expected": true }
+      ]
+    },
+    {
       "id": "ordinary-controls",
       "kind": "behavior",
       "criterion": "preserve-controls",

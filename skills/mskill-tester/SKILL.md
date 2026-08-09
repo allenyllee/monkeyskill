@@ -18,6 +18,7 @@ Generate tests independently from the implementation. Treat the MSkill manifest 
 - Keep tests minimal. Reuse one test for multiple observations of the same criterion when practical.
 - Model user paste only with `paste-text`, and user drag selection only with `drag-select-text`. Never replace either workflow with `set-value`, `select-contents`, or hand-written event sequences.
 - Use `click-control` when testing a real primary-button transition from existing selected text into an input, textarea, button, link, or editable control. Assert that stale page selection is not restored, the control remains active, and its ordinary behavior still works.
+- Use `click-page` when testing a real primary-button transition from existing selected text into another ordinary page area. Assert that the selection collapses normally instead of being restored.
 - Assert observable outcomes for effectful blockers: default state, selection, value, style, or DOM state. Do not require an effectful handler's call count to be zero. Use a `flag-only` blocker when the human specification explicitly requires proving that a handler itself did or did not run.
 - Make fixtures neutral and give layout assertions enough viewport space; do not place a target against an edge when the required result extends beyond it.
 - Avoid styling fixtures toward the expected result except for dimensions or spacing required to make the observation fair.
@@ -93,6 +94,7 @@ Each blocker has `id`, `target`, `event`, `registration`, `effect`, and optional
 - `{"action":"paste-text","target":"target","value":"pasted text"}`; the trusted runner performs paste, beforeinput, default insertion, and input with `inputType: "insertFromPaste"`. Model rollback blockers on the actual `input` event.
 - `{"action":"drag-select-text","target":"target"}`; the trusted runner performs the pointer, mouse, selectstart, range-selection, and release sequence.
 - `{"action":"click-control","target":"control"}`; the trusted runner performs primary pointer/mouse down, native focus/selection transition, release, and click.
+- `{"action":"click-page","target":"page-area"}`; the trusted runner performs a primary pointer/mouse click on an ordinary page target, including the native selection-collapse transition.
 - `{"action":"dispatch-event","target":"target","event":"contextmenu","init":{"button":2}}`
 - `{"action":"wait","ms":50}`; use at most 2000ms and only when the specified behavior is intentionally delayed or periodically repaired.
 - `{"action":"select-contents","target":"target"}`
