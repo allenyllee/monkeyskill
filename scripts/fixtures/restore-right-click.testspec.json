@@ -46,6 +46,19 @@
       ]
     },
     {
+      "id": "keyboard-copy-property-return-false",
+      "kind": "behavior",
+      "criterion": "keyboard-copy",
+      "mode": "standard",
+      "fixture": { "nodes": [{ "id": "target", "tag": "input", "parent": null, "text": "", "attributes": { "value": "copy me" }, "styles": {} }], "rules": [] },
+      "blockers": [{ "id": "block", "target": "target", "event": "keydown", "registration": "property", "effect": "return-false", "when": { "key": "c", "ctrlKey": true } }],
+      "steps": [{ "action": "copy-shortcut", "target": "target", "operation": "copy" }],
+      "assertions": [
+        { "type": "event-default-prevented", "step": 0, "expected": false },
+        { "type": "value", "target": "target", "operator": "eq", "value": "copy me" }
+      ]
+    },
+    {
       "id": "paste-event",
       "kind": "behavior",
       "criterion": "paste",

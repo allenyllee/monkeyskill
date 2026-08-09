@@ -86,8 +86,8 @@ Policy test:
 Each blocker has `id`, `target`, `event`, `registration`, `effect`, and optional `when`.
 
 - Events: `beforeinput`, `blur`, `change`, `click`, `contextmenu`, `copy`, `cut`, `dblclick`, `dragend`, `dragstart`, `focus`, `input`, `keydown`, `keyup`, `mousedown`, `mouseenter`, `mouseleave`, `mousemove`, `mouseup`, `paste`, `pointerdown`, `pointermove`, `pointerup`, `scroll`, `selectstart`, `submit`, `touchend`, `wheel`.
-- Registration: `listener` or `inline`.
-- Effects: `clear-selection`, `flag-only`, `prevent-default`, `prevent-default-and-stop`, `rollback-value`.
+- Registration: `listener`, HTML-attribute `inline`, or DOM event-handler `property` such as `element.onkeydown = fn`.
+- Effects: `clear-selection`, `flag-only`, `prevent-default`, `prevent-default-and-stop`, `return-false`, `rollback-value`. `return-false` is allowed only with `inline` or `property`, because listener return values do not cancel events.
 - For `clear-selection` on a release event (`mouseup`, `pointerup`, `keyup`, `touchend`, or `contextmenu`), the trusted runner models the page-world callback checkpoint so a candidate cannot pass by restoring the range too early in a capture-listener microtask.
 - `when` and event `init` may use only the documented keyboard modifiers, button state, key/code, input data, client coordinates, and wheel deltas.
 

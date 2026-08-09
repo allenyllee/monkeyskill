@@ -131,6 +131,7 @@
       const blocker = state.inlineBlockers.get(id);
       if (!blocker || !matchesWhen(event, blocker.when)) return true;
       applyEffect(blocker, event, state);
+      if (blocker.effect === "return-false") return false;
       return !event.defaultPrevented;
     };
     for (const blocker of blockers) installBlocker(blocker, state);
@@ -145,6 +146,12 @@
     if (blocker.registration === "inline") {
       state.inlineBlockers.set(blocker.id, installed);
       target.setAttribute(`on${blocker.event}`, `return globalThis.__monkeySkillTestInlineBlocker(${JSON.stringify(blocker.id)}, event)`);
+    } else if (blocker.registration === "property") {
+      target[`on${blocker.event}`] = event => {
+        if (!matchesWhen(event, blocker.when)) return true;
+        applyEffect(installed, event, state);
+        return blocker.effect === "return-false" ? false : !event.defaultPrevented;
+      };
     } else {
       target.addEventListener(blocker.event, event => {
         if (!matchesWhen(event, blocker.when)) return;

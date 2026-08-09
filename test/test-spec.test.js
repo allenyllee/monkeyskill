@@ -130,13 +130,22 @@ test("TestSpec requires high-level paste and drag-selection workflows", () => {
 
 test("keyboard shortcut blockers require the copy-shortcut workflow", () => {
   const parsed = parseGeneratedTestSpec(fixtureText, skill, criteria);
-  const keyboard = parsed.tests.find(candidate => candidate.criterion === "keyboard-copy");
+  const keyboardTests = parsed.tests.filter(candidate => candidate.criterion === "keyboard-copy");
+  const keyboard = keyboardTests[0];
   assert.equal(keyboard.steps[0].action, "copy-shortcut");
+  assert.ok(keyboardTests.some(candidate => candidate.blockers.some(blocker => (
+    blocker.registration === "property" && blocker.effect === "return-false"
+  ))));
 
   const weak = JSON.parse(fixtureText);
   const weakKeyboard = weak.tests.find(candidate => candidate.criterion === "keyboard-copy");
   weakKeyboard.steps = [{ action: "dispatch-event", target: "target", event: "keydown", init: { key: "c", ctrlKey: true } }];
   assert.throws(() => validateTestSpec(weak, skill, criteria), /copy-shortcut workflow/);
+
+  const invalidReturn = JSON.parse(fixtureText);
+  const propertyTest = invalidReturn.tests.find(candidate => candidate.id === "keyboard-copy-property-return-false");
+  propertyTest.blockers[0].registration = "listener";
+  assert.throws(() => validateTestSpec(invalidReturn, skill, criteria), /return-false requires/);
 });
 
 test("selection fixtures model primary mousedown and high-specificity transparent highlights", () => {

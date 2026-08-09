@@ -30,7 +30,7 @@ const ALLOWED_EVENTS = new Set([
   "paste", "pointerdown", "pointermove", "pointerup", "scroll", "selectstart", "submit", "touchend", "wheel"
 ]);
 const ALLOWED_EFFECTS = new Set([
-  "clear-selection", "flag-only", "prevent-default", "prevent-default-and-stop", "rollback-value"
+  "clear-selection", "flag-only", "prevent-default", "prevent-default-and-stop", "return-false", "rollback-value"
 ]);
 const ALLOWED_ACTIONS = new Set([
   "add-blocker", "append-node", "blur", "capture-node", "click", "click-control", "click-page", "copy-shortcut", "dispatch-event", "focus", "remove-attribute", "remove-node",
@@ -171,8 +171,11 @@ function validateBlocker(source, nodeIds) {
   assertOnlyKeys(source, ["id", "target", "event", "registration", "effect", "when"], "blocker");
   if (!ID_PATTERN.test(source.id || "") || !nodeIds.has(source.target)) throw new Error("Blocker ID or target is invalid.");
   if (!ALLOWED_EVENTS.has(source.event)) throw new Error("Blocker event is not allowed.");
-  if (!["listener", "inline"].includes(source.registration) || !ALLOWED_EFFECTS.has(source.effect)) {
+  if (!["listener", "inline", "property"].includes(source.registration) || !ALLOWED_EFFECTS.has(source.effect)) {
     throw new Error("Blocker registration or effect is not allowed.");
+  }
+  if (source.effect === "return-false" && source.registration === "listener") {
+    throw new Error("return-false requires an inline or property event handler.");
   }
   return {
     id: source.id,
