@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { extractCriterionIds } from "../src/lib/llm.js";
 import { parseGeneratedTestSpec, validateTestSpec } from "../src/lib/test-spec.js";
 
-const fixtureText = await readFile(new URL("../scripts/fixtures/restore-right-click.testspec.json", import.meta.url), "utf8");
+const fixtureText = await readFile(new URL("../scripts/fixtures/runner.testspec.json", import.meta.url), "utf8");
 const fixtureCriteria = [...new Set(JSON.parse(fixtureText).tests.map(test => test.criterion))];
 const skill = {
   schemaVersion: 1,

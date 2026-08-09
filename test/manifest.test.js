@@ -35,11 +35,8 @@ test("agent Skill catalog preinstalls creator, installer, and tester policies", 
   await Promise.all(catalog.map(entry => access(join(root, entry.entrypoint))));
 });
 
-test("Extension contains no bundled Store MSkill or generated right-click Build", async () => {
+test("Extension does not bundle Store MSkills", async () => {
   await assert.rejects(access(join(root, "preinstalled-skills.json")));
-  await assert.rejects(access(join(root, "packages", "restore-right-click.mskill.json")));
-  await assert.rejects(access(join(root, "skills", "restore-right-click", "skill.json")));
-  await assert.rejects(access(join(root, "generated", "restore-right-click", "1.2.0", "build.json")));
   const background = await readFile(join(root, "src", "background.js"), "utf8");
   assert.doesNotMatch(background, /install-bundled-skill|generate-bundled-skill|preinstalled-skills\.json/);
   assert.match(background, /case "generate-store-skill"/);

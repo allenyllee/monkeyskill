@@ -12,26 +12,26 @@ import {
 
 const skill = {
   schemaVersion: 1,
-  id: "restore-right-click",
-  name: "Restore right click & copy",
+  id: "example-skill",
+  name: "Example Skill",
   version: "1.0.0",
   modes: ["standard", "absolute"]
 };
 
 const build = {
   schemaVersion: 1,
-  skillId: "restore-right-click",
+  skillId: "example-skill",
   skillVersion: "1.0.0",
   artifactType: "packaged-content-script",
   execution: { runAt: "document_start", allFrames: true, world: "MAIN" },
   modes: {
     standard: {
-      js: ["generated/restore-right-click/1.0.0/standard.js"],
-      css: ["generated/restore-right-click/1.0.0/standard.css"]
+      js: ["generated/example-skill/1.0.0/standard.js"],
+      css: ["generated/example-skill/1.0.0/standard.css"]
     },
     absolute: {
-      js: ["generated/restore-right-click/1.0.0/absolute.js"],
-      css: ["generated/restore-right-click/1.0.0/absolute.css"]
+      js: ["generated/example-skill/1.0.0/absolute.js"],
+      css: ["generated/example-skill/1.0.0/absolute.css"]
     }
   }
 };
@@ -48,7 +48,7 @@ test("install and uninstall use the same package store", () => {
   const installed = installSkillPackage({}, {
     skill,
     build,
-    source: { type: "bundled", skillPath: "skills/restore-right-click/skill.json" }
+    source: { type: "bundled", skillPath: "skills/example-skill/skill.json" }
   });
   assert.equal(installed[skill.id].skill.name, skill.name);
   assert.equal(installed[skill.id].config.globalMode, MODES.OFF);
@@ -87,7 +87,7 @@ test("buildRegistrations reads generated artifacts from the installed package", 
     "https://disabled.example/*",
     "https://example.com/*"
   ]);
-  assert.deepEqual(siteRegistration.js, ["generated/restore-right-click/1.0.0/absolute.js"]);
+  assert.deepEqual(siteRegistration.js, ["generated/example-skill/1.0.0/absolute.js"]);
 });
 
 test("LLM builds become chrome.userScripts registrations with inline code", () => {
