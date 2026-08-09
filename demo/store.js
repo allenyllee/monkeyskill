@@ -71,7 +71,7 @@ async function beginInstall(skill) {
   const accepted = await ask({
     eyebrow: "INSTALL MSKILL",
     title: `安裝 ${skill.name}？`,
-    copy: "MonkeySkill 將把這個 MSkill 的規格與固定測試送到你設定的 LLM API。生成的程式碼尚不會立即安裝。",
+    copy: "MonkeySkill 只會把這個 MSkill 的人類可讀規格分別送給 Builder 與獨立 Tester。Builder 看不到 TestSpec；生成與驗證完成後仍需你再次核准才會安裝。",
     confirm: "是，開始生成"
   });
   if (!accepted) return;
