@@ -28,9 +28,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 async function runGenerationJob({ jobId, skillId, packageDefinition, request }) {
   try {
     const builderMessages = [...request.builderBody.messages];
+    const builderSessionId = `builder-${jobId}`;
+    const testerSessionId = `tester-${jobId}`;
     const [initialBuilderText, testSpec] = await Promise.all([
-      requestAssistantText(request, request.builderBody),
-      generateTestSpec(request, packageDefinition)
+      requestAssistantText(request, request.builderBody, builderSessionId),
+      generateTestSpec(request, packageDefinition, testerSessionId)
     ]);
     let assistantText = initialBuilderText;
 
@@ -83,7 +85,7 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
       assistantText = await requestAssistantText(request, {
         ...request.builderBody,
         messages: builderMessages
-      });
+      }, builderSessionId);
     }
   } catch (error) {
     await chrome.runtime.sendMessage({
@@ -97,14 +99,14 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
   }
 }
 
-async function generateTestSpec(request, packageDefinition) {
+async function generateTestSpec(request, packageDefinition, sessionId) {
   const messages = [...request.testerBody.messages];
   let lastError;
   for (let attempt = 1; attempt <= MAX_TESTER_ATTEMPTS; attempt += 1) {
     const assistantText = await requestAssistantText(request, {
       ...request.testerBody,
       messages
-    });
+    }, sessionId);
     try {
       return parseGeneratedTestSpec(assistantText, packageDefinition.skill, packageDefinition.criteria);
     } catch (error) {
@@ -127,13 +129,15 @@ async function generateTestSpec(request, packageDefinition) {
   throw lastError;
 }
 
-async function requestAssistantText(request, body) {
+async function requestAssistantText(request, body, sessionId) {
+  const headers = {
+    "authorization": `Bearer ${request.apiKey}`,
+    "content-type": "application/json"
+  };
+  if (isLocalAgentEndpoint(request.endpoint)) headers["x-monkeyskill-session"] = sessionId;
   const response = await fetch(request.endpoint, {
     method: "POST",
-    headers: {
-      "authorization": `Bearer ${request.apiKey}`,
-      "content-type": "application/json"
-    },
+    headers,
     body: JSON.stringify(body)
   });
   if (!response.ok) {
@@ -141,6 +145,14 @@ async function requestAssistantText(request, body) {
     throw new Error(`LLM API request failed (${response.status}): ${detail}`);
   }
   return extractAssistantText(await response.json());
+}
+
+function isLocalAgentEndpoint(endpoint) {
+  try {
+    return ["127.0.0.1", "localhost"].includes(new URL(endpoint).hostname);
+  } catch {
+    return false;
+  }
 }
 
 async function runValidatedTestSpec({ testSpec, criteria, skill, build }) {

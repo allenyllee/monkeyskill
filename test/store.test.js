@@ -54,6 +54,9 @@ test("long LLM requests run outside the ephemeral service worker", async () => {
   assert.match(background, /GENERATION_STALE_MS/);
   assert.match(offscreen, /async function runGenerationJob/);
   assert.match(offscreen, /await fetch\(request\.endpoint/);
+  assert.match(offscreen, /builderSessionId = `builder-\$\{jobId\}`/);
+  assert.match(offscreen, /testerSessionId = `tester-\$\{jobId\}`/);
+  assert.match(offscreen, /headers\["x-monkeyskill-session"\] = sessionId/);
   assert.match(offscreen, /type: "generation-complete"/);
 });
 

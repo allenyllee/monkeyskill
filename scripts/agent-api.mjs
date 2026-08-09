@@ -32,7 +32,9 @@ export function createAgentApiServer(options = {}) {
         return;
       }
       if (mode === "subagent" && request.method === "GET" && url.pathname === "/agent/jobs/next") {
-        const job = await broker.take(Number(url.searchParams.get("wait")) || 0);
+        const role = validateAgentRole(url.searchParams.get("role"));
+        const workerId = validateWorkerId(url.searchParams.get("worker"));
+        const job = await broker.take({ role, workerId, waitMs: Number(url.searchParams.get("wait")) || 0 });
         if (!job) response.writeHead(204).end();
         else sendJson(response, 200, job);
         return;
@@ -45,7 +47,12 @@ export function createAgentApiServer(options = {}) {
         if (typeof result.content !== "string" || !result.content.trim()) {
           throw httpError(400, "Subagent completion must contain text content.");
         }
-        if (!broker.complete(decodeURIComponent(completionMatch[1]), result.content)) {
+        const workerId = validateWorkerId(result.worker);
+        const completionStatus = broker.complete(decodeURIComponent(completionMatch[1]), workerId, result.content);
+        if (completionStatus === "wrong-worker") {
+          throw httpError(409, "Subagent job is leased to a different worker.");
+        }
+        if (completionStatus !== "completed") {
           throw httpError(404, "Subagent job not found or already completed.");
         }
         sendJson(response, 200, { ok: true });
@@ -72,6 +79,7 @@ export function createAgentApiServer(options = {}) {
       const body = await readJsonBody(request);
       validateChatRequest(body);
       const sessionId = request.headers["x-monkeyskill-session"] || randomUUID();
+      const agentRole = isTesterRequest(body.messages) ? "tester" : "builder";
       const session = sessions.get(sessionId) || {
         id: sessionId,
         mode,
@@ -84,7 +92,7 @@ export function createAgentApiServer(options = {}) {
       let completion;
       if (mode === "proxy") completion = await runProxyAgent(body, { ...options, fetch: upstreamFetch });
       else if (mode === "subagent") {
-        const content = await broker.submit({ sessionId, request: body });
+        const content = await broker.submit({ sessionId, role: agentRole, routingKey: `${agentRole}:${sessionId}`, request: body });
         completion = chatCompletion(body.model, content);
       } else completion = await runFixtureAgent(body, options);
       session.turns.push({
@@ -103,14 +111,36 @@ export function createAgentApiServer(options = {}) {
 }
 
 function createSubagentBroker(timeoutMs) {
-  const queued = [];
+  const queued = new Map([["builder", []], ["tester", []]]);
   const waitingWorkers = [];
   const active = new Map();
+  const routeOwners = new Map();
 
   function dispatch(job) {
-    const worker = waitingWorkers.shift();
-    if (worker) worker(job);
-    else queued.push(job);
+    const index = waitingWorkers.findIndex(worker => canAssign(job, worker));
+    if (index < 0) queued.get(job.role).push(job);
+    else assign(job, waitingWorkers.splice(index, 1)[0]);
+  }
+
+  function canAssign(job, worker) {
+    const owner = routeOwners.get(job.routingKey);
+    return worker.role === job.role && (!owner || owner === worker.workerId);
+  }
+
+  function assign(job, worker) {
+    routeOwners.set(job.routingKey, worker.workerId);
+    const pending = active.get(job.id);
+    if (!pending) return;
+    pending.workerId = worker.workerId;
+    clearTimeout(worker.timer);
+    worker.resolve(job);
+  }
+
+  function removeQueued(id) {
+    for (const jobs of queued.values()) {
+      const index = jobs.findIndex(job => job.id === id);
+      if (index >= 0) jobs.splice(index, 1);
+    }
   }
 
   return {
@@ -119,38 +149,55 @@ function createSubagentBroker(timeoutMs) {
       const job = { id, ...payload, createdAt: new Date().toISOString() };
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
+          removeQueued(id);
           active.delete(id);
           reject(httpError(504, "Timed out waiting for the Codex subagent."));
         }, timeoutMs);
-        active.set(id, { resolve, timer });
+        active.set(id, { resolve, timer, workerId: null });
         dispatch(job);
       });
     },
-    take(waitMs = 0) {
-      if (queued.length) return Promise.resolve(queued.shift());
+    take({ role, workerId, waitMs = 0 }) {
+      const jobs = queued.get(role);
+      const queuedIndex = jobs.findIndex(job => canAssign(job, { role, workerId }));
+      if (queuedIndex >= 0) {
+        const job = jobs.splice(queuedIndex, 1)[0];
+        routeOwners.set(job.routingKey, workerId);
+        active.get(job.id).workerId = workerId;
+        return Promise.resolve(job);
+      }
       if (waitMs <= 0) return Promise.resolve(null);
       return new Promise(resolve => {
-        const worker = job => {
-          clearTimeout(timer);
-          resolve(job);
-        };
+        const worker = { role, workerId, resolve, timer: null };
         const timer = setTimeout(() => {
           const index = waitingWorkers.indexOf(worker);
           if (index >= 0) waitingWorkers.splice(index, 1);
           resolve(null);
         }, Math.min(waitMs, 30_000));
+        worker.timer = timer;
         waitingWorkers.push(worker);
       });
     },
-    complete(id, content) {
+    complete(id, workerId, content) {
       const pending = active.get(id);
-      if (!pending) return false;
+      if (!pending) return "missing";
+      if (pending.workerId !== workerId) return "wrong-worker";
       clearTimeout(pending.timer);
       active.delete(id);
       pending.resolve(content);
-      return true;
+      return "completed";
     }
   };
+}
+
+function validateAgentRole(value) {
+  if (!["builder", "tester"].includes(value)) throw httpError(400, "Subagent worker role must be builder or tester.");
+  return value;
+}
+
+function validateWorkerId(value) {
+  if (!/^[a-z0-9][a-z0-9._-]{0,79}$/i.test(value || "")) throw httpError(400, "Subagent worker ID is invalid.");
+  return value;
 }
 
 export async function runFixtureAgent(request, options = {}) {
