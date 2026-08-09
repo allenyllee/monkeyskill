@@ -2,9 +2,10 @@
   const nonce = crypto.randomUUID();
   const nativeEval = eval;
 
-  window.addEventListener("message", async event => {
+  async function onRunTest(event) {
     const message = event.data;
     if (event.source !== parent || message?.type !== "monkeyskill-run-test" || message.nonce !== nonce) return;
+    window.removeEventListener("message", onRunTest);
     let result;
     try {
       installArtifact(message.artifact);
@@ -13,7 +14,9 @@
       result = { ok: false, category: "dom-state" };
     }
     parent.postMessage({ type: "monkeyskill-test-result", nonce, result }, "*");
-  }, { once: true });
+  }
+
+  window.addEventListener("message", onRunTest);
 
   parent.postMessage({ type: "monkeyskill-sandbox-ready", nonce }, "*");
 

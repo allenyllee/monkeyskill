@@ -64,4 +64,6 @@ test("independent TestSpec feedback cannot expose tester-controlled text", async
   assert.doesNotMatch(offscreen, /buildRepairMessage\([^)]*(?:error|testSpec|test\.id)/);
   assert.doesNotMatch(sandbox, /runnerSource|monkeySkillAcceptanceTests/);
   assert.match(sandbox, /executeTest\(message\.test\)/);
+  assert.match(sandbox, /removeEventListener\("message", onRunTest\)/);
+  assert.doesNotMatch(sandbox, /\{ once: true \}/);
 });

@@ -85,7 +85,7 @@ Each blocker has `id`, `target`, `event`, `registration`, `effect`, and optional
 ## Steps
 
 - `{"action":"dispatch-event","target":"target","event":"contextmenu","init":{"button":2}}`
-- `{"action":"wait","ms":50}`
+- `{"action":"wait","ms":50}`; use at most 2000ms and only when the specified behavior is intentionally delayed or periodically repaired.
 - `{"action":"select-contents","target":"target"}`
 - `{"action":"set-value","target":"target","value":"text"}`
 - `{"action":"set-text","target":"target","value":"visible text"}`

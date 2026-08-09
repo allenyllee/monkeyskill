@@ -178,7 +178,7 @@ function validateStep(source, nodeIds, blockerIds) {
   if (!ALLOWED_ACTIONS.has(source.action)) throw new Error("TestSpec action is not allowed.");
   if (source.action === "wait") {
     assertOnlyKeys(source, ["action", "ms"], "wait step");
-    if (!Number.isInteger(source.ms) || source.ms < 0 || source.ms > 500) throw new Error("Wait duration is invalid.");
+    if (!Number.isInteger(source.ms) || source.ms < 0 || source.ms > 2000) throw new Error("Wait duration is invalid.");
     return { action: "wait", ms: source.ms };
   }
   if (source.action === "append-node") {

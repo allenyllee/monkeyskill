@@ -71,7 +71,7 @@
         "rules": []
       },
       "blockers": [],
-      "steps": [{ "action": "wait", "ms": 100 }],
+      "steps": [{ "action": "wait", "ms": 1600 }],
       "assertions": [
         { "type": "computed-style", "target": "target", "property": "pointerEvents", "pseudo": null, "operator": "neq", "value": "none" },
         { "type": "computed-style", "target": "overlay", "property": "pointerEvents", "pseudo": null, "operator": "eq", "value": "none" }
