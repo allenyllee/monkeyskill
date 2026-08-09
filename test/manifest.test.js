@@ -45,16 +45,6 @@ test("Extension contains no bundled Store MSkill or generated right-click Build"
   assert.match(background, /case "generate-store-skill"/);
 });
 
-test("demo exposes all 16 methods on one page", async () => {
-  const demo = await readFile(join(root, "demo", "blocked.html"), "utf8");
-  for (let method = 1; method <= 16; method += 1) assert.match(demo, new RegExp(`id="method-${method}"`));
-  assert.match(demo, /id="standard-target"/);
-  assert.match(demo, /id="absolute-target"/);
-  assert.match(demo, /id="background-image-target"/);
-  assert.match(demo, /removeAllRanges/);
-  assert.match(demo, /event\.key\.toLowerCase\(\) !== "c"/);
-});
-
 test("generation state is durable outside Store page lifetime", async () => {
   const background = await readFile(join(root, "src", "background.js"), "utf8");
   const offscreen = await readFile(join(root, "src", "validation", "offscreen.js"), "utf8");

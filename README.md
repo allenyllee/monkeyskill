@@ -84,7 +84,6 @@ The first loop gives Builder detailed results from its public self-tests. The se
 - `src/lib/llm.js` builds prompts, parses responses, and scans generated Builds.
 - `src/store/bridge.js` accepts only constrained actions from approved Store pages.
 - `src/validation/` owns the offscreen generation host, trusted Runner, and sandbox.
-- `demo/blocked.html` is the 16-method behavior matrix; it is not a Store.
 
 The functional MSkill catalog lives in [allenyllee/monkeyskill-store](https://github.com/allenyllee/monkeyskill-store). Its `skills/` directory is the source of truth, and GitHub Actions rebuilds the Pages catalog after every push to `main`.
 
@@ -95,12 +94,10 @@ Forked Stores are opt-in. Add a fork's GitHub Pages root URL under **Trusted MSk
 ```powershell
 npm test
 npm run check
-npm run serve:demo
 ```
 
-Open `http://127.0.0.1:4173/blocked.html` for the behavior matrix.
-
 For Store development, clone the Store repository beside this one, run `npm run serve`, and open `http://127.0.0.1:4174/`.
+Functional demos live with their MSkills in that Store repository and are linked from the corresponding catalog card.
 
 ## Local agent API
 
