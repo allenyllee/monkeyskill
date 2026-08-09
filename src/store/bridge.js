@@ -10,7 +10,8 @@
     ["approve", "store-approve-generated-skill"],
     ["discard", "store-discard-generated-skill"],
     ["pending", "store-get-pending-build"],
-    ["status", "store-get-generation-status"]
+    ["status", "store-get-generation-status"],
+    ["clear-history", "store-clear-generation-history"]
   ]);
 
   window.addEventListener("message", async event => {

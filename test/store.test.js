@@ -15,7 +15,7 @@ test("local Store is bridged only on its approved URLs", async () => {
 
   const bridge = await readFile(new URL("src/store/bridge.js", root), "utf8");
   assert.match(bridge, /location\.pathname === "\/store\.html"/);
-  for (const action of ["list", "generate", "approve", "discard", "pending", "status"]) {
+  for (const action of ["list", "generate", "approve", "discard", "pending", "status", "clear-history"]) {
     assert.match(bridge, new RegExp(`\\["${action}"`));
   }
 });
@@ -27,6 +27,7 @@ test("background verifies Store senders and exposes catalog metadata", async () 
   assert.match(background, /case "list-skills"/);
   assert.match(background, /case "generate-bundled-skill"/);
   assert.match(background, /case "approve-generated-skill"/);
+  assert.match(background, /case "clear-generation-history"/);
 });
 
 test("Store page provides two explicit approval decisions", async () => {
@@ -40,6 +41,8 @@ test("Store page provides two explicit approval decisions", async () => {
   assert.match(script, /await rpc\("approve"/);
   assert.match(script, /waitForGeneration/);
   assert.match(script, /job\?\.state === "ready"/);
+  assert.match(script, /上次生成失敗/);
+  assert.match(script, /清除紀錄/);
   assert.match(server, /\/store\.html/);
 });
 

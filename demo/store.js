@@ -54,7 +54,7 @@ function renderCatalog() {
     card.querySelector(".version").textContent = `v${skill.version}`;
     card.querySelector(".description").textContent = skill.description;
     card.querySelector(".badge").textContent = skill.installed ? `Installed · ${skill.source}` : "Available";
-    card.querySelector(".skill-status").textContent = skill.installed ? "已安裝，可重新生成" : "尚未安裝";
+    card.querySelector(".skill-status").textContent = defaultSkillStatus(skill);
     const modes = card.querySelector(".modes");
     for (const mode of skill.modes) {
       const pill = document.createElement("span");
@@ -83,7 +83,7 @@ async function beginInstall(skill) {
     const draft = await waitForGeneration(skill.id);
     await reviewDraft(draft);
   } catch (error) {
-    showNotice(error.message, true);
+      showFailedNotice(skill, error.message);
   } finally {
     setBusy(skill.id, false);
   }
@@ -137,7 +137,7 @@ async function restoreWorkflow() {
       }
     } else if (job?.state === "failed") {
       setBusy(skill.id, false, "生成失敗，可重新嘗試");
-      showNotice(job.error, true);
+      showFailedNotice(skill, job.error);
     } else if (pendingResponse.draft) {
       await reviewDraft(pendingResponse.draft);
     }
@@ -193,6 +193,30 @@ function setBusy(skillId, busy, text = "") {
 
 function showNotice(message, error) {
   notice.hidden = false;
-  notice.textContent = message;
+  notice.replaceChildren(document.createTextNode(message));
   notice.classList.toggle("error", error);
+}
+
+function showFailedNotice(skill, message) {
+  showNotice(`上次生成失敗：${message}`, true);
+  const clear = document.createElement("button");
+  clear.type = "button";
+  clear.className = "notice-action";
+  clear.textContent = "清除紀錄";
+  clear.addEventListener("click", async () => {
+    clear.disabled = true;
+    const response = await rpc("clear-history", skill.id);
+    if (!response.ok) {
+      showNotice(response.error, true);
+      return;
+    }
+    const card = catalog.querySelector(`[data-skill-id="${CSS.escape(skill.id)}"]`);
+    if (card) card.querySelector(".skill-status").textContent = defaultSkillStatus(skill);
+    showNotice("上次生成失敗紀錄已清除。", false);
+  });
+  notice.append(clear);
+}
+
+function defaultSkillStatus(skill) {
+  return skill.installed ? "已安裝，可重新生成" : "尚未安裝";
 }

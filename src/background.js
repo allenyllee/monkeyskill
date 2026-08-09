@@ -233,6 +233,14 @@ async function handleMessage(message, sender) {
       }
       return { ok: true, job };
     }
+    case "clear-generation-history": {
+      const stored = await chrome.storage.local.get(GENERATION_JOBS_KEY);
+      const job = stored[GENERATION_JOBS_KEY]?.[skillId] ?? null;
+      if (job?.state === "running") throw new Error("生成仍在執行，不能清除紀錄。");
+      if (job?.state === "ready") throw new Error("已有等待核准的 build；請核准或捨棄草稿。");
+      await clearGenerationJob(skillId);
+      return { ok: true };
+    }
     case "get-pending-build": {
       const stored = await chrome.storage.local.get(PENDING_BUILDS_KEY);
       const pending = stored[PENDING_BUILDS_KEY]?.[skillId];

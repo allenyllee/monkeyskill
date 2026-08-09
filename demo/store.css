@@ -20,6 +20,7 @@ main { width: min(1120px,calc(100% - 40px)); margin: -10px auto 80px; }
 .count { color: #6d786f; font-size: 12px; }
 .notice { margin-bottom: 18px; padding: 14px 16px; border: 1px solid #ead7a8; border-radius: 12px; color: #765919; background: #fff9e9; font-size: 13px; white-space: pre-wrap; }
 .notice.error { color: #8a2c2c; border-color: #efcaca; background: #fff2f2; }
+.notice-action { margin-left: 12px; padding: 7px 10px; border: 1px solid currentColor; border-radius: 8px; color: inherit; background: transparent; font-weight: 700; }
 .catalog { display: grid; grid-template-columns: repeat(auto-fit,minmax(310px,1fr)); gap: 18px; }
 .skill-card { display: grid; gap: 24px; min-height: 350px; padding: 24px; border: 1px solid #dbe3d7; border-radius: 22px; background: rgba(255,255,255,.94); box-shadow: 0 18px 45px rgba(30,55,36,.08); }
 .skill-top,.card-footer { display: flex; align-items: center; justify-content: space-between; }
