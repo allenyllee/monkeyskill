@@ -19,7 +19,10 @@
       "criterion": "text-selection",
       "mode": "standard",
       "fixture": { "nodes": [{ "id": "target", "tag": "div", "parent": null, "text": "select me", "attributes": {}, "styles": { "userSelect": "none" } }], "rules": [] },
-      "blockers": [{ "id": "block", "target": "target", "event": "selectstart", "registration": "listener", "effect": "prevent-default", "when": {} }],
+      "blockers": [
+        { "id": "down-block", "target": "target", "event": "mousedown", "registration": "inline", "effect": "prevent-default", "when": { "button": 0 } },
+        { "id": "select-block", "target": "target", "event": "selectstart", "registration": "listener", "effect": "prevent-default", "when": {} }
+      ],
       "steps": [
         { "action": "wait", "ms": 50 },
         { "action": "drag-select-text", "target": "target" }
@@ -85,7 +88,7 @@
       "mode": "absolute",
       "fixture": {
         "nodes": [{ "id": "target", "tag": "span", "parent": null, "text": "visible selection", "attributes": {}, "styles": {} }],
-        "rules": [{ "target": "target", "pseudo": "::selection", "styles": { "backgroundColor": "transparent" } }]
+        "rules": [{ "target": "target", "pseudo": "::selection", "specificity": "id-ancestor", "styles": { "backgroundColor": "transparent" } }]
       },
       "blockers": [],
       "steps": [{ "action": "wait", "ms": 50 }],

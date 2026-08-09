@@ -139,6 +139,20 @@ test("keyboard shortcut blockers require the copy-shortcut workflow", () => {
   assert.throws(() => validateTestSpec(weak, skill, criteria), /copy-shortcut workflow/);
 });
 
+test("selection fixtures model primary mousedown and high-specificity transparent highlights", () => {
+  const parsed = parseGeneratedTestSpec(fixtureText, skill, criteria);
+  const selection = parsed.tests.find(candidate => candidate.criterion === "text-selection");
+  assert.deepEqual(selection.blockers.map(blocker => blocker.event), ["mousedown", "selectstart"]);
+
+  const visibility = parsed.tests.find(candidate => candidate.criterion === "selection-visibility");
+  assert.equal(visibility.fixture.rules[0].specificity, "id-ancestor");
+
+  const duplicatedImportant = JSON.parse(fixtureText);
+  const invalidRule = duplicatedImportant.tests.find(candidate => candidate.criterion === "selection-visibility");
+  invalidRule.fixture.rules[0].styles.backgroundColor = "transparent !important";
+  assert.throws(() => validateTestSpec(duplicatedImportant, skill, criteria), /Style value may escape/);
+});
+
 test("preserve-controls fixture models a real click after page selection", () => {
   const spec = parseGeneratedTestSpec(fixtureText, skill, criteria);
   const preserve = spec.tests.find(candidate => candidate.criterion === "preserve-controls");

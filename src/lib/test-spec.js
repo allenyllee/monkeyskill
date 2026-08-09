@@ -151,12 +151,16 @@ function validateFixture(source) {
   });
   const rules = boundedArray(source.rules || [], "fixture rules").map(rule => {
     assertRecord(rule, "fixture rule");
-    assertOnlyKeys(rule, ["target", "pseudo", "styles"], "fixture rule");
+    assertOnlyKeys(rule, ["target", "pseudo", "styles", "specificity"], "fixture rule");
     if (!ids.has(rule.target) || rule.pseudo !== "::selection") throw new Error("Fixture rule target or pseudo-element is invalid.");
+    if (rule.specificity != null && rule.specificity !== "id-ancestor") {
+      throw new Error("Fixture rule specificity is invalid.");
+    }
     return {
       target: rule.target,
       pseudo: rule.pseudo,
-      styles: validateStringMap(rule.styles, ALLOWED_STYLES, "style")
+      styles: validateStringMap(rule.styles, ALLOWED_STYLES, "style"),
+      specificity: rule.specificity || "normal"
     };
   });
   return { nodes, rules };
@@ -579,7 +583,7 @@ function boundedArray(value, label, allowEmpty = true) {
 
 function safeStyleValue(value) {
   const text = safeText(value, 200);
-  if (/[{};]/.test(text) || /url\s*\(|expression\s*\(|@import|javascript:|data:/i.test(text)) {
+  if (/[{};]/.test(text) || /!important|url\s*\(|expression\s*\(|@import|javascript:|data:/i.test(text)) {
     throw new Error("Style value may escape, load, or execute content.");
   }
   return text;

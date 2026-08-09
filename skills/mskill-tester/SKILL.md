@@ -17,6 +17,7 @@ Generate tests independently from the implementation. Treat the MSkill manifest 
 - Use only the primitives and enum values below.
 - Keep tests minimal. Reuse one test for multiple observations of the same criterion when practical.
 - Model user paste only with `paste-text`, and user drag selection only with `drag-select-text`. Never replace either workflow with `set-value`, `select-contents`, or hand-written event sequences.
+- Cover every distinct blocker family explicitly named by a criterion. For example, primary `mousedown` cancellation and `selectstart` cancellation require separate coverage; one is not a substitute for the other.
 - Model Ctrl/Cmd+C and Ctrl/Cmd+X only with `copy-shortcut`; never replace the keyboard workflow with a lone `copy`, `cut`, or `keydown` event.
 - Use `click-control` when testing a real primary-button transition from existing selected text into an input, textarea, button, link, or editable control. Assert that stale page selection is not restored, the control remains active, and its ordinary behavior still works.
 - Use `click-page` when testing a real primary-button transition from existing selected text into another ordinary page area. Assert that the selection collapses normally instead of being restored.
@@ -76,9 +77,9 @@ Policy test:
 - Attributes: `alt`, `checked`, `class`, `contenteditable`, `disabled`, `href`, `max`, `maxlength`, `min`, `minlength`, `multiple`, `name`, `placeholder`, `readonly`, `required`, `role`, `selected`, `tabindex`, `title`, `type`, `value`, and lowercase hyphenated `aria-*` or `data-*`. An `href` must start with `#`.
 - Styles: `alignItems`, `backgroundColor`, `backgroundImage`, border colors/widths, `borderRadius`, `boxShadow`, `boxSizing`, `color`, `cursor`, `display`, `flexDirection`, `flexGrow`, `flexShrink`, font properties, `gap`, `gridTemplateColumns`, `height`, `inset`, `justifyContent`, edge offsets, `letterSpacing`, `lineHeight`, margins, min/max sizes, `opacity`, overflow properties, paddings, `pointerEvents`, `position`, `textAlign`, `textDecoration`, `transform`, `userSelect`, `verticalAlign`, `visibility`, `whiteSpace`, `width`, `wordBreak`, `zIndex`.
 - Optional `rect`: `{ "x": number, "y": number, "width": non-negative number, "height": non-negative number }`. Use it when the behavior or assertion depends on geometry; the trusted runner supplies this rectangle even when Chrome's offscreen document has no reliable layout viewport.
-- Do not use `url()`, `data:`, `javascript:`, `expression()`, or `@import` in values.
+- Do not use `!important`, `url()`, `data:`, `javascript:`, `expression()`, or `@import` in values. Fixture rules are already emitted as `!important` by the trusted runner.
 - Each node's `parent`, when present, must refer to an earlier node ID.
-- `fixture.rules` may contain `{ "target": "node-id", "pseudo": "::selection", "styles": {...} }`; no other pseudo-element is allowed.
+- `fixture.rules` may contain `{ "target": "node-id", "pseudo": "::selection", "styles": {...}, "specificity": "id-ancestor" }`; no other pseudo-element is allowed. Omit `specificity` normally, and use `id-ancestor` when the human specification names an ID-specific or unusually high-specificity rule.
 
 ## Simulated blockers
 

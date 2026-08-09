@@ -83,6 +83,8 @@ test("independent TestSpec feedback cannot expose tester-controlled text", async
   assert.match(sandbox, /async function copyShortcut\(target, operation\)/);
   assert.match(sandbox, /inputType: "insertFromPaste"/);
   assert.match(sandbox, /async function dragSelectText\(target\)/);
+  assert.match(sandbox, /pointerDown\.defaultPrevented \|\| mouseDown\.defaultPrevented \|\| selectStart\.defaultPrevented/);
+  assert.match(sandbox, /rule\.specificity === "id-ancestor"/);
   assert.match(sandbox, /async function clickControl\(target\)/);
   assert.match(sandbox, /async function clickPage\(target\)/);
   assert.match(sandbox, /Chrome may report the still-live range/);

@@ -6,7 +6,7 @@ Restore the browser context menu, text selection, copying, cutting, pasting, and
 
 ## Standard mode
 
-- Stop page handlers from cancelling `contextmenu`, `copy`, `cut`, `selectstart`, and `dragstart`, including `keydown` handlers that cancel Ctrl/Cmd+C or Ctrl/Cmd+X before the copy/cut event occurs.
+- Stop page handlers from cancelling `contextmenu`, `copy`, `cut`, `selectstart`, and `dragstart`, including primary-button `mousedown` handlers that cancel native text selection and `keydown` handlers that cancel Ctrl/Cmd+C or Ctrl/Cmd+X before the copy/cut event occurs.
 - Remove equivalent inline event-handler attributes.
 - Remove inline mouse/pointer handlers only when their source explicitly cancels the event.
 - Restore text selection only where the page explicitly disables it.
@@ -36,11 +36,11 @@ Restore the browser context menu, text selection, copying, cutting, pasting, and
 ## Success criteria
 
 - [criterion:context-menu] A real user right-click can open the native context menu on ordinary elements, inputs, images, overlays, and CSS-background elements.
-- [criterion:text-selection] Selected text remains selected and page `selectstart` blockers no longer disable selection.
+- [criterion:text-selection] Selected text remains selected despite `user-select: none`, `unselectable=on`, primary `mousedown` cancellation, or `selectstart` cancellation. Standard-mode tests must independently model both the `mousedown` and `selectstart` blocker families.
 - [criterion:selection-dismissal] After page text has been selected, a later real primary-button click on another ordinary page area collapses the selection instead of restoring a stale saved range, including when `selectionchange` timing briefly exposes the old range during the new click.
 - [criterion:keyboard-copy] Ctrl/Cmd+C and Ctrl/Cmd+X keydown handlers cannot cancel the shortcut before the browser's copy or cut default behavior occurs.
 - [criterion:paste] Paste reaches editable controls and the inserted value remains after the resulting `beforeinput` and `input` events, without page handlers blocking or rolling it back.
 - [criterion:pointer-overlays] Empty blocking overlays and `pointer-events: none` media are repaired.
-- [criterion:selection-visibility] Page styles cannot make the selection highlight transparent, even through an ID-specific `::selection` rule using `!important`.
+- [criterion:selection-visibility] Page styles cannot leave only a changed text color while the selection background remains transparent, even through a higher-specificity ID-scoped `::selection { background: transparent !important }` rule. Tests must use `id-ancestor` specificity and independently assert a non-transparent selection background.
 - [criterion:preserve-controls] After page text has been selected, a real primary-button click into an ordinary link, button, input, textarea, or editable field discards the stale page selection; the clicked control keeps focus and its input, editing, navigation, and left-click behavior still work.
 - [criterion:no-network] The implementation makes no network requests.

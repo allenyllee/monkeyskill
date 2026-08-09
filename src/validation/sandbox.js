@@ -81,7 +81,9 @@
       const declarations = Object.entries(rule.styles)
         .map(([property, value]) => `${toCssProperty(property)}:${value}!important`)
         .join(";");
-      style.textContent = `#${CSS.escape(rule.target)}${rule.pseudo}{${declarations}}`;
+      const target = `#${CSS.escape(rule.target)}`;
+      const selector = rule.specificity === "id-ancestor" ? `#fixture ${target}${rule.pseudo}` : `${target}${rule.pseudo}`;
+      style.textContent = `${selector}{${declarations}}`;
       document.head.append(style);
     }
   }
@@ -244,11 +246,14 @@
 
   async function dragSelectText(target) {
     const down = { button: 0, buttons: 1 };
-    target.dispatchEvent(createEvent("pointerdown", down));
-    target.dispatchEvent(createEvent("mousedown", down));
+    const pointerDown = createEvent("pointerdown", down);
+    target.dispatchEvent(pointerDown);
+    const mouseDown = createEvent("mousedown", down);
+    target.dispatchEvent(mouseDown);
     const selectStart = createEvent("selectstart", {});
     target.dispatchEvent(selectStart);
-    if (!selectStart.defaultPrevented) {
+    const blocked = pointerDown.defaultPrevented || mouseDown.defaultPrevented || selectStart.defaultPrevented;
+    if (!blocked) {
       const range = document.createRange();
       range.selectNodeContents(target);
       const selection = getSelection();
@@ -258,7 +263,7 @@
     target.dispatchEvent(createEvent("pointerup", { button: 0, buttons: 0 }));
     target.dispatchEvent(createEvent("mouseup", { button: 0, buttons: 0 }));
     await settle();
-    return { defaultPrevented: selectStart.defaultPrevented };
+    return { defaultPrevented: blocked };
   }
 
   async function pasteText(target, value) {
