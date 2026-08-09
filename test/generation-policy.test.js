@@ -48,6 +48,32 @@ test("changing diagnostics can extend generation to five attempts", () => {
   assert.equal(decision.reason, "attempt-limit");
 });
 
+test("a narrowed diagnostic gets the full extended repair budget", () => {
+  let state = createRetryState();
+  let decision = decide(state, 1, "hash-1", [
+    { criterion: "paste", category: "value-state" },
+    { criterion: "selection-visibility", category: "computed-style" }
+  ]);
+  state = decision.state;
+
+  decision = decide(state, 2, "hash-2", [{ criterion: "paste", category: "value-state" }]);
+  assert.equal(decision.retry, true);
+  assert.equal(decision.limit, 5);
+  state = decision.state;
+
+  decision = decide(state, 3, "hash-3", [{ criterion: "paste", category: "value-state" }]);
+  assert.equal(decision.retry, true);
+  state = decision.state;
+
+  decision = decide(state, 4, "hash-4", [{ criterion: "paste", category: "value-state" }]);
+  assert.equal(decision.retry, true);
+  state = decision.state;
+
+  decision = decide(state, 5, "hash-5", [{ criterion: "paste", category: "value-state" }]);
+  assert.equal(decision.retry, false);
+  assert.equal(decision.reason, "attempt-limit");
+});
+
 test("an unchanged build hash stops without wasting another repair", () => {
   let state = createRetryState();
   let decision = decide(state, 1, "same-hash");

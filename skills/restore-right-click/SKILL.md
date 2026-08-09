@@ -22,7 +22,7 @@ Restore the browser context menu, text selection, copying, cutting, pasting, and
 - Preserve a live selection when release events try to clear it.
 - Restore pointer events on blocked media and bypass empty overlays covering media or editable controls.
 - Restore visible selection colors when a page makes `::selection` transparent.
-- Stop paste-specific handlers without reading clipboard contents.
+- Stop paste-specific handlers without reading clipboard contents, including rollback triggered by the resulting `beforeinput` or `input` event.
 
 ## Safety constraints
 
@@ -36,7 +36,7 @@ Restore the browser context menu, text selection, copying, cutting, pasting, and
 - [criterion:context-menu] A real user right-click can open the native context menu on ordinary elements, inputs, images, overlays, and CSS-background elements.
 - [criterion:text-selection] Selected text remains selected and page `selectstart` blockers no longer disable selection.
 - [criterion:keyboard-copy] Copy and cut keyboard shortcuts reach the browser default behavior.
-- [criterion:paste] Paste reaches editable controls without page handlers blocking or rolling it back.
+- [criterion:paste] Paste reaches editable controls and the inserted value remains after the resulting `beforeinput` and `input` events, without page handlers blocking or rolling it back.
 - [criterion:pointer-overlays] Empty blocking overlays and `pointer-events: none` media are repaired.
 - [criterion:selection-visibility] Page styles cannot make the selection highlight transparent.
 - [criterion:preserve-controls] Ordinary links, buttons, inputs, editable fields, navigation, and left-click behavior still work.

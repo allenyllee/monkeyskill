@@ -33,7 +33,7 @@ export function evaluateGenerationRetry(state, { attempt, hash, failures }) {
   if (state.previousHash && state.previousHash === hash) {
     return { retry: false, reason: "unchanged-build", limit: attempt, state: nextState };
   }
-  if (unchangedDiagnosticRounds >= 2) {
+  if (!sawDiagnosticChange && unchangedDiagnosticRounds >= 2) {
     return { retry: false, reason: "repeated-diagnostics", limit: attempt, state: nextState };
   }
 
