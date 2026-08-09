@@ -125,6 +125,43 @@ chrome.scripting registrations
 
 ## Architecture
 
+### Builder and Tester validation loops
+
+```mermaid
+flowchart LR
+    Skill["MSkill 規格"] --> Builder["Builder"]
+    Skill --> Tester["Tester"]
+
+    Framework["共用 MonkeyTest<br/>DSL 與 Runner"] --> Builder
+    Framework --> Tester
+
+    subgraph Loop1["Loop 1：交付前自我修正"]
+        Builder --> Output["Build + 公開 Self-tests"]
+        Output --> SelfRun["執行公開 Self-tests"]
+        SelfRun --> SelfResult{"通過？"}
+        SelfResult -- "否：詳細測試結果" --> Builder
+    end
+
+    SelfResult -- "是：交付候選 Build" --> HiddenRun
+
+    Tester --> HiddenTests["隱藏 TestSpec"]
+    HiddenTests --> HiddenRun["執行獨立測試"]
+
+    subgraph Loop2["Loop 2：交付後修復嘗試"]
+        HiddenRun --> HiddenResult{"通過？"}
+        HiddenResult -- "否：受限錯誤診斷" --> Builder
+    end
+
+    HiddenResult -- "是" --> Approval["等待使用者核准安裝"]
+
+    Framework --> SelfRun
+    Framework --> HiddenRun
+
+    HiddenTests -. "Builder 看不到內容" .-> Builder
+```
+
+The first loop gives the Builder detailed results from its public self-tests. The second loop keeps the independent Tester's TestSpec hidden and returns only constrained diagnostics before another Builder attempt.
+
 - `skills/restore-right-click/` contains only the first Monkey Skill specification and manifest; it contains no executable or declarative tests.
 - `skills/mskill-creator/` defines how an agent authors implementation-independent MSkill specifications.
 - `skills/mskill-installer/` is the isolated Builder policy used when the user's LLM compiles a specification and authors public self-tests with the shared framework.
