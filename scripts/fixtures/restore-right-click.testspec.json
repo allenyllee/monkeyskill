@@ -65,7 +65,7 @@
       "fixture": {
         "nodes": [
           { "id": "wrap", "tag": "div", "parent": null, "text": "", "attributes": {}, "styles": { "position": "relative", "width": "240px", "height": "120px" } },
-          { "id": "target", "tag": "img", "parent": "wrap", "text": "", "attributes": { "alt": "test" }, "styles": { "pointerEvents": "none", "width": "240px", "height": "120px" } },
+          { "id": "target", "tag": "canvas", "parent": "wrap", "text": "", "attributes": {}, "styles": { "pointerEvents": "none", "width": "240px", "height": "120px" } },
           { "id": "overlay", "tag": "div", "parent": "wrap", "text": "", "attributes": {}, "styles": { "position": "absolute", "inset": "0" } }
         ],
         "rules": []

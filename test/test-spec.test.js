@@ -17,6 +17,16 @@ test("independently generated TestSpec covers every visible criterion", () => {
   );
 });
 
+test("pointer overlay fixture has stable geometry without loading media", () => {
+  const spec = parseGeneratedTestSpec(fixtureText, skill, criteria);
+  const pointerTest = spec.tests.find(candidate => candidate.criterion === "pointer-overlays");
+  const target = pointerTest.fixture.nodes.find(node => node.id === "target");
+  assert.equal(target.tag, "canvas");
+  assert.deepEqual(target.attributes, {});
+  assert.equal(target.styles.width, "240px");
+  assert.equal(target.styles.height, "120px");
+});
+
 test("TestSpec rejects executable or remote-content fields", () => {
   const spec = JSON.parse(fixtureText);
   spec.tests[0].fixture.nodes[0].html = "<script>fetch('https://evil')</script>";
