@@ -117,6 +117,14 @@ The default fixture mode creates a generic schema-valid no-op response for the M
 
 For interactive Codex testing, set `MONKEYSKILL_AGENT_MODE=subagent`. Builder and Tester use separate protected queues at `/agent/jobs/next?role=builder` and `/agent/jobs/next?role=tester`; repairs remain sticky to the original Builder worker. `MONKEYSKILL_AGENT_TIMEOUT_MS` controls the queue timeout.
 
+Before asking a user to press **Generate**, restart a clean broker and run the mandatory transport preflight:
+
+```powershell
+npm run preflight:agent
+```
+
+The preflight sends disposable Builder and Tester requests through the Extension-facing API (normally port `8787`), claims them from the worker API on port `8788`, completes both jobs, and verifies that both HTTP requests receive valid completions. Only after it passes should two fresh `fork_turns="none"` subagents be started. Builder and Tester workers must poll port `8788`, not the Extension-facing port.
+
 ## Security boundary
 
 The Store page is outside the Extension trust boundary. Its bridge is active only on approved Store URLs, and the background verifies the sender again. Store payloads may contain only a bounded manifest and human-readable specification. API keys stay in trusted Extension storage and are never returned to the Store page.
