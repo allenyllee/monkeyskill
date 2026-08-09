@@ -99,12 +99,25 @@
       "kind": "behavior",
       "criterion": "preserve-controls",
       "mode": "absolute",
-      "fixture": { "nodes": [{ "id": "target", "tag": "button", "parent": null, "text": "button", "attributes": {}, "styles": {} }], "rules": [] },
+      "fixture": {
+        "nodes": [
+          { "id": "selected-text", "tag": "p", "parent": null, "text": "selected page text", "attributes": {}, "styles": {} },
+          { "id": "target", "tag": "input", "parent": null, "text": "", "attributes": {}, "styles": {} }
+        ],
+        "rules": []
+      },
       "blockers": [{ "id": "observer", "target": "target", "event": "click", "registration": "listener", "effect": "flag-only", "when": { "button": 0 } }],
-      "steps": [{ "action": "dispatch-event", "target": "target", "event": "click", "init": { "button": 0 } }],
+      "steps": [
+        { "action": "drag-select-text", "target": "selected-text" },
+        { "action": "click-control", "target": "target" },
+        { "action": "set-value", "target": "target", "value": "ordinary input" }
+      ],
       "assertions": [
         { "type": "blocker-call-count", "blocker": "observer", "operator": "eq", "value": 1 },
-        { "type": "event-default-prevented", "step": 0, "expected": false }
+        { "type": "event-default-prevented", "step": 1, "expected": false },
+        { "type": "selection-collapsed", "expected": true },
+        { "type": "active-element", "target": "target", "expected": true },
+        { "type": "value", "target": "target", "operator": "eq", "value": "ordinary input" }
       ]
     },
     {

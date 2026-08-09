@@ -128,6 +128,18 @@ test("TestSpec requires high-level paste and drag-selection workflows", () => {
   assert.throws(() => validateTestSpec(implementationSpecific, skill, criteria), /observable outcome of effectful blockers/);
 });
 
+test("preserve-controls fixture models a real click after page selection", () => {
+  const spec = parseGeneratedTestSpec(fixtureText, skill, criteria);
+  const preserve = spec.tests.find(candidate => candidate.criterion === "preserve-controls");
+  assert.deepEqual(preserve.steps.map(step => step.action), [
+    "drag-select-text",
+    "click-control",
+    "set-value"
+  ]);
+  assert.ok(preserve.assertions.some(assertion => assertion.type === "selection-collapsed" && assertion.expected));
+  assert.ok(preserve.assertions.some(assertion => assertion.type === "active-element" && assertion.expected));
+});
+
 test("TestSpec can observe data-driven generated UI without implementation-specific selectors", () => {
   const spec = JSON.parse(fixtureText);
   const behavior = spec.tests.find(candidate => candidate.kind === "behavior");

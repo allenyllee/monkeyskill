@@ -169,6 +169,7 @@
     }
     if (step.action === "drag-select-text") return dragSelectText(target);
     if (step.action === "paste-text") return pasteText(target, step.value);
+    if (step.action === "click-control") return clickControl(target);
     if (step.action === "focus") {
       target.focus();
       return null;
@@ -265,6 +266,24 @@
     }
     await settle();
     return { defaultPrevented: beforeInput.defaultPrevented };
+  }
+
+  async function clickControl(target) {
+    const down = { button: 0, buttons: 1 };
+    const pointerDown = createEvent("pointerdown", down);
+    const mouseDown = createEvent("mousedown", down);
+    target.dispatchEvent(pointerDown);
+    target.dispatchEvent(mouseDown);
+    if (!pointerDown.defaultPrevented && !mouseDown.defaultPrevented) {
+      getSelection()?.removeAllRanges();
+      target.focus();
+    }
+    target.dispatchEvent(createEvent("pointerup", { button: 0, buttons: 0 }));
+    target.dispatchEvent(createEvent("mouseup", { button: 0, buttons: 0 }));
+    const click = createEvent("click", { button: 0, buttons: 0 });
+    target.dispatchEvent(click);
+    await settle();
+    return { defaultPrevented: click.defaultPrevented };
   }
 
   function insertText(target, value) {

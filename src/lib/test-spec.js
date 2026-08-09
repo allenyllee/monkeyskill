@@ -33,7 +33,7 @@ const ALLOWED_EFFECTS = new Set([
   "clear-selection", "flag-only", "prevent-default", "prevent-default-and-stop", "rollback-value"
 ]);
 const ALLOWED_ACTIONS = new Set([
-  "add-blocker", "append-node", "blur", "capture-node", "click", "dispatch-event", "focus", "remove-attribute", "remove-node",
+  "add-blocker", "append-node", "blur", "capture-node", "click", "click-control", "dispatch-event", "focus", "remove-attribute", "remove-node",
   "drag-select-text", "paste-text", "scroll", "select-contents", "set-attribute", "set-checked", "set-style", "set-text", "set-value", "wait"
 ]);
 const ALLOWED_ASSERTIONS = new Set([
@@ -235,6 +235,10 @@ function validateStep(source, nodeIds, blockerIds) {
   if (source.action === "paste-text") {
     assertOnlyKeys(source, ["action", "target", "value"], "paste-text step");
     return { action: source.action, target: source.target, value: safeText(source.value, 500) };
+  }
+  if (source.action === "click-control") {
+    assertOnlyKeys(source, ["action", "target"], "click-control step");
+    return { action: source.action, target: source.target };
   }
   if (["blur", "click", "focus", "remove-node"].includes(source.action)) {
     assertOnlyKeys(source, ["action", "target"], `${source.action} step`);
