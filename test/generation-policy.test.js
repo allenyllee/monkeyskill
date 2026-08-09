@@ -11,11 +11,11 @@ function decide(state, attempt, hash, failures = focusFailure) {
   return evaluateGenerationRetry(state, { attempt, hash, failures });
 }
 
-test("unchanged diagnostics stop after the default three attempts", () => {
+test("changed builds get five attempts even when diagnostics repeat", () => {
   let state = createRetryState();
   let decision = decide(state, 1, "hash-1");
   assert.equal(decision.retry, true);
-  assert.equal(decision.limit, 3);
+  assert.equal(decision.limit, 5);
   state = decision.state;
 
   decision = decide(state, 2, "hash-2");
@@ -23,8 +23,16 @@ test("unchanged diagnostics stop after the default three attempts", () => {
   state = decision.state;
 
   decision = decide(state, 3, "hash-3");
+  assert.equal(decision.retry, true);
+  state = decision.state;
+
+  decision = decide(state, 4, "hash-4");
+  assert.equal(decision.retry, true);
+  state = decision.state;
+
+  decision = decide(state, 5, "hash-5");
   assert.equal(decision.retry, false);
-  assert.equal(decision.reason, "repeated-diagnostics");
+  assert.equal(decision.reason, "attempt-limit");
 });
 
 test("changing diagnostics can extend generation to five attempts", () => {

@@ -99,14 +99,31 @@ export function extractCriterionIds(skillInstructions) {
 
 export function buildRepairMessage(failures) {
   const allowedCategories = new Set(FAILURE_CATEGORIES);
+  const allowedAssertions = new Set([
+    "active-element", "attribute", "attribute-refers-to", "blocker-call-count", "bounding-rect", "computed-style",
+    "contrast-ratio", "dom-present", "event-default-prevented", "hit-test", "node-count", "property",
+    "relative-position", "scroll-offset", "selection-collapsed", "text-content", "value", "visible"
+  ]);
+  const safeComputedProperties = new Set(["backgroundColor", "color", "pointerEvents", "userSelect", "visibility"]);
   const diagnostics = [];
   const seen = new Set();
   for (const failure of failures) {
     const criterion = failure?.criterion;
     const category = failure?.category;
     if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(criterion || "") || !allowedCategories.has(category)) continue;
-    const key = `${criterion}:${category}`;
-    if (!seen.has(key)) diagnostics.push({ criterion, category });
+    const mode = /^[a-z][a-z0-9-]{0,39}$/.test(failure?.mode || "") ? failure.mode : null;
+    const assertion = allowedAssertions.has(failure?.assertion) ? failure.assertion : null;
+    const item = { criterion, category };
+    if (mode) item.mode = mode;
+    if (assertion) item.assertion = assertion;
+    const property = failure?.diagnostic?.property;
+    const actual = String(failure?.diagnostic?.actual ?? "");
+    if (assertion === "computed-style" && safeComputedProperties.has(property) && isSafeComputedValue(actual)) {
+      item.property = property;
+      item.actual = actual;
+    }
+    const key = JSON.stringify(item);
+    if (!seen.has(key)) diagnostics.push(item);
     seen.add(key);
   }
   return [
@@ -117,6 +134,10 @@ export function buildRepairMessage(failures) {
     "Do not add behavior that is absent from SKILL.md.",
     "Return the complete JSON build again."
   ].join("\n");
+}
+
+function isSafeComputedValue(value) {
+  return /^(?:rgba?\([\d\s.,%+-]+\)|#[0-9a-f]{3,8}|transparent|none|auto|text|visible|hidden)$/i.test(value);
 }
 
 export function extractAssistantText(payload) {

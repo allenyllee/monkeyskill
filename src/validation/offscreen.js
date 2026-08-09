@@ -199,8 +199,10 @@ async function runTestSpec({ testSpec, build }) {
     const result = await runCase({ test, artifact });
     results.push({
       criterion: test.criterion,
+      mode: test.mode,
       ok: Boolean(result.ok),
       category: result.category || "dom-state",
+      assertion: result.assertion || null,
       diagnostic: result.diagnostic || null
     });
   }

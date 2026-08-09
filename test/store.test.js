@@ -84,6 +84,7 @@ test("independent TestSpec feedback cannot expose tester-controlled text", async
   assert.match(sandbox, /async function clickPage\(target\)/);
   assert.match(sandbox, /Chrome may report the still-live range/);
   assert.match(sandbox, /document\.dispatchEvent\(createEvent\("selectionchange", \{\}\)\)/);
+  assert.match(sandbox, /element\.style\.setProperty\("position", "fixed", "important"\)/);
   assert.match(sandbox, /releaseClearEvents\.has\(event\.type\)/);
   assert.match(sandbox, /queueMicrotask\(\(\) => getSelection\(\)\?\.removeAllRanges\(\)\)/);
   assert.match(sandbox, /removeEventListener\("message", onRunTest\)/);

@@ -23,7 +23,7 @@ Restore the browser context menu, text selection, copying, cutting, pasting, and
 - Treat restoration as part of the selection gesture only. A later deliberate primary click on another ordinary page area must discard the saved range and collapse the selection normally, even if Chrome reports a late `selectionchange` containing the old non-collapsed range during that dismissal gesture.
 - When the user deliberately clicks an input, textarea, link, button, or editable control after selecting page text, discard the saved page range instead of restoring it; the clicked control must retain focus and remain usable.
 - Restore pointer events on blocked media and bypass empty overlays covering media or editable controls.
-- Restore visible selection colors when a page makes `::selection` transparent.
+- Restore visible selection colors when a page makes `::selection` transparent, including ID-specific author rules that also use `!important`.
 - Stop paste-specific handlers without reading clipboard contents, including rollback triggered by the resulting `beforeinput` or `input` event.
 
 ## Safety constraints
@@ -41,6 +41,6 @@ Restore the browser context menu, text selection, copying, cutting, pasting, and
 - [criterion:keyboard-copy] Copy and cut keyboard shortcuts reach the browser default behavior.
 - [criterion:paste] Paste reaches editable controls and the inserted value remains after the resulting `beforeinput` and `input` events, without page handlers blocking or rolling it back.
 - [criterion:pointer-overlays] Empty blocking overlays and `pointer-events: none` media are repaired.
-- [criterion:selection-visibility] Page styles cannot make the selection highlight transparent.
+- [criterion:selection-visibility] Page styles cannot make the selection highlight transparent, even through an ID-specific `::selection` rule using `!important`.
 - [criterion:preserve-controls] After page text has been selected, a real primary-button click into an ordinary link, button, input, textarea, or editable field discards the stale page selection; the clicked control keeps focus and its input, editing, navigation, and left-click behavior still work.
 - [criterion:no-network] The implementation makes no network requests.

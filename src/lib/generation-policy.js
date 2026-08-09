@@ -1,4 +1,3 @@
-export const DEFAULT_GENERATION_ATTEMPTS = 3;
 export const MAX_GENERATION_ATTEMPTS = 5;
 
 export function createRetryState() {
@@ -33,11 +32,7 @@ export function evaluateGenerationRetry(state, { attempt, hash, failures }) {
   if (state.previousHash && state.previousHash === hash) {
     return { retry: false, reason: "unchanged-build", limit: attempt, state: nextState };
   }
-  if (!sawDiagnosticChange && unchangedDiagnosticRounds >= 2) {
-    return { retry: false, reason: "repeated-diagnostics", limit: attempt, state: nextState };
-  }
-
-  const limit = sawDiagnosticChange ? MAX_GENERATION_ATTEMPTS : DEFAULT_GENERATION_ATTEMPTS;
+  const limit = MAX_GENERATION_ATTEMPTS;
   if (attempt >= limit) return { retry: false, reason: "attempt-limit", limit, state: nextState };
   return { retry: true, reason: "retry", limit, state: nextState };
 }

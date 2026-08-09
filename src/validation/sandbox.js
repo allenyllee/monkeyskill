@@ -64,6 +64,7 @@
         return {
           ok: false,
           category: assertionCategory(assertion.type),
+          assertion: assertion.type,
           diagnostic: assertionDiagnostic(assertion, state)
         };
       }
@@ -93,7 +94,12 @@
     for (const [property, value] of Object.entries(node.styles)) element.style[property] = value;
     if (node.rect) {
       const { x, y, width, height } = node.rect;
-      element.getBoundingClientRect = () => new DOMRect(x, y, width, height);
+      element.style.setProperty("position", "fixed", "important");
+      element.style.setProperty("left", `${x}px`, "important");
+      element.style.setProperty("top", `${y}px`, "important");
+      element.style.setProperty("width", `${width}px`, "important");
+      element.style.setProperty("height", `${height}px`, "important");
+      element.style.setProperty("box-sizing", "border-box", "important");
     }
     const parentNode = node.parent ? state.nodes.get(node.parent) : root;
     if (!parentNode) throw new Error("Fixture parent missing.");
@@ -169,6 +175,7 @@
       const selection = getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
+      document.dispatchEvent(createEvent("selectionchange", {}));
       return null;
     }
     if (step.action === "drag-select-text") return dragSelectText(target);
