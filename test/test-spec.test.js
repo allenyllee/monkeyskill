@@ -4,10 +4,20 @@ import { readFile } from "node:fs/promises";
 import { extractCriterionIds } from "../src/lib/llm.js";
 import { parseGeneratedTestSpec, validateTestSpec } from "../src/lib/test-spec.js";
 
-const skill = JSON.parse(await readFile(new URL("../skills/restore-right-click/skill.json", import.meta.url), "utf8"));
-const instructions = await readFile(new URL("../skills/restore-right-click/SKILL.md", import.meta.url), "utf8");
-const criteria = extractCriterionIds(instructions);
 const fixtureText = await readFile(new URL("../scripts/fixtures/restore-right-click.testspec.json", import.meta.url), "utf8");
+const fixtureCriteria = [...new Set(JSON.parse(fixtureText).tests.map(test => test.criterion))];
+const skill = {
+  schemaVersion: 1,
+  id: "runner-fixture",
+  name: "Runner fixture",
+  version: "1.0.0",
+  description: "Test-only Runner fixture.",
+  capabilities: ["dom", "events", "styles"],
+  forbiddenCapabilities: ["network", "cookies", "history", "downloads"],
+  modes: ["standard", "absolute"],
+  entrypoint: "SKILL.md"
+};
+const criteria = extractCriterionIds(fixtureCriteria.map(id => `[criterion:${id}]`).join("\n"));
 
 test("independently generated TestSpec covers every visible criterion", () => {
   const spec = parseGeneratedTestSpec(fixtureText, skill, criteria);

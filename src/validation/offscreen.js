@@ -111,6 +111,7 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
       if (failed.length === 0) {
         const generatedPackage = {
           skill: packageDefinition.skill,
+          specification: packageDefinition.specification,
           build: {
             ...build,
             selfTests,
@@ -123,7 +124,8 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
             type: "llm",
             packagePath: packageDefinition.source.packagePath,
             skillPath: packageDefinition.source.skillPath,
-            buildPath: null
+            buildPath: null,
+            storeUrl: packageDefinition.source.storeUrl
           }
         };
         await chrome.runtime.sendMessage({

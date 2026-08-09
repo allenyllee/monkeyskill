@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MonkeySkill",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Install site-specific browser abilities from MSkill specifications, including builds generated with your own LLM API.",
   "minimum_chrome_version": "120",
   "permissions": [
@@ -22,8 +22,9 @@
   "content_scripts": [
     {
       "matches": [
-        "http://127.0.0.1:4173/store.html",
-        "http://localhost:4173/store.html"
+        "http://127.0.0.1:4174/*",
+        "http://localhost:4174/*",
+        "https://allenyllee.github.io/monkeyskill-store/*"
       ],
       "js": ["src/store/bridge.js"],
       "run_at": "document_start"

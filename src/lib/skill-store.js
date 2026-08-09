@@ -178,7 +178,7 @@ function normalizeInstalledRecord(record) {
   };
 }
 
-function validateSkillManifest(value) {
+export function validateSkillManifest(value) {
   if (!value || typeof value !== "object") throw new Error("Invalid Skill manifest.");
   if (!/^[a-z0-9][a-z0-9-]{1,63}$/.test(value.id)) throw new Error("Invalid Skill id.");
   if (typeof value.name !== "string" || !value.name.trim()) throw new Error("Invalid Skill name.");
@@ -263,7 +263,8 @@ function normalizeSource(value) {
     type: typeof source.type === "string" ? source.type : "unknown",
     packagePath: typeof source.packagePath === "string" ? source.packagePath : null,
     skillPath: typeof source.skillPath === "string" ? source.skillPath : null,
-    buildPath: typeof source.buildPath === "string" ? source.buildPath : null
+    buildPath: typeof source.buildPath === "string" ? source.buildPath : null,
+    storeUrl: typeof source.storeUrl === "string" ? source.storeUrl : null
   };
 }
 

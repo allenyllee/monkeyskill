@@ -2,7 +2,6 @@ import {
   INSTALLED_SKILLS_KEY,
   LEGACY_SETTINGS_KEY,
   MODES,
-  SEEDED_PREINSTALLED_KEY,
   buildRegistrations,
   buildUserScriptRegistrations,
   defaultConfig,
@@ -11,7 +10,8 @@ import {
   normalizeInstalledSkills,
   sitePatternFromUrl,
   uninstallSkillPackage,
-  updateSkillConfig
+  updateSkillConfig,
+  validateSkillManifest
 } from "./lib/skill-store.js";
 import {
   LLM_SETTINGS_KEY,
@@ -25,9 +25,10 @@ import {
   scanGeneratedBuild
 } from "./lib/llm.js";
 
-const PRIMARY_SKILL_ID = "restore-right-click";
 const PENDING_BUILDS_KEY = "pendingSkillBuilds";
 const GENERATION_JOBS_KEY = "generationJobs";
+const TRUSTED_STORES_KEY = "trustedStoreUrls";
+const STORE_BRIDGE_PREFIX = "monkeyskill-store-bridge-";
 const GENERATION_STALE_MS = 20 * 60 * 1000;
 let initializationPromise;
 let registrationQueue = Promise.resolve();
@@ -44,6 +45,9 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === "local" && changes[INSTALLED_SKILLS_KEY]) {
     void queueRegistrationSync(changes[INSTALLED_SKILLS_KEY].newValue);
+  }
+  if (areaName === "local" && changes[TRUSTED_STORES_KEY]) {
+    void syncTrustedStoreBridges(changes[TRUSTED_STORES_KEY].newValue);
   }
 });
 
@@ -70,75 +74,43 @@ async function initializeStore() {
   await chrome.storage.local.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" });
   const stored = await chrome.storage.local.get([
     INSTALLED_SKILLS_KEY,
-    SEEDED_PREINSTALLED_KEY,
-    LEGACY_SETTINGS_KEY
+    LEGACY_SETTINGS_KEY,
+    TRUSTED_STORES_KEY
   ]);
   let installed = normalizeInstalledSkills(stored[INSTALLED_SKILLS_KEY]);
-  const seeded = new Set(Array.isArray(stored[SEEDED_PREINSTALLED_KEY])
-    ? stored[SEEDED_PREINSTALLED_KEY]
-    : []);
-  const registry = await loadJsonAsset("preinstalled-skills.json");
 
-  for (const entry of registry) {
-    if (!entry.preinstall) continue;
-    const packageDefinition = await loadBundledPackage(entry);
-    const skillId = packageDefinition.skill.id;
-    if (installed[skillId]) {
-      if (installed[skillId].source.type === "bundled") {
-        installed = installSkillPackage(installed, packageDefinition);
-      }
-      seeded.add(skillId);
-      continue;
-    }
-    if (seeded.has(skillId)) continue;
-
-    installed = installSkillPackage(installed, packageDefinition);
-    if (skillId === PRIMARY_SKILL_ID && stored[LEGACY_SETTINGS_KEY]) {
-      installed[skillId].config = {
-        ...defaultConfig(),
-        ...stored[LEGACY_SETTINGS_KEY]
-      };
-    }
-    seeded.add(skillId);
+  for (const [skillId, record] of Object.entries(installed)) {
+    if (record.source.type === "bundled") delete installed[skillId];
   }
 
-  await chrome.storage.local.set({
-    [INSTALLED_SKILLS_KEY]: installed,
-    [SEEDED_PREINSTALLED_KEY]: [...seeded]
-  });
+  await chrome.storage.local.set({ [INSTALLED_SKILLS_KEY]: installed });
   if (stored[LEGACY_SETTINGS_KEY]) await chrome.storage.local.remove(LEGACY_SETTINGS_KEY);
   await queueRegistrationSync(installed);
+  await syncTrustedStoreBridges(stored[TRUSTED_STORES_KEY]);
 }
 
 async function handleMessage(message, sender) {
   if (message?.type?.startsWith("store-")) {
-    assertStoreSender(sender);
+    await assertStoreSender(sender);
     message = { ...message, type: message.type.slice("store-".length) };
   }
-  const skillId = message?.skillId ?? PRIMARY_SKILL_ID;
+  const skillId = typeof message?.skillId === "string" ? message.skillId : null;
 
   switch (message?.type) {
-    case "list-skills": {
-      const [registry, installed] = await Promise.all([
-        loadJsonAsset("preinstalled-skills.json"),
-        getInstalledSkills()
-      ]);
-      const skills = await Promise.all(registry.map(async entry => {
-        const packageDefinition = await loadBundledPackage(entry);
-        const skill = packageDefinition.skill;
-        return {
-          id: skill.id,
-          name: skill.name,
-          version: skill.version,
-          description: skill.description,
-          modes: skill.modes,
-          installed: Boolean(installed[skill.id]),
-          source: installed[skill.id]?.source?.type ?? null
-        };
+    case "list-installed-skills": {
+      const installed = await getInstalledSkills();
+      const skills = Object.values(installed).map(record => ({
+        id: record.skill.id,
+        name: record.skill.name,
+        version: record.skill.version,
+        description: record.skill.description,
+        modes: record.skill.modes,
+        source: record.source.type
       }));
       return { ok: true, skills };
     }
     case "get-state": {
+      requireSkillId(skillId);
       const installed = await getInstalledSkills();
       const skill = installed[skillId] ?? null;
       const pattern = message.url ? sitePatternFromUrl(message.url) : null;
@@ -175,28 +147,36 @@ async function handleMessage(message, sender) {
       await chrome.storage.local.remove(LLM_SETTINGS_KEY);
       return { ok: true };
     }
-    case "install-bundled-skill": {
-      const registry = await loadJsonAsset("preinstalled-skills.json");
-      const entry = registry.find(candidate => candidate.package === `packages/${skillId}.mskill.json`);
-      if (!entry) throw new Error(`Bundled Skill not found: ${skillId}`);
-      const packageDefinition = await loadBundledPackage(entry);
-      const installed = installSkillPackage(await getInstalledSkills(), packageDefinition);
-      await saveInstalledSkills(installed);
-      return { ok: true, skill: installed[skillId] };
+    case "list-trusted-stores": {
+      const stored = await chrome.storage.local.get(TRUSTED_STORES_KEY);
+      return { ok: true, stores: normalizeTrustedStores(stored[TRUSTED_STORES_KEY]) };
     }
-    case "generate-bundled-skill": {
+    case "add-trusted-store": {
+      const normalized = normalizeStoreUrl(message.url);
+      const stored = await chrome.storage.local.get(TRUSTED_STORES_KEY);
+      const stores = normalizeTrustedStores(stored[TRUSTED_STORES_KEY]);
+      if (!isBuiltInStoreRoot(normalized) && !stores.includes(normalized)) stores.push(normalized);
+      await chrome.storage.local.set({ [TRUSTED_STORES_KEY]: stores });
+      return { ok: true, stores };
+    }
+    case "remove-trusted-store": {
+      const normalized = normalizeStoreUrl(message.url);
+      const stored = await chrome.storage.local.get(TRUSTED_STORES_KEY);
+      const stores = normalizeTrustedStores(stored[TRUSTED_STORES_KEY]).filter(url => url !== normalized);
+      await chrome.storage.local.set({ [TRUSTED_STORES_KEY]: stores });
+      return { ok: true, stores };
+    }
+    case "generate-store-skill": {
+      const packageDefinition = validateStorePackage(message.skillPackage, sender);
+      const packageSkillId = packageDefinition.skill.id;
       const jobId = crypto.randomUUID();
-      await setGenerationJob(skillId, {
+      await setGenerationJob(packageSkillId, {
         id: jobId,
         state: "running",
         startedAt: new Date().toISOString()
       });
       try {
         await ensureUserScriptsAvailable();
-        const registry = await loadJsonAsset("preinstalled-skills.json");
-        const entry = registry.find(candidate => candidate.package === `packages/${skillId}.mskill.json`);
-        if (!entry) throw new Error(`Bundled MSkill not found: ${skillId}`);
-        const packageDefinition = await loadBundledPackage(entry);
         const { request, criteria } = await prepareGenerationRequest(packageDefinition);
         packageDefinition.criteria = criteria;
         await ensureValidationDocument();
@@ -204,14 +184,14 @@ async function handleMessage(message, sender) {
           target: "validation-offscreen",
           type: "generate-package",
           jobId,
-          skillId,
+          skillId: packageSkillId,
           packageDefinition,
           request
         });
         if (!accepted?.ok) throw new Error(accepted?.error || "Generation host did not accept the job.");
         return { ok: true, job: { id: jobId, state: "running" } };
       } catch (error) {
-        await setGenerationJob(skillId, {
+        await setGenerationJob(packageSkillId, {
           id: jobId,
           state: "failed",
           finishedAt: new Date().toISOString(),
@@ -221,6 +201,7 @@ async function handleMessage(message, sender) {
       }
     }
     case "get-generation-status": {
+      requireSkillId(skillId);
       const stored = await chrome.storage.local.get(GENERATION_JOBS_KEY);
       let job = stored[GENERATION_JOBS_KEY]?.[skillId] ?? null;
       if (job?.state === "running" && Date.now() - Date.parse(job.startedAt) > GENERATION_STALE_MS) {
@@ -235,6 +216,7 @@ async function handleMessage(message, sender) {
       return { ok: true, job };
     }
     case "clear-generation-history": {
+      requireSkillId(skillId);
       const stored = await chrome.storage.local.get(GENERATION_JOBS_KEY);
       const job = stored[GENERATION_JOBS_KEY]?.[skillId] ?? null;
       if (job?.state === "running") throw new Error("生成仍在執行，不能清除紀錄。");
@@ -243,11 +225,13 @@ async function handleMessage(message, sender) {
       return { ok: true };
     }
     case "get-pending-build": {
+      requireSkillId(skillId);
       const stored = await chrome.storage.local.get(PENDING_BUILDS_KEY);
       const pending = stored[PENDING_BUILDS_KEY]?.[skillId];
       return { ok: true, draft: pending ? publicGeneratedDraft(pending) : null };
     }
     case "approve-generated-skill": {
+      requireSkillId(skillId);
       await ensureUserScriptsAvailable();
       const stored = await chrome.storage.local.get(PENDING_BUILDS_KEY);
       const pending = stored[PENDING_BUILDS_KEY] ?? {};
@@ -265,6 +249,7 @@ async function handleMessage(message, sender) {
       return { ok: true, skill: installed[skillId] };
     }
     case "discard-generated-skill": {
+      requireSkillId(skillId);
       const stored = await chrome.storage.local.get(PENDING_BUILDS_KEY);
       const pending = stored[PENDING_BUILDS_KEY] ?? {};
       delete pending[skillId];
@@ -273,11 +258,13 @@ async function handleMessage(message, sender) {
       return { ok: true };
     }
     case "uninstall-skill": {
+      requireSkillId(skillId);
       const installed = uninstallSkillPackage(await getInstalledSkills(), skillId);
       await saveInstalledSkills(installed);
       return { ok: true };
     }
     case "set-global-mode": {
+      requireSkillId(skillId);
       const installed = updateSkillConfig(await getInstalledSkills(), skillId, (config, record) => {
         if (message.mode !== MODES.OFF && !record.skill.modes.includes(message.mode)) {
           throw new Error("Invalid global mode.");
@@ -288,6 +275,7 @@ async function handleMessage(message, sender) {
       return { ok: true, skill: installed[skillId] };
     }
     case "set-site-mode": {
+      requireSkillId(skillId);
       const pattern = sitePatternFromUrl(message.url);
       const installed = updateSkillConfig(await getInstalledSkills(), skillId, (config, record) => {
         if (message.mode === MODES.INHERIT) {
@@ -302,6 +290,7 @@ async function handleMessage(message, sender) {
       return { ok: true, skill: installed[skillId], pattern };
     }
     case "remove-site-override": {
+      requireSkillId(skillId);
       const installed = updateSkillConfig(await getInstalledSkills(), skillId, config => {
         delete config.siteOverrides[message.pattern];
       });
@@ -309,6 +298,7 @@ async function handleMessage(message, sender) {
       return { ok: true, skill: installed[skillId] };
     }
     case "reset-skill": {
+      requireSkillId(skillId);
       const installed = updateSkillConfig(await getInstalledSkills(), skillId, config => {
         Object.assign(config, defaultConfig());
       });
@@ -318,25 +308,6 @@ async function handleMessage(message, sender) {
     default:
       throw new Error("Unknown MonkeySkill message.");
   }
-}
-
-async function loadBundledPackage(entry) {
-  const descriptor = await loadJsonAsset(entry.package);
-  const [skill, build] = await Promise.all([
-    loadJsonAsset(descriptor.skill),
-    loadJsonAsset(descriptor.build)
-  ]);
-  if (descriptor.id !== skill.id) throw new Error("Package does not match its Skill manifest.");
-  return {
-    skill,
-    build,
-    source: {
-      type: "bundled",
-      packagePath: entry.package,
-      skillPath: descriptor.skill,
-      buildPath: descriptor.build
-    }
-  };
 }
 
 async function loadJsonAsset(path) {
@@ -351,17 +322,54 @@ async function loadTextAsset(path) {
   return response.text();
 }
 
+function validateStorePackage(value, sender) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("MSkill Store did not provide a package.");
+  }
+  const keys = Object.keys(value);
+  if (keys.some(key => !["skill", "instructions"].includes(key))) {
+    throw new Error("MSkill Store packages may contain only a manifest and SKILL.md text.");
+  }
+  const skill = validateSkillManifest(value.skill);
+  if (skill.entrypoint !== "SKILL.md") throw new Error("Store MSkills must use SKILL.md as the entrypoint.");
+  if (typeof value.instructions !== "string" || !value.instructions.trim() || value.instructions.length > 100_000) {
+    throw new Error("Store MSkill instructions are missing or too large.");
+  }
+  return {
+    skill,
+    specification: { instructions: value.instructions },
+    source: {
+      type: "store",
+      storeUrl: sender.url,
+      packagePath: null,
+      skillPath: null,
+      buildPath: null
+    }
+  };
+}
+
+async function resolveSkillInstructions(packageDefinition) {
+  const inline = packageDefinition.specification?.instructions;
+  if (typeof inline === "string" && inline.trim()) return inline;
+  const skillPath = packageDefinition.source?.skillPath;
+  if (!skillPath) throw new Error("Generated Skill is missing its human-readable specification.");
+  const skillRoot = skillPath.slice(0, skillPath.lastIndexOf("/") + 1);
+  return loadTextAsset(`${skillRoot}${packageDefinition.skill.entrypoint}`);
+}
+
+function requireSkillId(skillId) {
+  if (!skillId) throw new Error("A Skill id is required.");
+}
+
 async function prepareGenerationRequest(packageDefinition) {
   const stored = await chrome.storage.local.get(LLM_SETTINGS_KEY);
   const settings = normalizeLlmSettings(stored[LLM_SETTINGS_KEY]);
   if (!settings.model || !settings.apiKey) throw new Error("請先在設定頁保存自己的 LLM API。");
 
-  const skillPath = packageDefinition.source.skillPath;
-  const skillRoot = skillPath.slice(0, skillPath.lastIndexOf("/") + 1);
   const [installerInstructions, testerInstructions, skillInstructions] = await Promise.all([
     loadAgentSkill("mskill-installer"),
     loadAgentSkill("mskill-tester"),
-    loadTextAsset(`${skillRoot}${packageDefinition.skill.entrypoint}`)
+    resolveSkillInstructions(packageDefinition)
   ]);
   const builderMessages = buildGenerationMessages({
     installerInstructions,
@@ -491,10 +499,7 @@ async function validateUserScriptBuild(packageDefinition) {
 }
 
 async function validatePackagedBehavior(packageDefinition) {
-  const skillPath = packageDefinition.source.skillPath;
-  if (!skillPath) throw new Error("Generated Skill is missing its packaged specification location.");
-  const skillRoot = skillPath.slice(0, skillPath.lastIndexOf("/") + 1);
-  const skillInstructions = await loadTextAsset(`${skillRoot}${packageDefinition.skill.entrypoint}`);
+  const skillInstructions = await resolveSkillInstructions(packageDefinition);
   const criteria = extractCriterionIds(skillInstructions);
   const testSpec = packageDefinition.build.testSpec;
   if (!testSpec) throw new Error("Generated build is missing its independently generated TestSpec.");
@@ -580,16 +585,82 @@ function publicGeneratedDraft(packageDefinition) {
   };
 }
 
-function assertStoreSender(sender) {
+async function assertStoreSender(sender) {
   let url;
   try {
     url = new URL(sender?.url);
   } catch {
     throw new Error("Invalid MSkill Store sender.");
   }
-  const localStore = ["http://127.0.0.1:4173", "http://localhost:4173"].includes(url.origin)
-    && url.pathname === "/store.html";
-  if (!localStore) throw new Error("This request is not from an approved MSkill Store.");
+  const localStore = ["http://127.0.0.1:4174", "http://localhost:4174"].includes(url.origin)
+    && ["/", "/index.html"].includes(url.pathname);
+  const officialStore = url.origin === "https://allenyllee.github.io"
+    && (url.pathname === "/monkeyskill-store/" || url.pathname === "/monkeyskill-store/index.html");
+  const stored = await chrome.storage.local.get(TRUSTED_STORES_KEY);
+  const customStore = normalizeTrustedStores(stored[TRUSTED_STORES_KEY]).some(value => {
+    const trusted = new URL(value);
+    return url.origin === trusted.origin
+      && (url.pathname === trusted.pathname || url.pathname === `${trusted.pathname}index.html`);
+  });
+  if (!localStore && !officialStore && !customStore) {
+    throw new Error("This request is not from an approved MSkill Store.");
+  }
+}
+
+function normalizeTrustedStores(value) {
+  if (!Array.isArray(value)) return [];
+  const stores = [];
+  for (const item of value) {
+    try {
+      const normalized = normalizeStoreUrl(item);
+      if (!isBuiltInStoreRoot(normalized) && !stores.includes(normalized)) stores.push(normalized);
+    } catch {
+      // Invalid persisted entries are ignored instead of receiving a bridge.
+    }
+  }
+  return stores;
+}
+
+function normalizeStoreUrl(value) {
+  const url = new URL(value);
+  const local = url.protocol === "http:" && ["127.0.0.1", "localhost"].includes(url.hostname);
+  if (url.protocol !== "https:" && !local) throw new Error("Store URLs must use HTTPS; localhost is allowed for development.");
+  url.search = "";
+  url.hash = "";
+  if (url.pathname.endsWith("/index.html")) url.pathname = url.pathname.slice(0, -"index.html".length);
+  if (!url.pathname.endsWith("/")) url.pathname += "/";
+  return url.href;
+}
+
+function isBuiltInStoreRoot(value) {
+  return [
+    "https://allenyllee.github.io/monkeyskill-store/",
+    "http://127.0.0.1:4174/",
+    "http://localhost:4174/"
+  ].includes(value);
+}
+
+async function syncTrustedStoreBridges(value) {
+  const current = await chrome.scripting.getRegisteredContentScripts();
+  const ids = current.map(script => script.id).filter(id => id.startsWith(STORE_BRIDGE_PREFIX));
+  if (ids.length > 0) await chrome.scripting.unregisterContentScripts({ ids });
+  const stores = normalizeTrustedStores(value);
+  const approved = [];
+  for (const value of stores) {
+    const url = new URL(value);
+    if (await chrome.permissions.contains({ origins: [`${url.origin}/*`] })) approved.push(value);
+  }
+  if (approved.length === 0) return;
+  await chrome.scripting.registerContentScripts(approved.map((value, index) => {
+    const url = new URL(value);
+    return {
+      id: `${STORE_BRIDGE_PREFIX}${index}`,
+      matches: [`${url.origin}${url.pathname}*`],
+      js: ["src/store/bridge.js"],
+      runAt: "document_start",
+      persistAcrossSessions: true
+    };
+  }));
 }
 
 async function getInstalledSkills() {

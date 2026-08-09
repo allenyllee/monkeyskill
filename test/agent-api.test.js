@@ -6,8 +6,8 @@ import { buildGenerationMessages, buildTesterMessages, extractAssistantText, ext
 import { parseGeneratedTestSpec } from "../src/lib/test-spec.js";
 import { readFile } from "node:fs/promises";
 
-const skill = JSON.parse(await readFile(new URL("../skills/restore-right-click/skill.json", import.meta.url), "utf8"));
-const skillInstructions = await readFile(new URL("../skills/restore-right-click/SKILL.md", import.meta.url), "utf8");
+const skill = JSON.parse(await readFile(new URL("fixtures/sample-skill/skill.json", import.meta.url), "utf8"));
+const skillInstructions = await readFile(new URL("fixtures/sample-skill/SKILL.md", import.meta.url), "utf8");
 const installerInstructions = await readFile(new URL("../skills/mskill-installer/SKILL.md", import.meta.url), "utf8");
 const testerInstructions = await readFile(new URL("../skills/mskill-tester/SKILL.md", import.meta.url), "utf8");
 
@@ -39,7 +39,7 @@ test("local fixture agent completes the generation and validation flow", async t
   assert.deepEqual(scanGeneratedBuild(build, skill), [
     "schema", "size", "forbidden-capabilities", "remote-content"
   ]);
-  assert.deepEqual(Object.keys(build.modes), ["standard", "absolute"]);
+  assert.deepEqual(Object.keys(build.modes), ["standard"]);
   assert.ok(selfTests.tests.length > 0);
   assert.equal(local.sessions.size, 1);
 });

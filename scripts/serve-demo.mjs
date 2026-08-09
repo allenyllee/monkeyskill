@@ -6,10 +6,7 @@ import { dirname, join } from "node:path";
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const port = Number(process.env.MONKEYSKILL_DEMO_PORT || 4173);
 const routes = new Map([
-  ["/", ["demo/store.html", "text/html; charset=utf-8"]],
-  ["/store.html", ["demo/store.html", "text/html; charset=utf-8"]],
-  ["/store.css", ["demo/store.css", "text/css; charset=utf-8"]],
-  ["/store.js", ["demo/store.js", "text/javascript; charset=utf-8"]],
+  ["/", ["demo/blocked.html", "text/html; charset=utf-8"]],
   ["/blocked.html", ["demo/blocked.html", "text/html; charset=utf-8"]],
   ["/test-background.svg", ["demo/test-background.svg", "image/svg+xml; charset=utf-8"]]
 ]);
@@ -33,6 +30,5 @@ createServer(async (request, response) => {
     response.writeHead(500).end(error.message);
   }
 }).listen(port, "127.0.0.1", () => {
-  console.log(`MonkeySkill Store: http://127.0.0.1:${port}/store.html`);
   console.log(`MonkeySkill demo: http://127.0.0.1:${port}/blocked.html`);
 });

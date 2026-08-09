@@ -131,6 +131,7 @@ button:disabled { cursor: not-allowed; opacity: 0.48; }
 .primary { color: #13200d; background: #c8f24f; }
 .primary:hover:not(:disabled) { background: #b9e43d; }
 .secondary { color: #354039; background: #edf1ec; }
+#store { width: 100%; margin-top: 9px; }
 
 .status { min-height: 18px; margin-top: 10px; color: #5b685e; font-size: 11px; }
 .status.error { color: #a22a2a; }
@@ -142,4 +143,3 @@ footer {
   line-height: 1.45;
   text-align: center;
 }
-

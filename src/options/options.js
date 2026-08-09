@@ -1,9 +1,15 @@
+const STORE_URL = "https://allenyllee.github.io/monkeyskill-store/";
+const skillPicker = document.querySelector("#skill-picker");
+const skillName = document.querySelector("#skill-name");
+const skillState = document.querySelector("#skill-state");
 const globalValue = document.querySelector("#global-value");
+const sourceValue = document.querySelector("#source-value");
+const versionValue = document.querySelector("#version-value");
 const overrides = document.querySelector("#overrides");
 const resetButton = document.querySelector("#reset");
-const installToggle = document.querySelector("#install-toggle");
+const uninstallButton = document.querySelector("#uninstall");
+const openStore = document.querySelector("#open-store");
 const status = document.querySelector("#status");
-const skillState = document.querySelector("#skill-state");
 const apiForm = document.querySelector("#api-form");
 const apiEndpoint = document.querySelector("#api-endpoint");
 const apiModel = document.querySelector("#api-model");
@@ -11,62 +17,33 @@ const apiKey = document.querySelector("#api-key");
 const apiState = document.querySelector("#api-state");
 const apiStatus = document.querySelector("#api-status");
 const deleteApi = document.querySelector("#delete-api");
-const generateSkill = document.querySelector("#generate-skill");
-const generationStatus = document.querySelector("#generation-status");
-const draft = document.querySelector("#draft");
-const draftSummary = document.querySelector("#draft-summary");
-const draftModel = document.querySelector("#draft-model");
-const draftValidation = document.querySelector("#draft-validation");
-const draftHash = document.querySelector("#draft-hash");
-const draftCode = document.querySelector("#draft-code");
-const approveBuild = document.querySelector("#approve-build");
-const discardBuild = document.querySelector("#discard-build");
-let installed = false;
+const storeForm = document.querySelector("#store-form");
+const storeUrl = document.querySelector("#store-url");
+const trustedStores = document.querySelector("#trusted-stores");
+const storeStatus = document.querySelector("#store-status");
 
-void Promise.all([render(), renderApiSettings(), renderPendingBuild(), renderGenerationStatus()]);
+let skills = [];
+let selected;
 
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== "local") return;
-  if (changes.pendingSkillBuilds) void renderPendingBuild();
-  if (changes.generationJobs) void renderGenerationStatus();
-});
-
-resetButton.addEventListener("click", async () => {
-  if (!installed) return;
-  const response = await chrome.runtime.sendMessage({ type: "reset-skill" });
-  status.textContent = response.ok ? "已重設。" : response.error;
-  await render();
-});
-
-installToggle.addEventListener("click", async () => {
-  const response = await chrome.runtime.sendMessage({
-    type: installed ? "uninstall-skill" : "install-bundled-skill",
-    skillId: "restore-right-click"
-  });
-  status.textContent = response.ok
-    ? installed ? "已解除安裝。" : "已重新安裝。"
-    : response.error;
-  await render();
-});
+void Promise.all([renderSkills(), renderApiSettings(), renderTrustedStores()]);
+skillPicker.addEventListener("change", () => void renderSkill(skillPicker.value));
+openStore.addEventListener("click", () => chrome.tabs.create({ url: STORE_URL }));
+resetButton.addEventListener("click", () => void resetSkill());
+uninstallButton.addEventListener("click", () => void uninstallSkill());
 
 apiForm.addEventListener("submit", async event => {
   event.preventDefault();
-  apiStatus.textContent = "正在保存…";
+  apiStatus.textContent = "儲存中…";
   try {
     const origin = originPattern(apiEndpoint.value);
-    const granted = await chrome.permissions.request({ origins: [origin] });
-    if (!granted) throw new Error("未取得連線至 LLM endpoint 的權限。");
+    if (!await chrome.permissions.request({ origins: [origin] })) throw new Error("未取得 LLM endpoint 權限。");
     const response = await chrome.runtime.sendMessage({
       type: "save-llm-settings",
-      settings: {
-        endpoint: apiEndpoint.value,
-        model: apiModel.value,
-        apiKey: apiKey.value
-      }
+      settings: { endpoint: apiEndpoint.value, model: apiModel.value, apiKey: apiKey.value }
     });
     if (!response.ok) throw new Error(response.error);
     apiKey.value = "";
-    apiStatus.textContent = "API 設定已保存在本機。";
+    apiStatus.textContent = "API 設定已儲存。";
     await renderApiSettings();
   } catch (error) {
     apiStatus.textContent = error.message;
@@ -79,165 +56,143 @@ deleteApi.addEventListener("click", async () => {
   await renderApiSettings();
 });
 
-generateSkill.addEventListener("click", async () => {
-  generateSkill.disabled = true;
-  generationStatus.textContent = "正在請求 LLM 生成並檢查…";
+storeForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  storeStatus.textContent = "儲存中…";
   try {
-    const llmState = await chrome.runtime.sendMessage({ type: "get-llm-settings" });
-    if (!llmState.ok || !llmState.settings.hasApiKey) throw new Error("請先保存自己的 LLM API 設定。");
-    if (!chrome.userScripts) throw new Error("請先在擴充套件詳細頁開啟 Allow User Scripts。");
-    try {
-      await chrome.userScripts.getScripts();
-    } catch {
-      throw new Error("請先在擴充套件詳細頁開啟 Allow User Scripts。");
-    }
-    const response = await chrome.runtime.sendMessage({
-      type: "generate-bundled-skill",
-      skillId: "restore-right-click"
-    });
+    const url = new URL(storeUrl.value);
+    const local = url.protocol === "http:" && ["127.0.0.1", "localhost"].includes(url.hostname);
+    if (url.protocol !== "https:" && !local) throw new Error("Store URL 必須使用 HTTPS；本機開發除外。");
+    if (!await chrome.permissions.request({ origins: [`${url.origin}/*`] })) throw new Error("未取得 Store origin 權限。");
+    const response = await chrome.runtime.sendMessage({ type: "add-trusted-store", url: storeUrl.value });
     if (!response.ok) throw new Error(response.error);
-    generationStatus.textContent = "Builder 與獨立 Tester 正在生成和驗證；完成後會自動顯示候選 Build。";
+    storeUrl.value = "";
+    storeStatus.textContent = "Trusted Store 已加入；重新整理 Store 頁即可連線。";
+    await renderTrustedStores();
   } catch (error) {
-    generationStatus.textContent = error.message;
-    generateSkill.disabled = false;
+    storeStatus.textContent = error.message;
   }
 });
 
-approveBuild.addEventListener("click", async () => {
-  approveBuild.disabled = true;
-  generationStatus.textContent = "正在核准並安裝…";
-  try {
-    const response = await chrome.runtime.sendMessage({
-      type: "approve-generated-skill",
-      skillId: "restore-right-click"
-    });
-    if (!response.ok) throw new Error(response.error);
-    generationStatus.textContent = "LLM build 已核准並安裝；請選擇網站與模式後啟用。";
-    draft.hidden = true;
-    await render();
-  } catch (error) {
-    generationStatus.textContent = error.message;
-  } finally {
-    approveBuild.disabled = false;
-  }
-});
-
-discardBuild.addEventListener("click", async () => {
-  const response = await chrome.runtime.sendMessage({
-    type: "discard-generated-skill",
-    skillId: "restore-right-click"
-  });
-  generationStatus.textContent = response.ok ? "草稿已捨棄。" : response.error;
-  if (response.ok) draft.hidden = true;
-});
-
-async function render() {
-  const response = await chrome.runtime.sendMessage({ type: "get-state" });
-  if (!response.ok) {
-    status.textContent = response.error;
+async function renderSkills(preferredId) {
+  const response = await chrome.runtime.sendMessage({ type: "list-installed-skills" });
+  if (!response.ok) return status.textContent = response.error;
+  skills = response.skills;
+  skillPicker.replaceChildren();
+  for (const skill of skills) skillPicker.add(new Option(skill.name, skill.id));
+  skillState.textContent = `${skills.length} installed`;
+  if (skills.length === 0) {
+    skillPicker.add(new Option("請先從 Store 安裝", ""));
+    skillPicker.disabled = true;
+    selected = null;
+    skillName.textContent = "尚未安裝";
+    globalValue.textContent = "—";
+    sourceValue.textContent = "—";
+    versionValue.textContent = "—";
+    resetButton.disabled = true;
+    uninstallButton.disabled = true;
+    renderEmptyOverrides("沒有已安裝的 MSkill。");
     return;
   }
+  skillPicker.disabled = false;
+  await renderSkill(skills.some(skill => skill.id === preferredId) ? preferredId : skills[0].id);
+}
 
-  installed = Boolean(response.skill);
-  skillState.textContent = installed
-    ? response.skill.source.type === "llm" ? "Installed · LLM" : "Installed · Bundled"
-    : "Not installed";
-  installToggle.textContent = installed ? "解除安裝" : "重新安裝";
-  installToggle.classList.toggle("danger", installed);
-  resetButton.disabled = !installed;
-  globalValue.textContent = installed ? label(response.skill.config.globalMode) : "未安裝";
+async function renderSkill(skillId) {
+  const response = await chrome.runtime.sendMessage({ type: "get-state", skillId });
+  if (!response.ok) return status.textContent = response.error;
+  selected = response.skill;
+  skillPicker.value = skillId;
+  skillName.textContent = selected.skill.name;
+  globalValue.textContent = selected.config.globalMode;
+  sourceValue.textContent = selected.source.type;
+  versionValue.textContent = selected.skill.version;
+  resetButton.disabled = false;
+  uninstallButton.disabled = false;
   overrides.replaceChildren();
-  const entries = Object.entries(response.skill?.config.siteOverrides ?? {});
-
-  if (entries.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.textContent = "目前沒有網站覆寫設定。";
-    overrides.append(empty);
-    return;
-  }
-
+  const entries = Object.entries(selected.config.siteOverrides);
+  if (entries.length === 0) return renderEmptyOverrides("沒有網站例外設定。");
   for (const [pattern, mode] of entries) {
     const row = document.createElement("div");
     row.className = "override";
-
     const patternElement = document.createElement("span");
     patternElement.className = "pattern";
     patternElement.textContent = pattern;
-
     const modeElement = document.createElement("span");
     modeElement.className = "mode";
-    modeElement.textContent = label(mode);
-
+    modeElement.textContent = mode;
     const remove = document.createElement("button");
     remove.className = "remove";
-    remove.textContent = "移除覆寫";
+    remove.textContent = "移除";
     remove.addEventListener("click", async () => {
-      await chrome.runtime.sendMessage({
-        type: "remove-site-override",
-        pattern
-      });
-      await render();
+      await chrome.runtime.sendMessage({ type: "remove-site-override", skillId, pattern });
+      await renderSkill(skillId);
     });
-
     row.append(patternElement, modeElement, remove);
     overrides.append(row);
   }
 }
 
+async function resetSkill() {
+  if (!selected) return;
+  const response = await chrome.runtime.sendMessage({ type: "reset-skill", skillId: selected.skill.id });
+  status.textContent = response.ok ? "設定已重設。" : response.error;
+  await renderSkill(selected.skill.id);
+}
+
+async function uninstallSkill() {
+  if (!selected) return;
+  const id = selected.skill.id;
+  const response = await chrome.runtime.sendMessage({ type: "uninstall-skill", skillId: id });
+  status.textContent = response.ok ? "MSkill 已解除安裝。" : response.error;
+  if (response.ok) await renderSkills();
+}
+
+function renderEmptyOverrides(text) {
+  overrides.replaceChildren();
+  const empty = document.createElement("div");
+  empty.className = "empty";
+  empty.textContent = text;
+  overrides.append(empty);
+}
+
 async function renderApiSettings() {
   const response = await chrome.runtime.sendMessage({ type: "get-llm-settings" });
-  if (!response.ok) {
-    apiStatus.textContent = response.error;
-    return;
-  }
+  if (!response.ok) return apiStatus.textContent = response.error;
   apiEndpoint.value = response.settings.endpoint;
   apiModel.value = response.settings.model;
-  apiKey.placeholder = response.settings.hasApiKey ? "已保存；留空表示不變" : "尚未保存";
+  apiKey.placeholder = response.settings.hasApiKey ? "已儲存；留白可保留原 key" : "輸入 API key";
   apiState.textContent = response.settings.hasApiKey ? "Configured" : "Not configured";
 }
 
-async function renderPendingBuild() {
-  const response = await chrome.runtime.sendMessage({
-    type: "get-pending-build",
-    skillId: "restore-right-click"
-  });
-  if (!response.ok) {
-    generationStatus.textContent = response.error;
+async function renderTrustedStores() {
+  const response = await chrome.runtime.sendMessage({ type: "list-trusted-stores" });
+  if (!response.ok) return storeStatus.textContent = response.error;
+  trustedStores.replaceChildren();
+  if (response.stores.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "尚未加入自訂 Store。";
+    trustedStores.append(empty);
     return;
   }
-  if (response.draft) showDraft(response.draft);
-}
-
-async function renderGenerationStatus() {
-  const response = await chrome.runtime.sendMessage({
-    type: "get-generation-status",
-    skillId: "restore-right-click"
-  });
-  if (!response.ok || !response.job) return;
-  if (response.job.state === "running") {
-    generationStatus.textContent = "生成與行為測試仍在背景執行，可安全重新整理此頁。";
-    generateSkill.disabled = true;
-  } else if (response.job.state === "failed") {
-    generationStatus.textContent = response.job.error;
-    generateSkill.disabled = false;
-  } else if (response.job.state === "ready") {
-    generationStatus.textContent = "生成與行為測試完成，請檢查草稿後核准。";
-    generateSkill.disabled = false;
+  for (const url of response.stores) {
+    const row = document.createElement("div");
+    row.className = "override";
+    const value = document.createElement("span");
+    value.className = "pattern";
+    value.textContent = url;
+    const remove = document.createElement("button");
+    remove.className = "remove";
+    remove.textContent = "移除信任";
+    remove.addEventListener("click", async () => {
+      const result = await chrome.runtime.sendMessage({ type: "remove-trusted-store", url });
+      storeStatus.textContent = result.ok ? "Trusted Store 已移除。" : result.error;
+      if (result.ok) await renderTrustedStores();
+    });
+    row.append(value, remove);
+    trustedStores.append(row);
   }
-}
-
-function showDraft(value) {
-  draft.hidden = false;
-  draftSummary.textContent = value.summary;
-  draftModel.textContent = value.generation.model;
-  draftValidation.textContent = value.validation.join("、");
-  draftHash.textContent = value.generation.hash.slice(0, 16);
-  draftCode.textContent = Object.entries(value.modes).map(([mode, artifact]) => [
-    `// MODE: ${mode} — JS ${artifact.jsBytes} bytes / CSS ${artifact.cssBytes} bytes`,
-    artifact.js,
-    artifact.css ? `\n/* CSS */\n${artifact.css}` : ""
-  ].join("\n")).join("\n\n");
 }
 
 function originPattern(endpoint) {
@@ -246,12 +201,4 @@ function originPattern(endpoint) {
     throw new Error("Endpoint 必須使用 HTTPS；本機開發除外。");
   }
   return `${url.protocol}//${url.host}/*`;
-}
-
-function label(mode) {
-  return ({
-    off: "停用",
-    standard: "標準模式",
-    absolute: "Absolute 模式"
-  })[mode] ?? mode;
 }

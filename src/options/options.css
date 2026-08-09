@@ -33,11 +33,11 @@ button { border: 0; border-radius: 9px; padding: 8px 10px; font: inherit; font-s
 .skill-actions { display: flex; gap: 8px; margin-top: 22px; }
 .skill-actions button { color: #445047; background: #eef1ed; }
 .skill-actions .danger { color: #8b2525; background: #fff0f0; }
-#status { min-height: 20px; margin-top: 10px; color: #657168; font-size: 12px; }
+#status, #store-status { min-height: 20px; margin-top: 10px; color: #657168; font-size: 12px; overflow-wrap: anywhere; }
 form { display: grid; gap: 14px; margin-top: 22px; }
 label { display: grid; gap: 6px; color: #5d6961; font-size: 12px; font-weight: 750; }
-input { width: 100%; border: 1px solid #d6dfd4; border-radius: 10px; padding: 11px 12px; color: #17211b; background: #fbfcfa; font: inherit; }
-input:focus { border-color: #8aaa2c; outline: 3px solid #eff7d7; }
+input, select { width: 100%; border: 1px solid #d6dfd4; border-radius: 10px; padding: 11px 12px; color: #17211b; background: #fbfcfa; font: inherit; }
+input:focus, select:focus { border-color: #8aaa2c; outline: 3px solid #eff7d7; }
 #api-status, #generation-status { min-height: 20px; margin-top: 10px; color: #657168; font-size: 12px; overflow-wrap: anywhere; }
 button:disabled { cursor: wait; opacity: .55; }
 .draft { margin-top: 18px; padding: 16px; border: 1px solid #d8e3d3; border-radius: 14px; background: #f8fbf6; }

@@ -1,12 +1,12 @@
 (() => {
   const pageOrigin = location.origin;
-  const approvedPage = ["http://127.0.0.1:4173", "http://localhost:4173"].includes(pageOrigin)
-    && location.pathname === "/store.html";
-  if (!approvedPage) return;
+  const localPage = location.protocol === "http:"
+    && ["127.0.0.1", "localhost"].includes(location.hostname);
+  if (location.protocol !== "https:" && !localPage) return;
 
   const actions = new Map([
-    ["list", "store-list-skills"],
-    ["generate", "store-generate-bundled-skill"],
+    ["list", "store-list-installed-skills"],
+    ["generate", "store-generate-store-skill"],
     ["approve", "store-approve-generated-skill"],
     ["discard", "store-discard-generated-skill"],
     ["pending", "store-get-pending-build"],
@@ -23,7 +23,8 @@
     try {
       response = await chrome.runtime.sendMessage({
         type,
-        skillId: request.skillId
+        skillId: request.skillId,
+        skillPackage: request.action === "generate" ? request.skillPackage : undefined
       });
     } catch (error) {
       response = { ok: false, error: error.message };

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "sample-skill",
+  "name": "Sample MSkill",
+  "version": "1.0.0",
+  "description": "A non-installable fixture used to test the local agent transport.",
+  "capabilities": ["dom"],
+  "forbiddenCapabilities": ["network"],
+  "modes": ["standard"],
+  "entrypoint": "SKILL.md"
+}

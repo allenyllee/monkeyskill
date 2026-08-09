@@ -1,131 +1,44 @@
 # MonkeySkill
 
-MonkeySkill is an experimental Manifest V3 Chrome extension that installs small browser abilities per site. The first packaged skill independently reimplements the public behavior of **Absolute Enable Right Click & Copy**: restoring the native context menu, selection, copying, cutting, and dragging.
+MonkeySkill is an experimental Manifest V3 Chrome extension that generates, validates, and installs small browser abilities from human-readable MSkill specifications. It ships with no functional MSkills; specifications are selected from the separate [MonkeySkill Store](https://github.com/allenyllee/monkeyskill-store).
 
-No source code or visual assets from the referenced extension are included.
+## Core properties
 
-## Current feature set
-
-- Install the right-click skill for the current site or all HTTP(S) sites.
-- Standard mode for normal copy/right-click blockers.
-- Absolute mode for pages that continually re-register blockers.
-- Per-site overrides over a global default.
-- Optional host permissions requested only when the user enables a scope.
-- Local-only settings; no analytics or network requests.
-- A portable source containing only human-readable `SKILL.md` criteria and a capability manifest, stored separately from generated code.
-- A single `.mskill.json` package descriptor that joins the separate specification and build at install time.
-- A generic package installer used by bundled/preinstalled Skills and future imported `.mskill` packages.
-- Uninstall/reinstall behavior that does not silently restore a removed preinstalled Skill on restart.
+- No bundled functional MSkills or generated Store builds.
+- A GitHub Pages Store that publishes only `skill.json` manifests and human-readable `SKILL.md` specifications.
 - BYOK settings for an OpenAI-compatible Chat Completions endpoint, model, and API key.
-- A two-step LLM workflow: generate and validate a draft, then explicitly approve installation.
-- A locally generated, schema-constrained TestSpec that is created independently from the build and run in isolated sandbox frames before both review and installation.
-- Durable offscreen generation jobs, so multi-minute LLM requests survive MV3 service-worker suspension and Store refreshes preserve running, failed, and ready outcomes.
-- Shared-framework local testing: the Builder produces public self-tests beside each candidate and receives detailed structured traces from the same Runner used for final validation. A separate Tester conversation still produces a hidden TestSpec that the Builder never receives.
-- A non-executable test DSL covering DOM, events, forms, computed styles, geometry, relative layout, visibility, hit-testing, focus, scrolling, contrast, and ARIA ID relationships.
-- High-level `paste-text` and `drag-select-text` DSL workflows replay complete browser interaction sequences; schema validation rejects weaker hand-written substitutes when paste or selection blockers are present.
-- `click-control` and `click-page` workflows verify that restoring a protected page selection neither steals focus from a deliberately clicked control nor prevents an ordinary page click from dismissing the selection.
-- Release-time selection blockers are replayed across a page-world callback checkpoint, preventing capture-phase microtask restoration from receiving a false pass that does not match real Chrome ordering.
-- Runner primitive conformance tests verify focus, hit-testing, drag selection, and copy/cut default behavior before candidate tests run; unsupported or broken primitives are surfaced as inconclusive instead of being misreported as Builder failures.
-- Diagnostic-driven generation retries use three attempts by default, extend to the full five after a diagnostic improvement, and stop immediately when the generated build hash is unchanged.
-- Runtime-generated builds installed through `chrome.userScripts` while packaged builds continue to use `chrome.scripting`.
+- Separate Builder and Tester conversations.
+- Builder-authored public self-tests and an independently generated hidden TestSpec.
+- One shared, non-executable MonkeyTest DSL and trusted Runner for both test layers.
+- Static capability, remote-content, size, schema, and Chrome `userScripts` parse checks.
+- Durable offscreen generation jobs that survive MV3 service-worker suspension and Store refreshes.
+- Explicit user approval after generation and validation, followed by another hidden-test run before installation.
+- Per-site and global modes for every installed MSkill.
 
 ## Load in Chrome
 
 1. Open `chrome://extensions`.
 2. Enable **Developer mode**.
-3. Choose **Load unpacked**.
-4. Select this repository folder.
-5. Open a regular website, click MonkeySkill, choose a mode, and apply it.
+3. Choose **Load unpacked** and select this repository folder.
+4. Open the Extension details and enable **Allow User Scripts**.
+5. Open the options page and configure your LLM API.
+6. Visit <https://allenyllee.github.io/monkeyskill-store/> to install an MSkill.
 
-Developer mode is needed here only because this repository is loaded unpacked. A Chrome Web Store build would not require it.
+Developer mode is needed only because this repository is loaded unpacked. A Chrome Web Store build would not require it. **Allow User Scripts** remains required for runtime-generated builds.
 
-For LLM-generated builds, open the extension's details page and enable **Allow User Scripts**. This is separate from loading the development extension itself.
+## Store installation flow
 
-## Generate from an MSkill
-
-1. Open MonkeySkill's options page.
-2. Enter an OpenAI-compatible Chat Completions endpoint, model name, and your own API key.
-3. Save the settings and approve access only to that API origin.
-4. Select **Generate and validate with my LLM**.
-5. MonkeySkill first validates and runs the Builder's public self-tests in isolated frames. Self-test failures return detailed step traces to the Builder; after they pass, an independent hidden TestSpec runs in the same Runner and exposes only fixed criterion/category diagnostics.
-6. Review the summary, validation results, hash, and complete generated JS/CSS.
-7. Select **Approve and install** or discard the draft. The same build is tested again immediately before installation.
-
-The API key is kept in `chrome.storage.local`, restricted to trusted extension contexts, and is never returned to the options UI after saving. This protects it from page scripts, but browser-local storage is not a hardware-backed secret store.
-
-## Test page
-
-Run:
-
-```powershell
-npm run serve:demo
-```
-
-Then open `http://127.0.0.1:4173/store.html` for the local MSkill Store, or `http://127.0.0.1:4173/blocked.html` for the 16-method behavior matrix.
-
-The Store reads the Extension's packaged catalog, asks before sending an MSkill to the configured LLM, waits for static and independently generated behavior validation, shows the model/hash/validation summary, asks for final approval, and only then installs the generated build. Its page bridge is injected only on the two local Store URLs declared in `manifest.json`; background handlers independently verify the sender URL.
-
-## Local agent API
-
-Run a local OpenAI-compatible endpoint that exercises the complete Extension request, generation, validation, review, and approval path:
-
-```powershell
-npm run serve:agent
-```
-
-The server prints a random local token. In MonkeySkill's LLM settings use:
-
-- Endpoint: `http://127.0.0.1:8787/v1/chat/completions`
-- Model: `local-agent`
-- API key: the printed local token
-
-The default `fixture` agent runs offline and deterministically turns the bundled Restore right click MSkill into a response with the same shape as Chat Completions. This verifies the whole integration without spending API credits. Each call creates an inspectable conversation; use the printed `/sessions` URL with the same bearer token.
-
-To hand the conversation to a real upstream OpenAI-compatible agent instead, keep the Extension pointed at localhost and start the bridge in proxy mode:
-
-```powershell
-$env:MONKEYSKILL_AGENT_MODE = "proxy"
-$env:MONKEYSKILL_UPSTREAM_API_KEY = "your-upstream-key"
-$env:MONKEYSKILL_UPSTREAM_MODEL = "your-model"
-npm run serve:agent
-```
-
-Optional variables are `MONKEYSKILL_UPSTREAM_ENDPOINT`, `MONKEYSKILL_LOCAL_TOKEN`, `MONKEYSKILL_AGENT_PORT`, and the subagent queue timeout `MONKEYSKILL_AGENT_TIMEOUT_MS`. The upstream key stays in the local server process and is not stored by the Extension.
-
-For an interactive Codex-only experiment, `MONKEYSKILL_AGENT_MODE=subagent` exposes protected role queues at `/agent/jobs/next?role=builder&worker=<stable-worker-id>` and `/agent/jobs/next?role=tester&worker=<stable-worker-id>`. Builder and Tester workers cannot consume each other's jobs. The Extension gives every generation run stable local Builder and Tester session IDs, so Builder repairs remain leased to the Builder worker that produced the initial candidate. A Builder worker should remain available for up to five total attempts. Complete a leased job by posting `{ "worker": "<same-worker-id>", "content": "..." }` to `/agent/jobs/{id}/complete`; a different worker receives HTTP 409. This mode is intentionally not presented as a standalone background service.
-
-## Development
-
-```powershell
-npm test
-npm run check
-```
-
-## Skill package lifecycle
-
-Development follows the same lifecycle as a future user installation:
-
-```text
-skills/restore-right-click/            Human-readable specification only
-        +
-Builder public self-tests + independent Tester hidden TestSpec, both generated locally
-        +
-generated/restore-right-click/1.2.0/   Optional bundled build descriptor
-        ↓
-packages/restore-right-click.mskill.json
-        ↓
-installSkillPackage()
-        ↓
-chrome.storage.local: installedSkills
-        ↓
-chrome.scripting registrations
-```
-
-`preinstalled-skills.json` does not bypass installation. It only selects `.mskill.json` package descriptors that should be passed through the normal installer the first time the extension is installed. If a user removes one, its seeded marker prevents it from being silently restored on the next startup. Reinstalling it explicitly uses the same installer again.
+1. The Store reads its generated `catalog.json`.
+2. After the user chooses an MSkill, the Store sends only its `skill.json` and `SKILL.md` to the Extension.
+3. The Extension validates the manifest and specification; the Store cannot submit a Build, JavaScript, HTML, or TestSpec.
+4. Builder creates a candidate Build and public self-tests.
+5. The shared Runner executes those self-tests and returns detailed structured failures for repair.
+6. Independent Tester creates a hidden TestSpec that Builder never sees.
+7. The same Runner executes the hidden TestSpec and returns only constrained diagnostics for repair.
+8. After validation passes, the user reviews the summary, hash, validation results, and generated code.
+9. The user approves installation or discards the candidate. Hidden behavior tests run again immediately before installation.
 
 ## Architecture
-
-### Builder and Tester validation loops
 
 ```mermaid
 flowchart LR
@@ -156,28 +69,59 @@ flowchart LR
 
     Framework --> SelfRun
     Framework --> HiddenRun
-
     HiddenTests -. "Builder 看不到內容" .-> Builder
 ```
 
-The first loop gives the Builder detailed results from its public self-tests. The second loop keeps the independent Tester's TestSpec hidden and returns only constrained diagnostics before another Builder attempt.
+The first loop gives Builder detailed results from its public self-tests. The second keeps Tester's independent TestSpec hidden and returns only constrained diagnostics before another Builder attempt.
 
-- `skills/restore-right-click/` contains only the first Monkey Skill specification and manifest; it contains no executable or declarative tests.
+## Project boundaries
+
 - `skills/mskill-creator/` defines how an agent authors implementation-independent MSkill specifications.
-- `skills/mskill-installer/` is the isolated Builder policy used when the user's LLM compiles a specification and authors public self-tests with the shared framework.
-- `skills/mskill-tester/` is the separate Tester policy that translates visible criteria into a non-executable TestSpec DSL.
-- `generated/restore-right-click/1.2.0/` contains the current optional bundled build descriptor; generated tests are local installation artifacts rather than shared MSkill content.
-- `packages/*.mskill.json` joins one specification and one generated build into a single installable package descriptor.
-- `preinstalled-skills.json` is the bundled catalog and preinstall policy.
-- `agent-skills.json` catalogs the preinstalled Creator, Installer, and Tester policies used by LLM workflows.
-- `src/lib/skill-store.js` validates, installs, removes, configures, and builds registrations for Skill packages.
-- `src/lib/llm.js` normalizes BYOK settings, builds generation prompts, parses output, and runs capability checks.
-- `src/background.js` loads packages through the common installer and synchronizes installed builds with Chrome.
-- `src/popup/` installs/configures the skill for the active site.
-- `src/options/` manages global settings and site overrides.
+- `skills/mskill-installer/` is the isolated Builder policy.
+- `skills/mskill-tester/` is the isolated Tester policy and shared MonkeyTest framework.
+- `agent-skills.json` catalogs those three preinstalled agent policies.
+- `src/lib/skill-store.js` validates, installs, removes, configures, and builds registrations for generated artifacts.
+- `src/lib/llm.js` builds prompts, parses responses, and scans generated Builds.
+- `src/store/bridge.js` accepts only constrained actions from approved Store pages.
+- `src/validation/` owns the offscreen generation host, trusted Runner, and sandbox.
+- `demo/blocked.html` is the 16-method behavior matrix; it is not a Store.
 
-The preinstalled build uses packaged scripts through `chrome.scripting`, so it works without Chrome's **Allow User Scripts** toggle. A user-approved LLM build uses `chrome.userScripts` and requires that explicit opt-in.
+The functional MSkill catalog lives in [allenyllee/monkeyskill-store](https://github.com/allenyllee/monkeyskill-store). Its `skills/` directory is the source of truth, and GitHub Actions rebuilds the Pages catalog after every push to `main`.
+
+Forked Stores are opt-in. Add a fork's GitHub Pages root URL under **Trusted MSkill Stores** in the Extension options and approve that origin. MonkeySkill then registers the constrained Store bridge only for that saved URL; unrelated pages on the same host are rejected by the background sender check.
+
+## Local development
+
+```powershell
+npm test
+npm run check
+npm run serve:demo
+```
+
+Open `http://127.0.0.1:4173/blocked.html` for the behavior matrix.
+
+For Store development, clone the Store repository beside this one, run `npm run serve`, and open `http://127.0.0.1:4174/`.
+
+## Local agent API
+
+Run an OpenAI-compatible local endpoint:
+
+```powershell
+npm run serve:agent
+```
+
+Use the printed token with:
+
+- Endpoint: `http://127.0.0.1:8787/v1/chat/completions`
+- Model: `local-agent`
+- API key: the printed token
+
+The default fixture mode creates a generic schema-valid no-op response for the MSkill supplied in the request. It tests transport and integration without bundling a Store MSkill.
+
+For interactive Codex testing, set `MONKEYSKILL_AGENT_MODE=subagent`. Builder and Tester use separate protected queues at `/agent/jobs/next?role=builder` and `/agent/jobs/next?role=tester`; repairs remain sticky to the original Builder worker. `MONKEYSKILL_AGENT_TIMEOUT_MS` controls the queue timeout.
 
 ## Security boundary
 
-The Restore right click skill has no network, cookie, history, or download capability. Generated code is rejected when basic static checks detect forbidden APIs or remote content, Chrome parses it through a temporary `userScripts` registration, and Builder-authored public self-tests plus an independently generated hidden TestSpec run in sandboxed frames before review. The hidden TestSpec runs again before installation. Neither shared MSkills nor either test producer can provide HTML, executable test code, remote URLs, or free-form failure messages. These checks reduce risk but do not prove arbitrary JavaScript safe, so installation remains a separate explicit user action. Absolute mode intentionally changes page-level event behavior and can break legitimate custom context menus; disable it for affected sites.
+The Store page is outside the Extension trust boundary. Its bridge is active only on approved Store URLs, and the background verifies the sender again. Store payloads may contain only a bounded manifest and human-readable specification. API keys stay in trusted Extension storage and are never returned to the Store page.
+
+Generated code is statically scanned, parsed through a temporary Chrome `userScripts` registration, tested in sandboxed frames, displayed for review, and installed only after an explicit user action. These checks reduce risk but do not prove arbitrary JavaScript safe.

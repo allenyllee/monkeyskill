@@ -3,69 +3,47 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>MonkeySkill 管理</title>
+    <title>MonkeySkill 設定</title>
     <link rel="stylesheet" href="options.css">
   </head>
   <body>
     <main>
-      <header>
-        <span class="logo">M</span>
-        <div>
-          <h1>MonkeySkill</h1>
-          <p>已安裝技能與網站設定</p>
-        </div>
-      </header>
+      <header><span class="logo">M</span><div><h1>MonkeySkill</h1><p>管理從 Store 安裝的 MSkills 與你的 LLM API。</p></div></header>
 
       <section>
         <div class="section-title">
-          <div>
-            <span class="eyebrow">SKILL 01</span>
-            <h2>Restore right click & copy</h2>
-          </div>
-          <span id="skill-state" class="installed">Installed</span>
+          <div><span class="eyebrow">INSTALLED MSKILLS</span><h2 id="skill-name">尚未安裝</h2></div>
+          <span id="skill-state" class="installed">0 installed</span>
         </div>
-        <p class="copy">所有設定只保存在本機。標準模式適合一般網站；Absolute 模式會更積極阻止網站攔截事件。</p>
-
+        <p class="copy">MonkeySkill 不再內建功能。每個 MSkill 都必須從 Store 取得人類可讀規格，再由你的 LLM 生成、驗證並核准安裝。</p>
+        <label><span>選擇 MSkill</span><select id="skill-picker"></select></label>
         <dl>
-          <div><dt>全域預設</dt><dd id="global-value">—</dd></div>
-          <div><dt>網路存取</dt><dd>禁止</dd></div>
-          <div><dt>資料收集</dt><dd>無</dd></div>
+          <div><dt>全域模式</dt><dd id="global-value">關閉</dd></div>
+          <div><dt>來源</dt><dd id="source-value">—</dd></div>
+          <div><dt>版本</dt><dd id="version-value">—</dd></div>
         </dl>
-
-        <h3>網站覆寫</h3>
+        <h3>網站例外</h3>
         <div id="overrides" class="overrides"></div>
         <div class="skill-actions">
+          <button id="open-store">開啟 MSkill Store</button>
           <button id="reset">重設設定</button>
-          <button id="install-toggle" class="danger">解除安裝</button>
+          <button id="uninstall" class="danger">解除安裝</button>
         </div>
         <p id="status" role="status"></p>
       </section>
 
       <section>
         <div class="section-title">
-          <div>
-            <span class="eyebrow">BYOK</span>
-            <h2>LLM API</h2>
-          </div>
+          <div><span class="eyebrow">BYOK</span><h2>LLM API</h2></div>
           <span id="api-state" class="installed">Not configured</span>
         </div>
-        <p class="copy">API 設定只保存在本機。MonkeySkill 會把 MSkill 規格傳給你指定的 OpenAI-compatible Chat Completions endpoint。</p>
-
+        <p class="copy">設定保存在本機。Store 規格會分別送給 Builder 與獨立 Tester；API key 不會傳給 Store 網頁。</p>
         <form id="api-form">
-          <label>
-            <span>Endpoint</span>
-            <input id="api-endpoint" type="url" required value="https://api.openai.com/v1/chat/completions">
-          </label>
-          <label>
-            <span>Model</span>
-            <input id="api-model" required placeholder="例如 your-model-name">
-          </label>
-          <label>
-            <span>API key</span>
-            <input id="api-key" type="password" autocomplete="off" placeholder="尚未保存">
-          </label>
+          <label><span>Endpoint</span><input id="api-endpoint" type="url" required value="https://api.openai.com/v1/chat/completions"></label>
+          <label><span>Model</span><input id="api-model" required placeholder="your-model-name"></label>
+          <label><span>API key</span><input id="api-key" type="password" autocomplete="off" placeholder="輸入 API key"></label>
           <div class="skill-actions">
-            <button type="submit">保存 API 設定</button>
+            <button type="submit">儲存 API 設定</button>
             <button id="delete-api" type="button" class="danger">刪除 API 設定</button>
           </div>
         </form>
@@ -74,33 +52,15 @@
 
       <section>
         <div class="section-title">
-          <div>
-            <span class="eyebrow">GENERATE</span>
-            <h2>從 MSkill 重新生成</h2>
-          </div>
+          <div><span class="eyebrow">FORKS</span><h2>Trusted MSkill Stores</h2></div>
         </div>
-        <p class="copy">讀取 Restore right click & copy 的 MSkill 描述與測試，交給你的 LLM 生成程式碼。檢查完成後會先顯示草稿，只有你核准才安裝。需要先在擴充套件詳細頁開啟 Allow User Scripts。</p>
-        <div class="skill-actions">
-          <button id="generate-skill">用我的 LLM 生成並驗證</button>
-        </div>
-        <p id="generation-status" role="status"></p>
-        <div id="draft" class="draft" hidden>
-          <h3>等待核准的 Build</h3>
-          <p id="draft-summary" class="copy"></p>
-          <dl>
-            <div><dt>模型</dt><dd id="draft-model">—</dd></div>
-            <div><dt>安全檢查</dt><dd id="draft-validation">—</dd></div>
-            <div><dt>Hash</dt><dd id="draft-hash">—</dd></div>
-          </dl>
-          <details>
-            <summary>檢視生成程式碼</summary>
-            <pre id="draft-code"></pre>
-          </details>
-          <div class="skill-actions">
-            <button id="approve-build">核准並安裝</button>
-            <button id="discard-build" class="danger">捨棄草稿</button>
-          </div>
-        </div>
+        <p class="copy">官方 Store 已預先信任。若要使用別人 Fork 的 Store，加入其 GitHub Pages 根網址並核准該 origin；只有清單中的頁面能載入 Extension bridge。</p>
+        <form id="store-form">
+          <label><span>Store URL</span><input id="store-url" type="url" required placeholder="https://username.github.io/monkeyskill-store/"></label>
+          <div class="skill-actions"><button type="submit">信任這個 Store</button></div>
+        </form>
+        <div id="trusted-stores" class="overrides"></div>
+        <p id="store-status" role="status"></p>
       </section>
     </main>
     <script type="module" src="options.js"></script>
