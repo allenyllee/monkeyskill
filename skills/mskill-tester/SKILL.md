@@ -39,7 +39,8 @@ Generate tests independently from the implementation. Treat the MSkill manifest 
             "parent": null,
             "text": "visible text",
             "attributes": {},
-            "styles": {}
+            "styles": {},
+            "rect": { "x": 20, "y": 20, "width": 160, "height": 40 }
           }
         ],
         "rules": []
@@ -69,6 +70,7 @@ Policy test:
 - Tags: `a`, `article`, `aside`, `button`, `canvas`, `details`, `dialog`, `div`, `footer`, `form`, headings, `header`, `img`, `input`, `label`, list tags, `main`, `nav`, `option`, `p`, `section`, `select`, `span`, `summary`, table tags, `textarea`, `ul`, and `video`. Never use custom, scriptable, or embed tags.
 - Attributes: `alt`, `checked`, `class`, `contenteditable`, `disabled`, `href`, `max`, `maxlength`, `min`, `minlength`, `multiple`, `name`, `placeholder`, `readonly`, `required`, `role`, `selected`, `tabindex`, `title`, `type`, `value`, and lowercase hyphenated `aria-*` or `data-*`. An `href` must start with `#`.
 - Styles: `alignItems`, `backgroundColor`, `backgroundImage`, border colors/widths, `borderRadius`, `boxShadow`, `boxSizing`, `color`, `cursor`, `display`, `flexDirection`, `flexGrow`, `flexShrink`, font properties, `gap`, `gridTemplateColumns`, `height`, `inset`, `justifyContent`, edge offsets, `letterSpacing`, `lineHeight`, margins, min/max sizes, `opacity`, overflow properties, paddings, `pointerEvents`, `position`, `textAlign`, `textDecoration`, `transform`, `userSelect`, `verticalAlign`, `visibility`, `whiteSpace`, `width`, `wordBreak`, `zIndex`.
+- Optional `rect`: `{ "x": number, "y": number, "width": non-negative number, "height": non-negative number }`. Use it when the behavior or assertion depends on geometry; the trusted runner supplies this rectangle even when Chrome's offscreen document has no reliable layout viewport.
 - Do not use `url()`, `data:`, `javascript:`, `expression()`, or `@import` in values.
 - Each node's `parent`, when present, must refer to an earlier node ID.
 - `fixture.rules` may contain `{ "target": "node-id", "pseudo": "::selection", "styles": {...} }`; no other pseudo-element is allowed.

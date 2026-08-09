@@ -25,6 +25,24 @@ test("pointer overlay fixture has stable geometry without loading media", () => 
   assert.deepEqual(target.attributes, {});
   assert.equal(target.styles.width, "240px");
   assert.equal(target.styles.height, "120px");
+  assert.deepEqual(target.rect, { x: 8, y: 8, width: 240, height: 120 });
+  assert.deepEqual(
+    pointerTest.fixture.nodes.find(node => node.id === "overlay").rect,
+    target.rect
+  );
+});
+
+test("fixture rectangles are declarative, bounded, and non-executable", () => {
+  const spec = JSON.parse(fixtureText);
+  const node = spec.tests.find(candidate => candidate.kind === "behavior").fixture.nodes[0];
+  node.rect = { x: 10, y: 20, width: 300, height: 100 };
+  assert.doesNotThrow(() => validateTestSpec(spec, skill, criteria));
+
+  node.rect.width = -1;
+  assert.throws(() => validateTestSpec(spec, skill, criteria), /rectangle width is invalid/i);
+
+  node.rect = { x: 0, y: 0, width: 100, height: 100, script: "alert(1)" };
+  assert.throws(() => validateTestSpec(spec, skill, criteria), /unsupported fields/);
 });
 
 test("TestSpec rejects executable or remote-content fields", () => {

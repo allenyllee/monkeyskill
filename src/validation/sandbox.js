@@ -72,6 +72,10 @@
     if (node.text) element.textContent = node.text;
     for (const [name, value] of Object.entries(node.attributes)) element.setAttribute(name, value);
     for (const [property, value] of Object.entries(node.styles)) element.style[property] = value;
+    if (node.rect) {
+      const { x, y, width, height } = node.rect;
+      element.getBoundingClientRect = () => new DOMRect(x, y, width, height);
+    }
     const parentNode = node.parent ? state.nodes.get(node.parent) : root;
     if (!parentNode) throw new Error("Fixture parent missing.");
     parentNode.append(element);

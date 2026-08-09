@@ -128,12 +128,12 @@ function validateFixture(source) {
   const ids = new Set();
   const nodes = source.nodes.map(node => {
     assertRecord(node, "fixture node");
-    assertOnlyKeys(node, ["id", "tag", "parent", "text", "attributes", "styles"], "fixture node");
+    assertOnlyKeys(node, ["id", "tag", "parent", "text", "attributes", "styles", "rect"], "fixture node");
     if (!ID_PATTERN.test(node.id || "") || ids.has(node.id)) throw new Error("Fixture node ID is invalid or duplicated.");
     if (!ALLOWED_TAGS.has(node.tag)) throw new Error("Fixture uses a disallowed HTML tag.");
     if (node.parent && !ids.has(node.parent)) throw new Error("Fixture parent must refer to an earlier node.");
     ids.add(node.id);
-    return {
+    const normalized = {
       id: node.id,
       tag: node.tag,
       parent: node.parent || null,
@@ -141,6 +141,8 @@ function validateFixture(source) {
       attributes: validateStringMap(node.attributes, ALLOWED_ATTRIBUTES, "attribute"),
       styles: validateStringMap(node.styles, ALLOWED_STYLES, "style")
     };
+    if (node.rect != null) normalized.rect = validateFixtureRect(node.rect);
+    return normalized;
   });
   const rules = boundedArray(source.rules || [], "fixture rules").map(rule => {
     assertRecord(rule, "fixture rule");
@@ -472,6 +474,17 @@ function safeFiniteNumber(value, minimum, maximum, label) {
     throw new Error(`${label} is invalid.`);
   }
   return value;
+}
+
+function validateFixtureRect(value) {
+  assertRecord(value, "fixture rectangle");
+  assertOnlyKeys(value, ["x", "y", "width", "height"], "fixture rectangle");
+  return {
+    x: safeFiniteNumber(value.x, -10000, 10000, "Fixture rectangle x"),
+    y: safeFiniteNumber(value.y, -10000, 10000, "Fixture rectangle y"),
+    width: safeFiniteNumber(value.width, 0, 10000, "Fixture rectangle width"),
+    height: safeFiniteNumber(value.height, 0, 10000, "Fixture rectangle height")
+  };
 }
 
 function validateHitPoint(value) {
