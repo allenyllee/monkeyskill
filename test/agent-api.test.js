@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import { createAgentApiServer, runFixtureAgent } from "../scripts/agent-api.mjs";
-import { buildGenerationMessages, buildTesterMessages, extractAssistantText, extractCriterionIds, parseGeneratedBuild, scanGeneratedBuild } from "../src/lib/llm.js";
+import { buildGenerationMessages, buildTesterMessages, extractAssistantText, extractCriterionIds, extractSharedTestFramework, parseGeneratedBuild, parseGeneratedSelfTests, scanGeneratedBuild } from "../src/lib/llm.js";
 import { parseGeneratedTestSpec } from "../src/lib/test-spec.js";
 import { readFile } from "node:fs/promises";
 
@@ -24,6 +24,7 @@ test("local fixture agent completes the generation and validation flow", async t
       model: "local-agent",
       messages: buildGenerationMessages({
         installerInstructions,
+        testFrameworkInstructions: extractSharedTestFramework(testerInstructions),
         skillInstructions,
         skill
       })
@@ -32,11 +33,14 @@ test("local fixture agent completes the generation and validation flow", async t
 
   assert.equal(response.status, 200);
   assert.ok(response.headers.get("x-monkeyskill-agent-session"));
-  const build = parseGeneratedBuild(extractAssistantText(await response.json()), skill);
+  const assistantText = extractAssistantText(await response.json());
+  const build = parseGeneratedBuild(assistantText, skill);
+  const selfTests = parseGeneratedSelfTests(assistantText, skill, extractCriterionIds(skillInstructions));
   assert.deepEqual(scanGeneratedBuild(build, skill), [
     "schema", "size", "forbidden-capabilities", "remote-content"
   ]);
   assert.deepEqual(Object.keys(build.modes), ["standard", "absolute"]);
+  assert.ok(selfTests.tests.length > 0);
   assert.equal(local.sessions.size, 1);
 });
 
@@ -80,6 +84,7 @@ test("subagent mode queues a request and returns the worker's fresh completion",
     model: "codex-subagent",
     messages: buildGenerationMessages({
       installerInstructions: "Generate only the requested safe user script.",
+      testFrameworkInstructions: extractSharedTestFramework(testerInstructions),
       skillInstructions,
       skill
     })
@@ -119,7 +124,12 @@ test("subagent workers are role-isolated and Builder repairs keep sticky routing
   const { port } = local.server.address();
   const builderRequest = {
     model: "codex-subagent",
-    messages: buildGenerationMessages({ installerInstructions, skillInstructions, skill })
+    messages: buildGenerationMessages({
+      installerInstructions,
+      testFrameworkInstructions: extractSharedTestFramework(testerInstructions),
+      skillInstructions,
+      skill
+    })
   };
   const testerRequest = {
     model: "codex-subagent",

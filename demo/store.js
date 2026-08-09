@@ -98,6 +98,8 @@ async function reviewDraft(draft) {
       `Model: ${draft.generation.model}`,
       `Tester: ${draft.generation.testerModel}`,
       `Generation attempts: ${draft.generation.attempts}`,
+      `Builder self-tests: ${draft.selfTestCount - (draft.selfInconclusiveCount || 0)}/${draft.selfTestCount}`,
+      `Builder self-test inconclusive: ${draft.selfInconclusiveCount || 0}`,
       `Independent tests: ${draft.testCount - (draft.inconclusiveCount || 0)}/${draft.testCount}`,
       `Inconclusive tests: ${draft.inconclusiveCount || 0}`,
       `Hash: ${draft.generation.hash.slice(0, 16)}`,

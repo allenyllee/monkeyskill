@@ -61,6 +61,7 @@ test("long LLM requests run outside the ephemeral service worker", async () => {
   assert.match(offscreen, /type: "generation-complete"/);
   const store = await readFile(new URL("demo/store.js", root), "utf8");
   assert.match(store, /Inconclusive tests:/);
+  assert.match(store, /Builder self-tests:/);
 });
 
 test("independent TestSpec feedback cannot expose tester-controlled text", async () => {
@@ -69,14 +70,21 @@ test("independent TestSpec feedback cannot expose tester-controlled text", async
   assert.match(offscreen, /Promise\.all\(\[/);
   assert.match(offscreen, /request\.builderBody/);
   assert.match(offscreen, /request\.testerBody/);
+  assert.match(offscreen, /parseGeneratedSelfTests/);
+  assert.match(offscreen, /publicDiagnostics: true/);
+  assert.match(offscreen, /buildSelfTestRepairMessage\(failedSelfTests\)/);
   assert.match(offscreen, /buildRepairMessage\(failed\)/);
   assert.match(offscreen, /!result\.ok && !result\.inconclusive/);
   assert.match(offscreen, /runCapabilitySelfTests\(testSpec\)/);
+  assert.match(offscreen, /step\.action === "drag-select-text"/);
+  assert.match(offscreen, /step\.action === "copy-shortcut"/);
   assert.doesNotMatch(offscreen, /buildRepairMessage\([^)]*(?:error|testSpec|test\.id)/);
   assert.doesNotMatch(sandbox, /runnerSource|monkeySkillAcceptanceTests/);
   assert.match(sandbox, /executeTest\(message\.test\)/);
   assert.match(sandbox, /executeCapabilitySelfTest\(message\.capability\)/);
   assert.match(sandbox, /capability === "hit-test"/);
+  assert.match(sandbox, /capability === "drag-select-text"/);
+  assert.match(sandbox, /capability === "copy-shortcut"/);
   assert.match(offscreen, /assertion\.type === "hit-test"/);
   assert.match(sandbox, /trackedActiveElement/);
   assert.match(sandbox, /async function pasteText\(target, value\)/);

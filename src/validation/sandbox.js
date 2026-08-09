@@ -58,18 +58,34 @@
     createFixture(test.fixture, state);
     installBlockers(test.blockers, state);
     await settle();
-    for (const step of test.steps) state.stepResults.push(await executeStep(step, state));
+    const trace = [];
+    for (let index = 0; index < test.steps.length; index += 1) {
+      const step = test.steps[index];
+      const stepResult = await executeStep(step, state);
+      state.stepResults.push(stepResult);
+      const stepTarget = step.target ? state.nodes.get(step.target) : null;
+      trace.push({
+        step: index,
+        action: step.action,
+        defaultPrevented: typeof stepResult?.defaultPrevented === "boolean" ? stepResult.defaultPrevented : null,
+        selectionCollapsed: Boolean(getSelection()?.isCollapsed),
+        targetActive: Boolean(stepTarget && (document.activeElement === stepTarget || trackedActiveElement === stepTarget)),
+        valueLength: stepTarget && "value" in stepTarget ? String(stepTarget.value).length : null,
+        textLength: stepTarget ? String(stepTarget.textContent || "").length : null
+      });
+    }
     for (const assertion of test.assertions) {
       if (!evaluateAssertion(assertion, state)) {
         return {
           ok: false,
           category: assertionCategory(assertion.type),
           assertion: assertion.type,
-          diagnostic: assertionDiagnostic(assertion, state)
+          diagnostic: assertionDiagnostic(assertion, state),
+          trace
         };
       }
     }
-    return { ok: true, category: "dom-state" };
+    return { ok: true, category: "dom-state", trace };
   }
 
   function createFixture(fixture, state) {
@@ -493,16 +509,30 @@
   }
 
   function assertionDiagnostic(assertion, state) {
-    if (assertion.type !== "computed-style") return null;
-    const target = state.nodes.get(assertion.target);
-    const actual = target
-      ? getComputedStyle(target, assertion.pseudo)[assertion.property]
-      : "<missing-target>";
+    let property = assertion.type;
+    let actual;
+    if (assertion.type === "event-default-prevented") {
+      actual = state.stepResults[assertion.step]?.defaultPrevented;
+    } else if (assertion.type === "selection-collapsed") {
+      actual = Boolean(getSelection()?.isCollapsed);
+    } else if (assertion.type === "blocker-call-count") {
+      actual = state.blockerCalls.get(assertion.blocker) || 0;
+    } else {
+      const target = state.nodes.get(assertion.target);
+      if (assertion.type === "computed-style") {
+        property = assertion.property;
+        actual = target ? getComputedStyle(target, assertion.pseudo)[assertion.property] : "<missing-target>";
+      } else if (assertion.type === "value") actual = target?.value;
+      else if (assertion.type === "text-content") actual = target?.textContent;
+      else if (assertion.type === "active-element") actual = document.activeElement === target || trackedActiveElement === target;
+      else if (assertion.type === "visible") actual = target ? isVisible(target) : false;
+      else return null;
+    }
     return {
-      property: assertion.property,
-      operator: assertion.operator,
+      property,
+      operator: assertion.operator || "eq",
       actual: diagnosticValue(actual),
-      expected: diagnosticValue(assertion.value)
+      expected: diagnosticValue(assertion.expected ?? assertion.value)
     };
   }
 
@@ -525,6 +555,49 @@
       await settle();
       const after = document.elementFromPoint(60, 50) === target;
       return { ok: before && after, capability, nativeSupported: before && after };
+    }
+    if (capability === "drag-select-text") {
+      const target = document.createElement("p");
+      target.textContent = "MonkeyTest drag selection conformance";
+      document.querySelector("#fixture").replaceChildren(target);
+      let pointerMoved = false;
+      let mouseMoved = false;
+      target.addEventListener("pointermove", () => { pointerMoved = true; });
+      target.addEventListener("mousemove", () => { mouseMoved = true; });
+      const baseline = await dragSelectText(target);
+      const selected = !getSelection()?.isCollapsed;
+      getSelection()?.removeAllRanges();
+      const blockedTarget = document.createElement("p");
+      blockedTarget.textContent = "Blocked drag selection conformance";
+      blockedTarget.addEventListener("mousedown", event => event.preventDefault());
+      document.querySelector("#fixture").replaceChildren(blockedTarget);
+      const blocked = await dragSelectText(blockedTarget);
+      const blockerPreventedSelection = blocked.defaultPrevented && Boolean(getSelection()?.isCollapsed);
+      return {
+        ok: !baseline.defaultPrevented && selected && pointerMoved && mouseMoved && blockerPreventedSelection,
+        capability,
+        nativeSupported: selected && pointerMoved && mouseMoved && blockerPreventedSelection
+      };
+    }
+    if (capability === "copy-shortcut") {
+      const target = document.createElement("textarea");
+      target.value = "cut me";
+      document.querySelector("#fixture").replaceChildren(target);
+      const copy = await copyShortcut(target, "copy");
+      const copyPreserved = target.value === "cut me";
+      const cut = await copyShortcut(target, "cut");
+      const cutDeleted = target.value === "";
+      const blockedTarget = document.createElement("textarea");
+      blockedTarget.value = "must remain";
+      blockedTarget.addEventListener("keydown", event => event.preventDefault());
+      document.querySelector("#fixture").replaceChildren(blockedTarget);
+      const blocked = await copyShortcut(blockedTarget, "cut");
+      const blockerStoppedDefault = blocked.defaultPrevented && blockedTarget.value === "must remain";
+      return {
+        ok: !copy.defaultPrevented && !cut.defaultPrevented && copyPreserved && cutDeleted && blockerStoppedDefault,
+        capability,
+        nativeSupported: copyPreserved && cutDeleted && blockerStoppedDefault
+      };
     }
     if (capability !== "focus") return { ok: false, capability, category: "dom-state" };
     const input = document.createElement("input");

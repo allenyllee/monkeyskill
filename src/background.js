@@ -19,6 +19,7 @@ import {
   buildTesterMessages,
   endpointOriginPattern,
   extractCriterionIds,
+  extractSharedTestFramework,
   normalizeLlmSettings,
   publicLlmSettings,
   scanGeneratedBuild
@@ -364,6 +365,7 @@ async function prepareGenerationRequest(packageDefinition) {
   ]);
   const builderMessages = buildGenerationMessages({
     installerInstructions,
+    testFrameworkInstructions: extractSharedTestFramework(testerInstructions),
     skillInstructions,
     skill: packageDefinition.skill
   });
@@ -420,6 +422,11 @@ async function handleGenerationCompletion(message, sender) {
     const generatedPackage = message.packageDefinition;
     await validateUserScriptBuild(generatedPackage);
     generatedPackage.build.validation.push("chrome-userScripts-parse");
+    const selfTestResults = generatedPackage.build.selfTestResults ?? [];
+    const selfPassedCount = selfTestResults.filter(result => result.ok).length;
+    const selfInconclusiveCount = selfTestResults.filter(result => result.inconclusive).length;
+    generatedPackage.build.validation.push(`builder-self-tests:${selfPassedCount}/${selfTestResults.length}`);
+    if (selfInconclusiveCount > 0) generatedPackage.build.validation.push(`builder-self-inconclusive:${selfInconclusiveCount}`);
     const behaviorResults = generatedPackage.build.behaviorTests;
     const inconclusiveCount = behaviorResults.filter(result => result.inconclusive).length;
     const passedCount = behaviorResults.filter(result => result.ok).length;
@@ -556,6 +563,10 @@ function publicGeneratedDraft(packageDefinition) {
     summary: build.summary,
     validation: build.validation,
     generation: build.generation,
+    selfTestCount: Array.isArray(build.selfTests?.tests) ? build.selfTests.tests.length : 0,
+    selfInconclusiveCount: Array.isArray(build.selfTestResults)
+      ? build.selfTestResults.filter(result => result.inconclusive).length
+      : 0,
     testCount: Array.isArray(build.testSpec?.tests) ? build.testSpec.tests.length : 0,
     inconclusiveCount: Array.isArray(build.behaviorTests)
       ? build.behaviorTests.filter(result => result.inconclusive).length

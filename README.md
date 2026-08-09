@@ -20,12 +20,12 @@ No source code or visual assets from the referenced extension are included.
 - A two-step LLM workflow: generate and validate a draft, then explicitly approve installation.
 - A locally generated, schema-constrained TestSpec that is created independently from the build and run in isolated sandbox frames before both review and installation.
 - Durable offscreen generation jobs, so multi-minute LLM requests survive MV3 service-worker suspension and Store refreshes preserve running, failed, and ready outcomes.
-- Independent local testing: isolated Builder and Tester LLM conversations read the same human specification; only the Tester produces a constrained TestSpec, and the Builder never receives it.
+- Shared-framework local testing: the Builder produces public self-tests beside each candidate and receives detailed structured traces from the same Runner used for final validation. A separate Tester conversation still produces a hidden TestSpec that the Builder never receives.
 - A non-executable test DSL covering DOM, events, forms, computed styles, geometry, relative layout, visibility, hit-testing, focus, scrolling, contrast, and ARIA ID relationships.
 - High-level `paste-text` and `drag-select-text` DSL workflows replay complete browser interaction sequences; schema validation rejects weaker hand-written substitutes when paste or selection blockers are present.
 - `click-control` and `click-page` workflows verify that restoring a protected page selection neither steals focus from a deliberately clicked control nor prevents an ordinary page click from dismissing the selection.
 - Release-time selection blockers are replayed across a page-world callback checkpoint, preventing capture-phase microtask restoration from receiving a false pass that does not match real Chrome ordering.
-- Runner capability self-tests and a trusted focus tracker prevent hidden/offscreen browser limitations from being misreported as Builder failures; unsupported primitives are surfaced as inconclusive instead of entering the repair prompt.
+- Runner primitive conformance tests verify focus, hit-testing, drag selection, and copy/cut default behavior before candidate tests run; unsupported or broken primitives are surfaced as inconclusive instead of being misreported as Builder failures.
 - Diagnostic-driven generation retries use three attempts by default, extend to the full five after a diagnostic improvement, and stop immediately when the generated build hash is unchanged.
 - Runtime-generated builds installed through `chrome.userScripts` while packaged builds continue to use `chrome.scripting`.
 
@@ -47,7 +47,7 @@ For LLM-generated builds, open the extension's details page and enable **Allow U
 2. Enter an OpenAI-compatible Chat Completions endpoint, model name, and your own API key.
 3. Save the settings and approve access only to that API origin.
 4. Select **Generate and validate with my LLM**.
-5. MonkeySkill validates the independently generated TestSpec, runs it in isolated frames, and returns only fixed criterion/category diagnostics to the Builder when repair is needed.
+5. MonkeySkill first validates and runs the Builder's public self-tests in isolated frames. Self-test failures return detailed step traces to the Builder; after they pass, an independent hidden TestSpec runs in the same Runner and exposes only fixed criterion/category diagnostics.
 6. Review the summary, validation results, hash, and complete generated JS/CSS.
 7. Select **Approve and install** or discard the draft. The same build is tested again immediately before installation.
 
@@ -108,7 +108,7 @@ Development follows the same lifecycle as a future user installation:
 ```text
 skills/restore-right-click/            Human-readable specification only
         +
-local independent Tester conversation  Constrained TestSpec generated at install time
+Builder public self-tests + independent Tester hidden TestSpec, both generated locally
         +
 generated/restore-right-click/1.2.0/   Optional bundled build descriptor
         ↓
@@ -127,7 +127,7 @@ chrome.scripting registrations
 
 - `skills/restore-right-click/` contains only the first Monkey Skill specification and manifest; it contains no executable or declarative tests.
 - `skills/mskill-creator/` defines how an agent authors implementation-independent MSkill specifications.
-- `skills/mskill-installer/` is the isolated Builder policy used when the user's LLM compiles a specification.
+- `skills/mskill-installer/` is the isolated Builder policy used when the user's LLM compiles a specification and authors public self-tests with the shared framework.
 - `skills/mskill-tester/` is the separate Tester policy that translates visible criteria into a non-executable TestSpec DSL.
 - `generated/restore-right-click/1.2.0/` contains the current optional bundled build descriptor; generated tests are local installation artifacts rather than shared MSkill content.
 - `packages/*.mskill.json` joins one specification and one generated build into a single installable package descriptor.
@@ -143,4 +143,4 @@ The preinstalled build uses packaged scripts through `chrome.scripting`, so it w
 
 ## Security boundary
 
-The Restore right click skill has no network, cookie, history, or download capability. Generated code is rejected when basic static checks detect forbidden APIs or remote content, Chrome parses it through a temporary `userScripts` registration, and a locally generated constrained TestSpec runs in sandboxed frames before review and again before installation. Neither shared MSkills nor the independent Tester can provide HTML, executable test code, remote URLs, or free-form failure messages. These checks reduce risk but do not prove arbitrary JavaScript safe, so installation remains a separate explicit user action. Absolute mode intentionally changes page-level event behavior and can break legitimate custom context menus; disable it for affected sites.
+The Restore right click skill has no network, cookie, history, or download capability. Generated code is rejected when basic static checks detect forbidden APIs or remote content, Chrome parses it through a temporary `userScripts` registration, and Builder-authored public self-tests plus an independently generated hidden TestSpec run in sandboxed frames before review. The hidden TestSpec runs again before installation. Neither shared MSkills nor either test producer can provide HTML, executable test code, remote URLs, or free-form failure messages. These checks reduce risk but do not prove arbitrary JavaScript safe, so installation remains a separate explicit user action. Absolute mode intentionally changes page-level event behavior and can break legitimate custom context menus; disable it for affected sites.

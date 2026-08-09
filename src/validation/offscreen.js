@@ -1,7 +1,9 @@
 import {
   buildRepairMessage,
+  buildSelfTestRepairMessage,
   extractAssistantText,
   parseGeneratedBuild,
+  parseGeneratedSelfTests,
   scanGeneratedBuild
 } from "../lib/llm.js";
 import { parseGeneratedTestSpec, validateTestSpec } from "../lib/test-spec.js";
@@ -42,16 +44,68 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
     let retryState = createRetryState();
 
     for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
-      const build = parseGeneratedBuild(assistantText, packageDefinition.skill);
+      let build;
+      let selfTests;
+      try {
+        build = parseGeneratedBuild(assistantText, packageDefinition.skill);
+        selfTests = parseGeneratedSelfTests(
+          assistantText,
+          packageDefinition.skill,
+          packageDefinition.criteria
+        );
+      } catch (error) {
+        if (attempt >= MAX_GENERATION_ATTEMPTS) throw error;
+        builderMessages.push(
+          { role: "assistant", content: assistantText },
+          {
+            role: "user",
+            content: [
+              "The candidate JSON or its public selfTests were rejected by the trusted schema validator.",
+              `Validator category: ${builderErrorCategory(error.message)}`,
+              "Return the complete build and complete selfTests using only the original SKILL.md and shared MonkeyTest framework."
+            ].join("\n")
+          }
+        );
+        assistantText = await requestAssistantText(request, {
+          ...request.builderBody,
+          messages: builderMessages
+        }, builderSessionId);
+        continue;
+      }
       build.validation = scanGeneratedBuild(build, packageDefinition.skill);
+      const buildHash = await sha256(JSON.stringify(build.modes));
+      const candidateHash = await sha256(JSON.stringify({ modes: build.modes, selfTests }));
       build.generation = {
         provider: new URL(request.endpoint).origin,
         model: request.model,
         testerModel: request.model,
         generatedAt: new Date().toISOString(),
         attempts: attempt,
-        hash: await sha256(JSON.stringify(build.modes))
+        hash: buildHash
       };
+      const selfTestResponse = await runTestSpec({ testSpec: selfTests, build, publicDiagnostics: true });
+      const failedSelfTests = selfTestResponse.results.filter(result => !result.ok && !result.inconclusive);
+      if (failedSelfTests.length > 0) {
+        const retryDecision = evaluateGenerationRetry(retryState, {
+          attempt,
+          hash: candidateHash,
+          failures: failedSelfTests
+        });
+        retryState = retryDecision.state;
+        if (!retryDecision.retry) {
+          const detail = failedSelfTests.map(formatLocalFailure).join("; ");
+          throw new Error(`Builder self-tests failed ${failedSelfTests.length}/${selfTestResponse.results.length} checks after ${attempt} attempts (${retryDecision.reason}): ${detail}`);
+        }
+        builderMessages.push(
+          { role: "assistant", content: assistantText },
+          { role: "user", content: buildSelfTestRepairMessage(failedSelfTests) }
+        );
+        assistantText = await requestAssistantText(request, {
+          ...request.builderBody,
+          messages: builderMessages
+        }, builderSessionId);
+        continue;
+      }
       const behaviorResponse = await runTestSpec({ testSpec, build });
       const failed = behaviorResponse.results.filter(result => !result.ok && !result.inconclusive);
       if (failed.length === 0) {
@@ -59,6 +113,8 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
           skill: packageDefinition.skill,
           build: {
             ...build,
+            selfTests,
+            selfTestResults: selfTestResponse.results,
             testSpec,
             behaviorTests: behaviorResponse.results,
             runnerCapabilities: behaviorResponse.capabilities
@@ -82,7 +138,7 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
       }
       const retryDecision = evaluateGenerationRetry(retryState, {
         attempt,
-        hash: build.generation.hash,
+        hash: candidateHash,
         failures: failed
       });
       retryState = retryDecision.state;
@@ -172,7 +228,7 @@ async function runValidatedTestSpec({ testSpec, criteria, skill, build }) {
   return runTestSpec({ testSpec: normalized, build });
 }
 
-async function runTestSpec({ testSpec, build }) {
+async function runTestSpec({ testSpec, build, publicDiagnostics = false }) {
   const capabilities = await runCapabilitySelfTests(testSpec);
   const results = [];
   for (const test of testSpec.tests) {
@@ -199,14 +255,19 @@ async function runTestSpec({ testSpec, build }) {
       continue;
     }
     const result = await runCase({ test, artifact });
-    results.push({
+    const testResult = {
       criterion: test.criterion,
       mode: test.mode,
       ok: Boolean(result.ok),
       category: result.category || "dom-state",
       assertion: result.assertion || null,
       diagnostic: result.diagnostic || null
-    });
+    };
+    if (publicDiagnostics) {
+      testResult.testId = test.id;
+      testResult.trace = Array.isArray(result.trace) ? result.trace : [];
+    }
+    results.push(testResult);
   }
   return {
     ok: results.every(result => result.ok || result.inconclusive),
@@ -229,6 +290,8 @@ function requiredCapabilities(test) {
   const capabilities = [];
   if (test.assertions.some(assertion => assertion.type === "active-element")) capabilities.push("focus");
   if (test.assertions.some(assertion => assertion.type === "hit-test")) capabilities.push("hit-test");
+  if (test.steps.some(step => step.action === "drag-select-text")) capabilities.push("drag-select-text");
+  if (test.steps.some(step => step.action === "copy-shortcut")) capabilities.push("copy-shortcut");
   return capabilities;
 }
 
@@ -279,6 +342,12 @@ function testerErrorCategory(message) {
   if (/step|action/i.test(message)) return "step-schema";
   if (/assertion/i.test(message)) return "assertion-schema";
   return "testspec-schema";
+}
+
+function builderErrorCategory(message) {
+  if (/selfTests|TestSpec/i.test(message)) return testerErrorCategory(message);
+  if (/JavaScript|CSS|mode|build/i.test(message)) return "build-schema";
+  return "candidate-schema";
 }
 
 async function sha256(value) {

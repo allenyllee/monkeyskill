@@ -13,7 +13,7 @@ Create a behavior-level source package that another LLM can independently compil
 2. Declare only the capabilities required by the behavior.
 3. Explicitly forbid sensitive capabilities that are unnecessary.
 4. Give every human-readable success criterion a stable `[criterion:id]` marker in `SKILL.md`.
-5. Do not create acceptance tests, fixtures, test scripts, or hidden requirements. MonkeySkill generates tests independently at installation time.
+5. Do not package acceptance tests, fixtures, test scripts, or hidden requirements. At installation time the Builder creates local public self-tests and an independent Tester creates a local hidden TestSpec from the same human-readable criteria.
 6. Validate the manifest against [references/mskill-schema.md](references/mskill-schema.md).
 
 ## Output
@@ -33,7 +33,7 @@ Use lowercase hyphenated IDs. Treat the human-readable specification as the cano
 - Specify outcomes rather than implementation details.
 - Make every mode meaningfully distinct.
 - Include failure and safety cases, not only the happy path.
-- Include no test files. An independent Tester LLM generates a constrained TestSpec locally from this same human-readable specification during installation.
+- Include no test files. The Builder and independent Tester generate separate constrained TestSpecs locally from this same human-readable specification during installation.
 - Make criteria observable enough that an independent tester can verify them without inventing requirements.
 - When timing or a multi-event user gesture matters, describe the complete observable workflow in plain language (for example, paste through the resulting input event or selection after pointer release) without prescribing implementation code.
 - Do not claim full compatibility with all websites.
