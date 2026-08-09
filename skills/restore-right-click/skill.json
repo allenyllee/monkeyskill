@@ -7,6 +7,5 @@
   "capabilities": ["dom", "events", "styles"],
   "forbiddenCapabilities": ["network", "cookies", "history", "downloads"],
   "modes": ["standard", "absolute"],
-  "entrypoint": "SKILL.md",
-  "tests": "tests/acceptance.json"
+  "entrypoint": "SKILL.md"
 }

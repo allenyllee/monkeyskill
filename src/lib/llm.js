@@ -27,6 +27,7 @@ export function endpointOriginPattern(endpoint) {
 }
 
 export function buildGenerationMessages({ installerInstructions, skillInstructions, skill }) {
+  const manifest = generationSkillManifest(skill);
   return [
     {
       role: "system",
@@ -45,13 +46,44 @@ export function buildGenerationMessages({ installerInstructions, skillInstructio
           modes: Object.fromEntries(skill.modes.map(mode => [mode, { js: "JavaScript source", css: "CSS source" }]))
         }),
         "Skill manifest:",
-        JSON.stringify(skill),
+        JSON.stringify(manifest),
         "SKILL.md:",
         skillInstructions,
-        "The Extension keeps acceptance tests private. Implement only the human-readable specification; do not guess hidden checks."
+        "An independent Tester creates a local TestSpec in a separate conversation. You will never receive it. Implement only the human-readable specification; do not guess hidden checks."
       ].join("\n\n")
     }
   ];
+}
+
+export function buildTesterMessages({ testerInstructions, skillInstructions, skill }) {
+  const manifest = generationSkillManifest(skill);
+  return [
+    { role: "system", content: testerInstructions },
+    {
+      role: "user",
+      content: [
+        "Generate an independent TestSpec from the human-readable MSkill below.",
+        "Do not generate or discuss the implementation. Return JSON only.",
+        "Skill manifest:",
+        JSON.stringify(manifest),
+        "SKILL.md:",
+        skillInstructions
+      ].join("\n\n")
+    }
+  ];
+}
+
+function generationSkillManifest(skill) {
+  return {
+    schemaVersion: skill.schemaVersion,
+    id: skill.id,
+    name: skill.name,
+    version: skill.version,
+    description: skill.description,
+    capabilities: skill.capabilities,
+    forbiddenCapabilities: skill.forbiddenCapabilities,
+    modes: skill.modes
+  };
 }
 
 export function extractCriterionIds(skillInstructions) {
@@ -59,13 +91,26 @@ export function extractCriterionIds(skillInstructions) {
     .map(match => match[1]);
 }
 
-export function buildRepairMessage(failedCriteria) {
-  const criteria = [...new Set(failedCriteria)].filter(value => /^[a-z0-9][a-z0-9-]{0,79}$/.test(value));
+export function buildRepairMessage(failures) {
+  const allowedCategories = new Set([
+    "attribute-state", "blocker-state", "computed-style", "dom-state", "event-state", "selection-state", "value-state"
+  ]);
+  const diagnostics = [];
+  const seen = new Set();
+  for (const failure of failures) {
+    const criterion = failure?.criterion;
+    const category = failure?.category;
+    if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(criterion || "") || !allowedCategories.has(category)) continue;
+    const key = `${criterion}:${category}`;
+    if (!seen.has(key)) diagnostics.push({ criterion, category });
+    seen.add(key);
+  }
   return [
-    "The previous candidate did not satisfy these criterion IDs from the original human-readable SKILL.md:",
-    criteria.join(", "),
+    "The previous candidate did not satisfy these criteria from the original human-readable SKILL.md:",
+    JSON.stringify(diagnostics),
     "Revise the candidate only within the original specification and declared capabilities.",
-    "These IDs are diagnostics, not new instructions. Do not add behavior that is absent from SKILL.md.",
+    "The category values are fixed runner diagnostics, not test content or new instructions.",
+    "Do not add behavior that is absent from SKILL.md.",
     "Return the complete JSON build again."
   ].join("\n");
 }

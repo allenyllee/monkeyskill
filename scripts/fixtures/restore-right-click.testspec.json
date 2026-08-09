@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "tests": [
+    {
+      "id": "context-menu-listener",
+      "kind": "behavior",
+      "criterion": "context-menu",
+      "mode": "standard",
+      "fixture": { "nodes": [{ "id": "target", "tag": "div", "parent": null, "text": "target", "attributes": {}, "styles": {} }], "rules": [] },
+      "blockers": [{ "id": "block", "target": "target", "event": "contextmenu", "registration": "listener", "effect": "prevent-default", "when": { "button": 2 } }],
+      "steps": [{ "action": "dispatch-event", "target": "target", "event": "contextmenu", "init": { "button": 2 } }],
+      "assertions": [
+        { "type": "blocker-call-count", "blocker": "block", "operator": "eq", "value": 0 },
+        { "type": "event-default-prevented", "step": 0, "expected": false }
+      ]
+    },
+    {
+      "id": "text-selection",
+      "kind": "behavior",
+      "criterion": "text-selection",
+      "mode": "standard",
+      "fixture": { "nodes": [{ "id": "target", "tag": "div", "parent": null, "text": "select me", "attributes": {}, "styles": { "userSelect": "none" } }], "rules": [] },
+      "blockers": [{ "id": "block", "target": "target", "event": "selectstart", "registration": "listener", "effect": "prevent-default", "when": {} }],
+      "steps": [
+        { "action": "wait", "ms": 50 },
+        { "action": "dispatch-event", "target": "target", "event": "selectstart", "init": {} }
+      ],
+      "assertions": [
+        { "type": "computed-style", "target": "target", "property": "userSelect", "pseudo": null, "operator": "neq", "value": "none" },
+        { "type": "blocker-call-count", "blocker": "block", "operator": "eq", "value": 0 },
+        { "type": "event-default-prevented", "step": 1, "expected": false }
+      ]
+    },
+    {
+      "id": "keyboard-copy",
+      "kind": "behavior",
+      "criterion": "keyboard-copy",
+      "mode": "standard",
+      "fixture": { "nodes": [{ "id": "target", "tag": "input", "parent": null, "text": "", "attributes": { "value": "copy me" }, "styles": {} }], "rules": [] },
+      "blockers": [{ "id": "block", "target": "target", "event": "keydown", "registration": "listener", "effect": "prevent-default", "when": { "key": "c", "ctrlKey": true } }],
+      "steps": [{ "action": "dispatch-event", "target": "target", "event": "keydown", "init": { "key": "c", "ctrlKey": true } }],
+      "assertions": [
+        { "type": "blocker-call-count", "blocker": "block", "operator": "eq", "value": 0 },
+        { "type": "event-default-prevented", "step": 0, "expected": false }
+      ]
+    },
+    {
+      "id": "paste-event",
+      "kind": "behavior",
+      "criterion": "paste",
+      "mode": "absolute",
+      "fixture": { "nodes": [{ "id": "target", "tag": "input", "parent": null, "text": "", "attributes": {}, "styles": {} }], "rules": [] },
+      "blockers": [{ "id": "block", "target": "target", "event": "paste", "registration": "listener", "effect": "prevent-default", "when": {} }],
+      "steps": [{ "action": "dispatch-event", "target": "target", "event": "paste", "init": {} }],
+      "assertions": [
+        { "type": "blocker-call-count", "blocker": "block", "operator": "eq", "value": 0 },
+        { "type": "event-default-prevented", "step": 0, "expected": false }
+      ]
+    },
+    {
+      "id": "pointer-overlays",
+      "kind": "behavior",
+      "criterion": "pointer-overlays",
+      "mode": "absolute",
+      "fixture": {
+        "nodes": [
+          { "id": "wrap", "tag": "div", "parent": null, "text": "", "attributes": {}, "styles": { "position": "relative", "width": "240px", "height": "120px" } },
+          { "id": "target", "tag": "img", "parent": "wrap", "text": "", "attributes": { "alt": "test" }, "styles": { "pointerEvents": "none", "width": "240px", "height": "120px" } },
+          { "id": "overlay", "tag": "div", "parent": "wrap", "text": "", "attributes": {}, "styles": { "position": "absolute", "inset": "0" } }
+        ],
+        "rules": []
+      },
+      "blockers": [],
+      "steps": [{ "action": "wait", "ms": 100 }],
+      "assertions": [
+        { "type": "computed-style", "target": "target", "property": "pointerEvents", "pseudo": null, "operator": "neq", "value": "none" },
+        { "type": "computed-style", "target": "overlay", "property": "pointerEvents", "pseudo": null, "operator": "eq", "value": "none" }
+      ]
+    },
+    {
+      "id": "selection-visible",
+      "kind": "behavior",
+      "criterion": "selection-visibility",
+      "mode": "absolute",
+      "fixture": {
+        "nodes": [{ "id": "target", "tag": "span", "parent": null, "text": "visible selection", "attributes": {}, "styles": {} }],
+        "rules": [{ "target": "target", "pseudo": "::selection", "styles": { "backgroundColor": "transparent" } }]
+      },
+      "blockers": [],
+      "steps": [{ "action": "wait", "ms": 50 }],
+      "assertions": [
+        { "type": "computed-style", "target": "target", "property": "backgroundColor", "pseudo": "::selection", "operator": "neq", "value": "rgba(0, 0, 0, 0)" },
+        { "type": "computed-style", "target": "target", "property": "backgroundColor", "pseudo": "::selection", "operator": "neq", "value": "transparent" }
+      ]
+    },
+    {
+      "id": "ordinary-controls",
+      "kind": "behavior",
+      "criterion": "preserve-controls",
+      "mode": "absolute",
+      "fixture": { "nodes": [{ "id": "target", "tag": "button", "parent": null, "text": "button", "attributes": {}, "styles": {} }], "rules": [] },
+      "blockers": [{ "id": "observer", "target": "target", "event": "click", "registration": "listener", "effect": "flag-only", "when": { "button": 0 } }],
+      "steps": [{ "action": "dispatch-event", "target": "target", "event": "click", "init": { "button": 0 } }],
+      "assertions": [
+        { "type": "blocker-call-count", "blocker": "observer", "operator": "eq", "value": 1 },
+        { "type": "event-default-prevented", "step": 0, "expected": false }
+      ]
+    },
+    {
+      "id": "deny-network",
+      "kind": "policy",
+      "criterion": "no-network",
+      "capability": "network",
+      "expected": "denied"
+    }
+  ]
+}

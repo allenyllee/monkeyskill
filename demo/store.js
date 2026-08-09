@@ -96,6 +96,9 @@ async function reviewDraft(draft) {
     copy: draft.summary,
     details: [
       `Model: ${draft.generation.model}`,
+      `Tester: ${draft.generation.testerModel}`,
+      `Generation attempts: ${draft.generation.attempts}`,
+      `Independent tests: ${draft.testCount}`,
       `Hash: ${draft.generation.hash.slice(0, 16)}`,
       `Validation: ${draft.validation.join(", ")}`,
       ...Object.entries(draft.modes).map(([mode, value]) => `${mode}: JS ${value.jsBytes} bytes / CSS ${value.cssBytes} bytes`)
@@ -142,7 +145,7 @@ async function restoreWorkflow() {
 }
 
 async function waitForGeneration(skillId) {
-  const deadline = Date.now() + 11 * 60 * 1000;
+  const deadline = Date.now() + 21 * 60 * 1000;
   while (Date.now() < deadline) {
     const statusResponse = await rpc("status", skillId);
     if (!statusResponse.ok) throw new Error(statusResponse.error);

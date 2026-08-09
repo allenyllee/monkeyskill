@@ -16,6 +16,7 @@ import {
 import {
   LLM_SETTINGS_KEY,
   buildGenerationMessages,
+  buildTesterMessages,
   endpointOriginPattern,
   extractCriterionIds,
   normalizeLlmSettings,
@@ -26,7 +27,7 @@ import {
 const PRIMARY_SKILL_ID = "restore-right-click";
 const PENDING_BUILDS_KEY = "pendingSkillBuilds";
 const GENERATION_JOBS_KEY = "generationJobs";
-const GENERATION_STALE_MS = 7 * 60 * 1000;
+const GENERATION_STALE_MS = 20 * 60 * 1000;
 let initializationPromise;
 let registrationQueue = Promise.resolve();
 let offscreenCreationPromise;
@@ -195,8 +196,8 @@ async function handleMessage(message, sender) {
         const entry = registry.find(candidate => candidate.package === `packages/${skillId}.mskill.json`);
         if (!entry) throw new Error(`Bundled MSkill not found: ${skillId}`);
         const packageDefinition = await loadBundledPackage(entry);
-        const { request, tests } = await prepareGenerationRequest(packageDefinition);
-        packageDefinition.tests = tests;
+        const { request, criteria } = await prepareGenerationRequest(packageDefinition);
+        packageDefinition.criteria = criteria;
         await ensureValidationDocument();
         const accepted = await chrome.runtime.sendMessage({
           target: "validation-offscreen",
@@ -348,13 +349,18 @@ async function prepareGenerationRequest(packageDefinition) {
 
   const skillPath = packageDefinition.source.skillPath;
   const skillRoot = skillPath.slice(0, skillPath.lastIndexOf("/") + 1);
-  const [installerInstructions, skillInstructions, tests] = await Promise.all([
+  const [installerInstructions, testerInstructions, skillInstructions] = await Promise.all([
     loadAgentSkill("mskill-installer"),
-    loadTextAsset(`${skillRoot}${packageDefinition.skill.entrypoint}`),
-    loadJsonAsset(`${skillRoot}${packageDefinition.skill.tests}`)
+    loadAgentSkill("mskill-tester"),
+    loadTextAsset(`${skillRoot}${packageDefinition.skill.entrypoint}`)
   ]);
-  const messages = buildGenerationMessages({
+  const builderMessages = buildGenerationMessages({
     installerInstructions,
+    skillInstructions,
+    skill: packageDefinition.skill
+  });
+  const testerMessages = buildTesterMessages({
+    testerInstructions,
     skillInstructions,
     skill: packageDefinition.skill
   });
@@ -366,14 +372,20 @@ async function prepareGenerationRequest(packageDefinition) {
       endpoint: settings.endpoint,
       apiKey: settings.apiKey,
       model: settings.model,
-      body: {
+      builderBody: {
         model: settings.model,
-        messages,
+        messages: builderMessages,
+        temperature: 0,
+        response_format: { type: "json_object" }
+      },
+      testerBody: {
+        model: settings.model,
+        messages: testerMessages,
         temperature: 0,
         response_format: { type: "json_object" }
       }
     },
-    tests: { suite: tests, criteria }
+    criteria
   };
 }
 
@@ -462,19 +474,17 @@ async function validateUserScriptBuild(packageDefinition) {
 
 async function validatePackagedBehavior(packageDefinition) {
   const skillPath = packageDefinition.source.skillPath;
-  if (!skillPath) throw new Error("Generated Skill is missing its packaged test location.");
+  if (!skillPath) throw new Error("Generated Skill is missing its packaged specification location.");
   const skillRoot = skillPath.slice(0, skillPath.lastIndexOf("/") + 1);
-  const suite = await loadJsonAsset(`${skillRoot}${packageDefinition.skill.tests}`);
-  if (suite.schemaVersion !== 2 || !Array.isArray(suite.tests) || "runner" in suite) {
-    throw new Error("MSkill must include a declarative browser test suite.");
-  }
   const skillInstructions = await loadTextAsset(`${skillRoot}${packageDefinition.skill.entrypoint}`);
   const criteria = extractCriterionIds(skillInstructions);
+  const testSpec = packageDefinition.build.testSpec;
+  if (!testSpec) throw new Error("Generated build is missing its independently generated TestSpec.");
   await ensureValidationDocument();
   const response = await chrome.runtime.sendMessage({
     target: "validation-offscreen",
     type: "run-behavior-tests",
-    suite,
+    testSpec,
     criteria,
     skill: packageDefinition.skill,
     build: packageDefinition.build
@@ -482,7 +492,7 @@ async function validatePackagedBehavior(packageDefinition) {
   if (!response?.results) throw new Error(response?.error || "Behavior test runner did not respond.");
   const failed = response.results.filter(result => !result.ok);
   if (failed.length > 0) {
-    const detail = failed.map(result => `${result.id}: ${result.error}`).join("; ");
+    const detail = failed.map(result => `${result.criterion}:${result.category}`).join("; ");
     throw new Error(`Generated build failed behavior tests (${failed.length}/${response.results.length}): ${detail}`);
   }
   return response.results;
@@ -502,7 +512,7 @@ async function ensureValidationDocument() {
   offscreenCreationPromise ??= chrome.offscreen.createDocument({
     url: "src/validation/offscreen.html",
     reasons: ["IFRAME_SCRIPTING"],
-    justification: "Run packaged MSkill acceptance tests in isolated sandbox frames before installation."
+    justification: "Generate and run independent constrained MSkill TestSpecs in isolated sandbox frames before installation."
   }).finally(() => {
     offscreenCreationPromise = null;
   });
@@ -535,6 +545,7 @@ function publicGeneratedDraft(packageDefinition) {
     summary: build.summary,
     validation: build.validation,
     generation: build.generation,
+    testCount: Array.isArray(build.testSpec?.tests) ? build.testSpec.tests.length : 0,
     modes: Object.fromEntries(Object.entries(build.modes).map(([mode, artifact]) => [mode, {
       js: artifact.js,
       css: artifact.css,

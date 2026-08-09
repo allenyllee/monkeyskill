@@ -1,0 +1,4 @@
+interface:
+  display_name: "MSkill Tester"
+  short_description: "Generate independent constrained TestSpecs"
+  default_prompt: "Use $mskill-tester to generate an independent constrained TestSpec from a human-readable MSkill."

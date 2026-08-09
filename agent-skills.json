@@ -10,5 +10,11 @@
     "entrypoint": "skills/mskill-installer/SKILL.md",
     "role": "compile-and-install",
     "preinstall": true
+  },
+  {
+    "id": "mskill-tester",
+    "entrypoint": "skills/mskill-tester/SKILL.md",
+    "role": "generate-independent-tests",
+    "preinstall": true
   }
 ]

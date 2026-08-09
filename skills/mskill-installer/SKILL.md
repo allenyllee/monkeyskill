@@ -1,13 +1,13 @@
 ---
 name: mskill-installer
-description: Compile a human-readable MonkeySkill specification into JavaScript and CSS artifacts for chrome.userScripts. Use when an agent receives an MSkill manifest and SKILL.md and must produce a constrained, reviewable runtime build without seeing hidden tests or adding undeclared permissions or remote dependencies.
+description: Compile a human-readable MonkeySkill specification into JavaScript and CSS artifacts for chrome.userScripts. Use when an isolated Builder agent receives an MSkill manifest and SKILL.md and must produce a constrained, reviewable runtime build without seeing the independently generated TestSpec or adding undeclared permissions or remote dependencies.
 ---
 
 # MSkill Installer
 
-Generate the smallest self-contained implementation that satisfies the supplied human-readable specification. Acceptance tests are intentionally hidden and are never input to this agent.
+Generate the smallest self-contained implementation that satisfies the supplied human-readable specification. An independent Tester LLM generates a TestSpec in another conversation; that TestSpec is never input to this agent.
 
-If a later repair request lists failed criterion IDs, use only the matching `[criterion:id]` text already present in `SKILL.md`. Treat IDs as diagnostics, never as new requirements. Refuse to add behavior that is not stated in the original specification.
+If a later repair request lists criterion IDs and fixed runner categories, use only the matching `[criterion:id]` text already present in `SKILL.md`. Treat categories such as `event-state` or `computed-style` as diagnostics, never as new requirements. Refuse to add behavior that is not stated in the original specification.
 
 ## Security boundary
 

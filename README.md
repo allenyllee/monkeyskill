@@ -12,15 +12,15 @@ No source code or visual assets from the referenced extension are included.
 - Per-site overrides over a global default.
 - Optional host permissions requested only when the user enables a scope.
 - Local-only settings; no analytics or network requests.
-- A human-readable `SKILL.md`, capability manifest, and acceptance-test specification, stored separately from generated code.
+- A portable source containing only human-readable `SKILL.md` criteria and a capability manifest, stored separately from generated code.
 - A single `.mskill.json` package descriptor that joins the separate specification and build at install time.
 - A generic package installer used by bundled/preinstalled Skills and future imported `.mskill` packages.
 - Uninstall/reinstall behavior that does not silently restore a removed preinstalled Skill on restart.
 - BYOK settings for an OpenAI-compatible Chat Completions endpoint, model, and API key.
 - A two-step LLM workflow: generate and validate a draft, then explicitly approve installation.
-- Sixteen fixed executable behavior tests packaged with the MSkill and run in isolated sandbox frames before both review and installation.
+- A locally generated, schema-constrained TestSpec that is created independently from the build and run in isolated sandbox frames before both review and installation.
 - Durable offscreen generation jobs, so multi-minute LLM requests survive MV3 service-worker suspension and Store refreshes preserve running, failed, and ready outcomes.
-- Hidden declarative acceptance checks: the build LLM receives only the trusted installer policy, capability manifest, and human-readable `SKILL.md`; MSkill packages cannot supply executable test code.
+- Independent local testing: isolated Builder and Tester LLM conversations read the same human specification; only the Tester produces a constrained TestSpec, and the Builder never receives it.
 - Runtime-generated builds installed through `chrome.userScripts` while packaged builds continue to use `chrome.scripting`.
 
 ## Load in Chrome
@@ -41,7 +41,7 @@ For LLM-generated builds, open the extension's details page and enable **Allow U
 2. Enter an OpenAI-compatible Chat Completions endpoint, model name, and your own API key.
 3. Save the settings and approve access only to that API origin.
 4. Select **Generate and validate with my LLM**.
-5. MonkeySkill runs the packaged behavior suite in isolated frames; a failing build is rejected before review.
+5. MonkeySkill validates the independently generated TestSpec, runs it in isolated frames, and returns only fixed criterion/category diagnostics to the Builder when repair is needed.
 6. Review the summary, validation results, hash, and complete generated JS/CSS.
 7. Select **Approve and install** or discard the draft. The same build is tested again immediately before installation.
 
@@ -57,7 +57,7 @@ npm run serve:demo
 
 Then open `http://127.0.0.1:4173/store.html` for the local MSkill Store, or `http://127.0.0.1:4173/blocked.html` for the 16-method behavior matrix.
 
-The Store reads the Extension's packaged catalog, asks before sending an MSkill to the configured LLM, waits for static and packaged behavior validation, shows the model/hash/validation summary, asks for final approval, and only then installs the generated build. Its page bridge is injected only on the two local Store URLs declared in `manifest.json`; background handlers independently verify the sender URL.
+The Store reads the Extension's packaged catalog, asks before sending an MSkill to the configured LLM, waits for static and independently generated behavior validation, shows the model/hash/validation summary, asks for final approval, and only then installs the generated build. Its page bridge is injected only on the two local Store URLs declared in `manifest.json`; background handlers independently verify the sender URL.
 
 ## Local agent API
 
@@ -100,9 +100,11 @@ npm run check
 Development follows the same lifecycle as a future user installation:
 
 ```text
-skills/restore-right-click/            Human-readable specification
+skills/restore-right-click/            Human-readable specification only
         +
-generated/restore-right-click/1.2.0/   Build descriptor for the current tested Skill version
+local independent Tester conversation  Constrained TestSpec generated at install time
+        +
+generated/restore-right-click/1.2.0/   Optional bundled build descriptor
         ↓
 packages/restore-right-click.mskill.json
         ↓
@@ -117,13 +119,14 @@ chrome.scripting registrations
 
 ## Architecture
 
-- `skills/restore-right-click/` contains only the first Monkey Skill specification, manifest, and tests.
+- `skills/restore-right-click/` contains only the first Monkey Skill specification and manifest; it contains no executable or declarative tests.
 - `skills/mskill-creator/` defines how an agent authors implementation-independent MSkill specifications.
-- `skills/mskill-installer/` is the policy prompt used when the user's LLM compiles a specification.
-- `generated/restore-right-click/1.2.0/` contains the current build descriptor; unchanged runtime JS/CSS may be reused from prior generated versions while the fixed tests remain under the versioned MSkill source.
+- `skills/mskill-installer/` is the isolated Builder policy used when the user's LLM compiles a specification.
+- `skills/mskill-tester/` is the separate Tester policy that translates visible criteria into a non-executable TestSpec DSL.
+- `generated/restore-right-click/1.2.0/` contains the current optional bundled build descriptor; generated tests are local installation artifacts rather than shared MSkill content.
 - `packages/*.mskill.json` joins one specification and one generated build into a single installable package descriptor.
 - `preinstalled-skills.json` is the bundled catalog and preinstall policy.
-- `agent-skills.json` catalogs the preinstalled creator and installer policies used by LLM workflows.
+- `agent-skills.json` catalogs the preinstalled Creator, Installer, and Tester policies used by LLM workflows.
 - `src/lib/skill-store.js` validates, installs, removes, configures, and builds registrations for Skill packages.
 - `src/lib/llm.js` normalizes BYOK settings, builds generation prompts, parses output, and runs capability checks.
 - `src/background.js` loads packages through the common installer and synchronizes installed builds with Chrome.
@@ -134,4 +137,4 @@ The preinstalled build uses packaged scripts through `chrome.scripting`, so it w
 
 ## Security boundary
 
-The Restore right click skill has no network, cookie, history, or download capability. Generated code is rejected when basic static checks detect forbidden APIs or remote content, Chrome parses it through a temporary `userScripts` registration, and the MSkill's fixed behavior suite runs in sandboxed frames before review and again before installation. These checks reduce risk but do not prove arbitrary JavaScript safe, so installation remains a separate explicit user action. Absolute mode intentionally changes page-level event behavior and can break legitimate custom context menus; disable it for affected sites.
+The Restore right click skill has no network, cookie, history, or download capability. Generated code is rejected when basic static checks detect forbidden APIs or remote content, Chrome parses it through a temporary `userScripts` registration, and a locally generated constrained TestSpec runs in sandboxed frames before review and again before installation. Neither shared MSkills nor the independent Tester can provide HTML, executable test code, remote URLs, or free-form failure messages. These checks reduce risk but do not prove arbitrary JavaScript safe, so installation remains a separate explicit user action. Absolute mode intentionally changes page-level event behavior and can break legitimate custom context menus; disable it for affected sites.

@@ -2,12 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import { createAgentApiServer, runFixtureAgent } from "../scripts/agent-api.mjs";
-import { buildGenerationMessages, extractAssistantText, parseGeneratedBuild, scanGeneratedBuild } from "../src/lib/llm.js";
+import { buildGenerationMessages, buildTesterMessages, extractAssistantText, extractCriterionIds, parseGeneratedBuild, scanGeneratedBuild } from "../src/lib/llm.js";
+import { parseGeneratedTestSpec } from "../src/lib/test-spec.js";
 import { readFile } from "node:fs/promises";
 
 const skill = JSON.parse(await readFile(new URL("../skills/restore-right-click/skill.json", import.meta.url), "utf8"));
 const skillInstructions = await readFile(new URL("../skills/restore-right-click/SKILL.md", import.meta.url), "utf8");
-const tests = JSON.parse(await readFile(new URL("../skills/restore-right-click/tests/acceptance.json", import.meta.url), "utf8"));
 
 test("local fixture agent completes the generation and validation flow", async t => {
   const local = createAgentApiServer({ token: "test-token" });
@@ -23,8 +23,7 @@ test("local fixture agent completes the generation and validation flow", async t
       messages: buildGenerationMessages({
         installerInstructions: "Generate only the requested safe user script.",
         skillInstructions,
-        skill,
-        tests
+        skill
       })
     })
   });
@@ -37,6 +36,24 @@ test("local fixture agent completes the generation and validation flow", async t
   ]);
   assert.deepEqual(Object.keys(build.modes), ["standard", "absolute"]);
   assert.equal(local.sessions.size, 1);
+});
+
+test("local fixture agent independently returns a constrained TestSpec", async () => {
+  const response = await runFixtureAgent({
+    model: "local-agent",
+    messages: buildTesterMessages({
+      testerInstructions: "# MSkill Tester\nGenerate an independent TestSpec.",
+      skillInstructions,
+      skill
+    })
+  });
+  const spec = parseGeneratedTestSpec(
+    extractAssistantText(response),
+    skill,
+    extractCriterionIds(skillInstructions)
+  );
+  assert.ok(spec.tests.some(test => test.kind === "behavior"));
+  assert.ok(spec.tests.some(test => test.kind === "policy"));
 });
 
 test("local agent API rejects an incorrect token", async t => {
@@ -62,8 +79,7 @@ test("subagent mode queues a request and returns the worker's fresh completion",
     messages: buildGenerationMessages({
       installerInstructions: "Generate only the requested safe user script.",
       skillInstructions,
-      skill,
-      tests
+      skill
     })
   };
 

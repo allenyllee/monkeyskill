@@ -1,4 +1,4 @@
 interface:
   display_name: "MSkill Installer"
-  short_description: "Compile MSkills without hidden-test exposure"
-  default_prompt: "Use $mskill-installer to compile an MSkill from its human-readable specification without seeing hidden tests."
+  short_description: "Build MSkills in an isolated Builder role"
+  default_prompt: "Use $mskill-installer to compile an MSkill from its human-readable specification without seeing the independent TestSpec."

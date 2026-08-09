@@ -28,13 +28,13 @@ test("manifest references existing extension entrypoints", async () => {
     access(join(root, "skills", "mskill-installer", "SKILL.md")),
     access(join(root, "src", "validation", "offscreen.html")),
     access(join(root, "src", "validation", "sandbox.html")),
-    access(join(root, "src", "validation", "scenarios.js"))
+    access(join(root, "src", "lib", "test-spec.js"))
   ]);
 });
 
 test("agent Skill catalog preinstalls creator and installer policies", async () => {
   const catalog = JSON.parse(await readFile(join(root, "agent-skills.json"), "utf8"));
-  assert.deepEqual(catalog.map(entry => entry.id), ["mskill-creator", "mskill-installer"]);
+  assert.deepEqual(catalog.map(entry => entry.id), ["mskill-creator", "mskill-installer", "mskill-tester"]);
   await Promise.all(catalog.map(entry => access(join(root, entry.entrypoint))));
 });
 
@@ -64,6 +64,7 @@ test("preinstalled Skills point to separate specs and generated builds", async (
   assert.equal(descriptor.id, skill.id);
   assert.equal(build.skillId, skill.id);
   assert.equal(build.skillVersion, skill.version);
+  assert.equal(skill.tests, undefined);
 
   const artifactPaths = Object.values(build.modes)
     .flatMap(mode => [...mode.js, ...mode.css]);
@@ -73,24 +74,10 @@ test("preinstalled Skills point to separate specs and generated builds", async (
   const runtimeSource = specificationFiles.filter(path => /\.(?:js|css)$/i.test(path));
   assert.deepEqual(runtimeSource, []);
 
-  const acceptance = JSON.parse(await readFile(join(root, "skills", skill.id, skill.tests), "utf8"));
-  assert.equal(acceptance.schemaVersion, 2);
-  assert.equal(acceptance.runner, undefined);
-  const behaviorTests = acceptance.tests.filter(test => !test.type);
-  assert.equal(behaviorTests.filter(test => test.id.startsWith("method-")).length, 16);
-  assert.equal(behaviorTests.length, 17);
-  const runner = await readFile(join(root, "src", "validation", "scenarios.js"), "utf8");
-  for (const test of acceptance.tests.filter(test => !test.type)) {
-    assert.deepEqual(Object.keys(test).sort(), ["criterion", "id", "mode", "scenario"]);
-    assert.match(runner, new RegExp(`"${test.scenario}"`));
-  }
   const criteria = [...(await readFile(join(root, "skills", skill.id, skill.entrypoint), "utf8"))
     .matchAll(/\[criterion:([a-z0-9-]+)\]/g)].map(match => match[1]);
-  assert.deepEqual(
-    [...new Set(acceptance.tests.map(test => test.criterion))].sort(),
-    [...new Set(criteria)].sort()
-  );
-  assert.match(runner, /style\.backgroundImage\.includes\("linear-gradient"\)/);
+  assert.ok(criteria.length > 0);
+  assert.ok(!specificationFiles.some(path => String(path).replaceAll("\\", "/").startsWith("tests/")));
 });
 
 test("demo exposes all 16 methods on one page", async () => {

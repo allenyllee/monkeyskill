@@ -54,15 +54,14 @@ test("long LLM requests run outside the ephemeral service worker", async () => {
   assert.match(offscreen, /type: "generation-complete"/);
 });
 
-test("behavior repair feedback cannot expose author-controlled test text", async () => {
+test("independent TestSpec feedback cannot expose tester-controlled text", async () => {
   const offscreen = await readFile(new URL("src/validation/offscreen.js", root), "utf8");
   const sandbox = await readFile(new URL("src/validation/sandbox.js", root), "utf8");
-  assert.match(offscreen, /buildRepairMessage\(failedCriteria\)/);
-  assert.match(offscreen, /Acceptance suite does not cover declared criteria/);
-  assert.match(offscreen, /Acceptance test contains unsupported fields/);
-  assert.match(offscreen, /Capability-denial test must use criterion no-/);
-  assert.match(offscreen, /suite\.tests\.length === 0 \|\| suite\.tests\.length > 50/);
-  assert.doesNotMatch(offscreen, /buildRepairMessage\([^)]*(?:error|scenario|test\.id)/);
+  assert.match(offscreen, /Promise\.all\(\[/);
+  assert.match(offscreen, /request\.builderBody/);
+  assert.match(offscreen, /request\.testerBody/);
+  assert.match(offscreen, /buildRepairMessage\(failed\)/);
+  assert.doesNotMatch(offscreen, /buildRepairMessage\([^)]*(?:error|testSpec|test\.id)/);
   assert.doesNotMatch(sandbox, /runnerSource|monkeySkillAcceptanceTests/);
-  assert.match(sandbox, /__monkeySkillScenarios/);
+  assert.match(sandbox, /executeTest\(message\.test\)/);
 });

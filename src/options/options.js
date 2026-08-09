@@ -96,11 +96,9 @@ generateSkill.addEventListener("click", async () => {
       skillId: "restore-right-click"
     });
     if (!response.ok) throw new Error(response.error);
-    generationStatus.textContent = "生成與驗證完成，請檢查草稿後核准。";
-    showDraft(response.draft);
+    generationStatus.textContent = "Builder 與獨立 Tester 正在生成和驗證；完成後會自動顯示候選 Build。";
   } catch (error) {
     generationStatus.textContent = error.message;
-  } finally {
     generateSkill.disabled = false;
   }
 });
