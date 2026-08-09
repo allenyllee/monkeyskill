@@ -12,7 +12,7 @@ export function createAgentApiServer(options = {}) {
   const token = options.token || randomBytes(18).toString("base64url");
   const mode = options.mode || "fixture";
   const upstreamFetch = options.fetch || globalThis.fetch;
-  const broker = createSubagentBroker(options.agentTimeoutMs || 300_000);
+  const broker = createSubagentBroker(options.agentTimeoutMs || 900_000);
 
   const server = http.createServer(async (request, response) => {
     setCorsHeaders(response);

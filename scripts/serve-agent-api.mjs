@@ -6,7 +6,7 @@ const mode = process.env.MONKEYSKILL_AGENT_MODE || "fixture";
 const { server, token } = createAgentApiServer({
   mode,
   token: process.env.MONKEYSKILL_LOCAL_TOKEN,
-  agentTimeoutMs: Number(process.env.MONKEYSKILL_AGENT_TIMEOUT_MS || 300_000)
+  agentTimeoutMs: Number(process.env.MONKEYSKILL_AGENT_TIMEOUT_MS || 900_000)
 });
 
 server.listen(port, host, () => {
