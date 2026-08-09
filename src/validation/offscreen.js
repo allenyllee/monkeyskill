@@ -186,7 +186,9 @@ async function runTestSpec({ testSpec, build }) {
         criterion: test.criterion,
         ok: false,
         inconclusive: true,
-        category: unsupportedCapability === "focus" ? "focus-state" : "dom-state",
+        category: unsupportedCapability === "focus"
+          ? "focus-state"
+          : unsupportedCapability === "hit-test" ? "visibility-state" : "dom-state",
         capability: unsupportedCapability
       });
       continue;
@@ -224,7 +226,10 @@ async function runCapabilitySelfTests(testSpec) {
 
 function requiredCapabilities(test) {
   if (test.kind !== "behavior") return [];
-  return test.assertions.some(assertion => assertion.type === "active-element") ? ["focus"] : [];
+  const capabilities = [];
+  if (test.assertions.some(assertion => assertion.type === "active-element")) capabilities.push("focus");
+  if (test.assertions.some(assertion => assertion.type === "hit-test")) capabilities.push("hit-test");
+  return capabilities;
 }
 
 function formatLocalFailure(failure) {

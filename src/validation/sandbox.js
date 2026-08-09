@@ -460,6 +460,21 @@
   }
 
   async function executeCapabilitySelfTest(capability) {
+    if (capability === "hit-test") {
+      const target = document.createElement("div");
+      const overlay = document.createElement("div");
+      for (const element of [target, overlay]) {
+        element.style.cssText = "position:fixed;left:20px;top:20px;width:80px;height:60px";
+      }
+      overlay.style.zIndex = "2";
+      document.querySelector("#fixture").replaceChildren(target, overlay);
+      await settle();
+      const before = document.elementFromPoint(60, 50) === overlay;
+      overlay.style.pointerEvents = "none";
+      await settle();
+      const after = document.elementFromPoint(60, 50) === target;
+      return { ok: before && after, capability, nativeSupported: before && after };
+    }
     if (capability !== "focus") return { ok: false, capability, category: "dom-state" };
     const input = document.createElement("input");
     const editable = document.createElement("div");
