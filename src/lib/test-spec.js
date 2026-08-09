@@ -34,7 +34,7 @@ const ALLOWED_EFFECTS = new Set([
 ]);
 const ALLOWED_ACTIONS = new Set([
   "add-blocker", "append-node", "blur", "capture-node", "click", "dispatch-event", "focus", "remove-attribute", "remove-node",
-  "scroll", "select-contents", "set-attribute", "set-checked", "set-style", "set-text", "set-value", "wait"
+  "drag-select-text", "paste-text", "scroll", "select-contents", "set-attribute", "set-checked", "set-style", "set-text", "set-value", "wait"
 ]);
 const ALLOWED_ASSERTIONS = new Set([
   "active-element", "attribute", "attribute-refers-to", "blocker-call-count", "bounding-rect", "computed-style", "contrast-ratio",
@@ -113,6 +113,7 @@ function validateBehaviorTest(source, skill) {
   const blockerIds = new Set(blockers.map(blocker => blocker.id));
   if (blockerIds.size !== blockers.length) throw new Error("Blocker IDs must be unique.");
   const steps = boundedArray(source.steps, "steps").map(step => validateStep(step, nodeIds, blockerIds));
+  validateWorkflowCoverage(blockers, steps);
   const assertions = boundedArray(source.assertions, "assertions", false).map(assertion => (
     validateAssertion(assertion, nodeIds, blockerIds, steps.length)
   ));
@@ -223,6 +224,14 @@ function validateStep(source, nodeIds, blockerIds) {
     assertOnlyKeys(source, ["action", "target"], "select step");
     return { action: source.action, target: source.target };
   }
+  if (source.action === "drag-select-text") {
+    assertOnlyKeys(source, ["action", "target"], "drag-select-text step");
+    return { action: source.action, target: source.target };
+  }
+  if (source.action === "paste-text") {
+    assertOnlyKeys(source, ["action", "target", "value"], "paste-text step");
+    return { action: source.action, target: source.target, value: safeText(source.value, 500) };
+  }
   if (["blur", "click", "focus", "remove-node"].includes(source.action)) {
     assertOnlyKeys(source, ["action", "target"], `${source.action} step`);
     return { action: source.action, target: source.target };
@@ -262,6 +271,22 @@ function validateStep(source, nodeIds, blockerIds) {
   assertOnlyKeys(source, ["action", "target", "property", "value"], "set-style step");
   if (!ALLOWED_STYLES.has(source.property)) throw new Error("Style property is not allowed.");
   return { action: source.action, target: source.target, property: source.property, value: safeStyleValue(source.value) };
+}
+
+function validateWorkflowCoverage(blockers, steps) {
+  const actions = new Set(steps.map(step => step.action));
+  const modelsPaste = blockers.some(blocker => (
+    blocker.event === "paste"
+    || blocker.event === "beforeinput" && blocker.when.inputType === "insertFromPaste"
+    || blocker.event === "input" && (blocker.effect === "rollback-value" || blocker.when.inputType === "insertFromPaste")
+  ));
+  if (modelsPaste && !actions.has("paste-text")) {
+    throw new Error("Paste blockers require the paste-text workflow action.");
+  }
+  const modelsSelection = blockers.some(blocker => blocker.event === "selectstart" || blocker.effect === "clear-selection");
+  if (modelsSelection && !actions.has("drag-select-text")) {
+    throw new Error("Selection blockers require the drag-select-text workflow action.");
+  }
 }
 
 function validateAssertion(source, nodeIds, blockerIds, stepCount) {

@@ -87,6 +87,7 @@ test("TestSpec supports generic dynamic DOM and blocker actions without JavaScri
         effect: "rollback-value"
       }
     },
+    { action: "paste-text", target: "dynamic-control", value: "pasted" },
     { action: "set-attribute", target: "dynamic-control", name: "aria-label", value: "dynamic" },
     { action: "focus", target: "dynamic-control" },
     { action: "remove-attribute", target: "dynamic-control", name: "aria-label" },
@@ -95,6 +96,27 @@ test("TestSpec supports generic dynamic DOM and blocker actions without JavaScri
   behavior.assertions.push({ type: "blocker-call-count", blocker: "dynamic-blocker", operator: "eq", value: 0 });
   behavior.assertions.push({ type: "dom-present", target: "dynamic-control", expected: false });
   assert.doesNotThrow(() => validateTestSpec(spec, skill, criteria));
+});
+
+test("TestSpec requires high-level paste and drag-selection workflows", () => {
+  const valid = JSON.parse(fixtureText);
+  assert.doesNotThrow(() => validateTestSpec(valid, skill, criteria));
+
+  const weakPaste = JSON.parse(fixtureText);
+  const paste = weakPaste.tests.find(candidate => candidate.criterion === "paste");
+  paste.steps = [
+    { action: "set-value", target: "target", value: "pasted text" },
+    { action: "dispatch-event", target: "target", event: "paste", init: {} }
+  ];
+  assert.throws(() => validateTestSpec(weakPaste, skill, criteria), /paste-text workflow/);
+
+  const weakSelection = JSON.parse(fixtureText);
+  const selection = weakSelection.tests.find(candidate => candidate.criterion === "text-selection");
+  selection.steps = [
+    { action: "select-contents", target: "target" },
+    { action: "dispatch-event", target: "target", event: "mouseup", init: { button: 0 } }
+  ];
+  assert.throws(() => validateTestSpec(weakSelection, skill, criteria), /drag-select-text workflow/);
 });
 
 test("TestSpec can observe data-driven generated UI without implementation-specific selectors", () => {

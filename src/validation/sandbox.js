@@ -167,6 +167,8 @@
       selection.addRange(range);
       return null;
     }
+    if (step.action === "drag-select-text") return dragSelectText(target);
+    if (step.action === "paste-text") return pasteText(target, step.value);
     if (step.action === "focus") {
       target.focus();
       return null;
@@ -224,6 +226,56 @@
     target.dispatchEvent(event);
     await settle();
     return { defaultPrevented: event.defaultPrevented };
+  }
+
+  async function dragSelectText(target) {
+    const down = { button: 0, buttons: 1 };
+    target.dispatchEvent(createEvent("pointerdown", down));
+    target.dispatchEvent(createEvent("mousedown", down));
+    const selectStart = createEvent("selectstart", {});
+    target.dispatchEvent(selectStart);
+    if (!selectStart.defaultPrevented) {
+      const range = document.createRange();
+      range.selectNodeContents(target);
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    target.dispatchEvent(createEvent("pointerup", { button: 0, buttons: 0 }));
+    target.dispatchEvent(createEvent("mouseup", { button: 0, buttons: 0 }));
+    await settle();
+    return { defaultPrevented: selectStart.defaultPrevented };
+  }
+
+  async function pasteText(target, value) {
+    if (!("value" in target) && !target.isContentEditable) throw new Error("paste-text target is not editable.");
+    target.focus();
+    const paste = createEvent("paste", {});
+    target.dispatchEvent(paste);
+    if (paste.defaultPrevented) {
+      await settle();
+      return { defaultPrevented: true };
+    }
+    const inputInit = { inputType: "insertFromPaste", data: value };
+    const beforeInput = createEvent("beforeinput", inputInit);
+    target.dispatchEvent(beforeInput);
+    if (!beforeInput.defaultPrevented) {
+      insertText(target, value);
+      target.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertFromPaste", data: value }));
+    }
+    await settle();
+    return { defaultPrevented: beforeInput.defaultPrevented };
+  }
+
+  function insertText(target, value) {
+    if ("value" in target) {
+      const start = Number.isInteger(target.selectionStart) ? target.selectionStart : target.value.length;
+      const end = Number.isInteger(target.selectionEnd) ? target.selectionEnd : start;
+      target.value = `${target.value.slice(0, start)}${value}${target.value.slice(end)}`;
+      if (typeof target.setSelectionRange === "function") target.setSelectionRange(start + value.length, start + value.length);
+      return;
+    }
+    target.textContent += value;
   }
 
   function createEvent(type, init) {

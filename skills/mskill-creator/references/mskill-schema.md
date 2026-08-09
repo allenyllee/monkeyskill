@@ -26,3 +26,5 @@ Give every observable outcome a stable marker in `SKILL.md`:
 ```
 
 Use lowercase criterion IDs. A capability-denial criterion must be named `no-<capability>` and that capability must appear in `forbiddenCapabilities`. The locally configured Tester LLM independently converts these visible criteria into a constrained TestSpec during installation; that TestSpec is not part of the shared MSkill.
+
+Describe complete user-visible workflows when correctness depends on browser event order. State the outcome after the real gesture completes, such as the value remaining after paste emits its input event or the range remaining selected after pointer release. Keep this human-readable and implementation-independent.

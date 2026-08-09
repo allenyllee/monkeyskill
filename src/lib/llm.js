@@ -66,6 +66,7 @@ export function buildTesterMessages({ testerInstructions, skillInstructions, ski
       content: [
         "Generate an independent TestSpec from the human-readable MSkill below.",
         "Do not generate or discuss the implementation. Return JSON only.",
+        "For paste behavior, use the paste-text workflow; never substitute set-value plus dispatch-event. For user text selection, use drag-select-text; never substitute select-contents plus synthetic release events.",
         "Skill manifest:",
         JSON.stringify(manifest),
         "SKILL.md:",

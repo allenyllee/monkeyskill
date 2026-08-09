@@ -35,5 +35,6 @@ Use lowercase hyphenated IDs. Treat the human-readable specification as the cano
 - Include failure and safety cases, not only the happy path.
 - Include no test files. An independent Tester LLM generates a constrained TestSpec locally from this same human-readable specification during installation.
 - Make criteria observable enough that an independent tester can verify them without inventing requirements.
+- When timing or a multi-event user gesture matters, describe the complete observable workflow in plain language (for example, paste through the resulting input event or selection after pointer release) without prescribing implementation code.
 - Do not claim full compatibility with all websites.
 - Do not request network, cookies, history, downloads, or broad browser APIs unless the requested feature cannot exist without them.

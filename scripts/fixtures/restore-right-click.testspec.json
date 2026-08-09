@@ -23,12 +23,13 @@
       "blockers": [{ "id": "block", "target": "target", "event": "selectstart", "registration": "listener", "effect": "prevent-default", "when": {} }],
       "steps": [
         { "action": "wait", "ms": 50 },
-        { "action": "dispatch-event", "target": "target", "event": "selectstart", "init": {} }
+        { "action": "drag-select-text", "target": "target" }
       ],
       "assertions": [
         { "type": "computed-style", "target": "target", "property": "userSelect", "pseudo": null, "operator": "neq", "value": "none" },
         { "type": "blocker-call-count", "blocker": "block", "operator": "eq", "value": 0 },
-        { "type": "event-default-prevented", "step": 1, "expected": false }
+        { "type": "event-default-prevented", "step": 1, "expected": false },
+        { "type": "selection-collapsed", "expected": false }
       ]
     },
     {
@@ -50,11 +51,16 @@
       "criterion": "paste",
       "mode": "absolute",
       "fixture": { "nodes": [{ "id": "target", "tag": "input", "parent": null, "text": "", "attributes": {}, "styles": {} }], "rules": [] },
-      "blockers": [{ "id": "block", "target": "target", "event": "paste", "registration": "listener", "effect": "prevent-default", "when": {} }],
-      "steps": [{ "action": "dispatch-event", "target": "target", "event": "paste", "init": {} }],
+      "blockers": [
+        { "id": "block", "target": "target", "event": "paste", "registration": "listener", "effect": "prevent-default", "when": {} },
+        { "id": "rollback", "target": "target", "event": "input", "registration": "listener", "effect": "rollback-value", "when": { "inputType": "insertFromPaste" } }
+      ],
+      "steps": [{ "action": "paste-text", "target": "target", "value": "pasted text" }],
       "assertions": [
         { "type": "blocker-call-count", "blocker": "block", "operator": "eq", "value": 0 },
-        { "type": "event-default-prevented", "step": 0, "expected": false }
+        { "type": "blocker-call-count", "blocker": "rollback", "operator": "eq", "value": 0 },
+        { "type": "event-default-prevented", "step": 0, "expected": false },
+        { "type": "value", "target": "target", "operator": "eq", "value": "pasted text" }
       ]
     },
     {

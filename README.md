@@ -22,6 +22,7 @@ No source code or visual assets from the referenced extension are included.
 - Durable offscreen generation jobs, so multi-minute LLM requests survive MV3 service-worker suspension and Store refreshes preserve running, failed, and ready outcomes.
 - Independent local testing: isolated Builder and Tester LLM conversations read the same human specification; only the Tester produces a constrained TestSpec, and the Builder never receives it.
 - A non-executable test DSL covering DOM, events, forms, computed styles, geometry, relative layout, visibility, hit-testing, focus, scrolling, contrast, and ARIA ID relationships.
+- High-level `paste-text` and `drag-select-text` DSL workflows replay complete browser interaction sequences; schema validation rejects weaker hand-written substitutes when paste or selection blockers are present.
 - Runner capability self-tests and a trusted focus tracker prevent hidden/offscreen browser limitations from being misreported as Builder failures; unsupported primitives are surfaced as inconclusive instead of entering the repair prompt.
 - Diagnostic-driven generation retries use three attempts by default, extend to five only when failures are changing, and stop early when the build hash or diagnostics stop improving.
 - Runtime-generated builds installed through `chrome.userScripts` while packaged builds continue to use `chrome.scripting`.

@@ -77,6 +77,9 @@ test("independent TestSpec feedback cannot expose tester-controlled text", async
   assert.match(sandbox, /executeTest\(message\.test\)/);
   assert.match(sandbox, /executeCapabilitySelfTest\(message\.capability\)/);
   assert.match(sandbox, /trackedActiveElement/);
+  assert.match(sandbox, /async function pasteText\(target, value\)/);
+  assert.match(sandbox, /inputType: "insertFromPaste"/);
+  assert.match(sandbox, /async function dragSelectText\(target\)/);
   assert.match(sandbox, /removeEventListener\("message", onRunTest\)/);
   assert.doesNotMatch(sandbox, /\{ once: true \}/);
 });
