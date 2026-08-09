@@ -36,7 +36,7 @@ test("TestSpec rejects missing criteria and undeclared behavior", () => {
 test("TestSpec rejects network-bearing styles and external links", () => {
   const styleSpec = JSON.parse(fixtureText);
   styleSpec.tests[0].fixture.nodes[0].styles.backgroundImage = "url(https://evil.test/x)";
-  assert.throws(() => validateTestSpec(styleSpec, skill, criteria), /load or execute/);
+  assert.throws(() => validateTestSpec(styleSpec, skill, criteria), /load.*execute/);
 
   const linkSpec = JSON.parse(fixtureText);
   linkSpec.tests[0].fixture.nodes[0].tag = "a";
@@ -91,4 +91,57 @@ test("TestSpec can observe data-driven generated UI without implementation-speci
   });
   behavior.assertions.push({ type: "text-content", target: "generated-badge", operator: "eq", value: "5 min" });
   assert.doesNotThrow(() => validateTestSpec(spec, skill, criteria));
+});
+
+test("TestSpec exposes trusted equivalents for common JavaScript visual checks", () => {
+  const spec = JSON.parse(fixtureText);
+  const behavior = spec.tests.find(candidate => candidate.kind === "behavior");
+  behavior.fixture.nodes.push({
+    id: "peer",
+    tag: "button",
+    parent: null,
+    text: "Peer",
+    attributes: { "aria-label": "Peer control" },
+    styles: { width: "120px", height: "40px", backgroundColor: "rgb(255,255,255)", color: "rgb(0,0,0)" }
+  });
+  behavior.steps.push(
+    { action: "focus", target: "peer" },
+    { action: "click", target: "peer" },
+    { action: "set-checked", target: "peer", value: true },
+    { action: "scroll", target: "peer", left: 0, top: 0 }
+  );
+  behavior.assertions.push(
+    { type: "visible", target: "peer", expected: true },
+    { type: "active-element", target: "peer", expected: true },
+    { type: "hit-test", target: "peer", point: "center", expected: true },
+    { type: "bounding-rect", target: "peer", property: "width", operator: "approx", value: 120, tolerance: 1 },
+    { type: "relative-position", target: "peer", other: "target", relation: "not-overlaps", tolerance: 0 },
+    { type: "contrast-ratio", target: "peer", operator: "gte", value: 4.5 },
+    { type: "scroll-offset", target: "peer", axis: "top", operator: "eq", value: 0, tolerance: 0 },
+    { type: "property", target: "peer", name: "checked", expected: true },
+    { type: "attribute", target: "peer", name: "aria-label", operator: "contains", value: "Peer" },
+    { type: "attribute-refers-to", target: "target", name: "aria-describedby", other: "peer", expected: false }
+  );
+  assert.doesNotThrow(() => validateTestSpec(spec, skill, criteria));
+});
+
+test("expanded visual DSL still rejects executable and network-bearing primitives", () => {
+  const spec = JSON.parse(fixtureText);
+  const behavior = spec.tests.find(candidate => candidate.kind === "behavior");
+  behavior.fixture.nodes[0].attributes.src = "https://evil.test/pixel";
+  assert.throws(() => validateTestSpec(spec, skill, criteria), /attribute is not allowed/);
+
+  const invalidGeometry = JSON.parse(fixtureText);
+  invalidGeometry.tests.find(candidate => candidate.kind === "behavior").assertions.push({
+    type: "bounding-rect",
+    target: "target",
+    property: "width",
+    operator: "execute",
+    value: 10
+  });
+  assert.throws(() => validateTestSpec(invalidGeometry, skill, criteria), /operator is invalid/);
+
+  const escapedStyle = JSON.parse(fixtureText);
+  escapedStyle.tests.find(candidate => candidate.kind === "behavior").fixture.nodes[0].styles.color = "red;} * {display:none";
+  assert.throws(() => validateTestSpec(escapedStyle, skill, criteria), /escape, load, or execute/);
 });

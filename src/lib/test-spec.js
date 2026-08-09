@@ -3,34 +3,47 @@ const MAX_TESTS = 40;
 const MAX_NODES = 30;
 const MAX_ITEMS = 40;
 const ALLOWED_TAGS = new Set([
-  "a", "article", "button", "canvas", "div", "footer", "form", "header", "img",
-  "input", "label", "main", "nav", "p", "section", "span", "textarea"
+  "a", "article", "aside", "button", "canvas", "details", "dialog", "div", "footer", "form",
+  "h1", "h2", "h3", "h4", "h5", "h6", "header", "img", "input", "label", "li", "main",
+  "nav", "ol", "option", "p", "section", "select", "span", "summary", "table", "tbody", "td",
+  "textarea", "th", "thead", "tr", "ul", "video"
 ]);
 const ALLOWED_ATTRIBUTES = new Set([
-  "alt", "aria-label", "class", "contenteditable", "href", "role", "tabindex", "title", "type", "value"
+  "alt", "checked", "class", "contenteditable", "disabled", "href", "max", "maxlength", "min",
+  "minlength", "multiple", "name", "placeholder", "readonly", "required", "role", "selected", "tabindex",
+  "title", "type", "value"
 ]);
 const ALLOWED_STYLES = new Set([
-  "backgroundColor", "backgroundImage", "color", "display", "height", "inset", "opacity",
-  "pointerEvents", "position", "userSelect", "visibility", "width", "zIndex"
+  "alignItems", "backgroundColor", "backgroundImage", "borderBottomColor", "borderBottomWidth",
+  "borderLeftColor", "borderLeftWidth", "borderRadius", "borderRightColor", "borderRightWidth",
+  "borderTopColor", "borderTopWidth", "boxShadow", "boxSizing", "color", "cursor", "display", "flexDirection",
+  "flexGrow", "flexShrink", "fontFamily", "fontSize", "fontStyle", "fontWeight", "gap", "gridTemplateColumns",
+  "height", "inset", "justifyContent", "left", "letterSpacing", "lineHeight", "marginBottom", "marginLeft",
+  "marginRight", "marginTop", "maxHeight", "maxWidth", "minHeight", "minWidth", "opacity", "overflow",
+  "overflowX", "overflowY", "paddingBottom", "paddingLeft", "paddingRight", "paddingTop", "pointerEvents",
+  "position", "right", "textAlign", "textDecoration", "top", "transform", "userSelect", "verticalAlign",
+  "visibility", "whiteSpace", "width", "wordBreak", "zIndex"
 ]);
 const ALLOWED_EVENTS = new Set([
-  "click", "contextmenu", "copy", "cut", "dragstart", "input", "keydown", "keyup",
-  "mousedown", "mouseup", "paste", "selectstart", "touchend"
+  "beforeinput", "blur", "change", "click", "contextmenu", "copy", "cut", "dblclick", "dragend", "dragstart",
+  "focus", "input", "keydown", "keyup", "mousedown", "mouseenter", "mouseleave", "mousemove", "mouseup",
+  "paste", "pointerdown", "pointermove", "pointerup", "scroll", "selectstart", "submit", "touchend", "wheel"
 ]);
 const ALLOWED_EFFECTS = new Set([
   "clear-selection", "flag-only", "prevent-default", "prevent-default-and-stop", "rollback-value"
 ]);
 const ALLOWED_ACTIONS = new Set([
-  "add-blocker", "append-node", "capture-node", "dispatch-event", "focus", "remove-attribute", "remove-node",
-  "select-contents", "set-attribute", "set-style", "set-value", "wait"
+  "add-blocker", "append-node", "blur", "capture-node", "click", "dispatch-event", "focus", "remove-attribute", "remove-node",
+  "scroll", "select-contents", "set-attribute", "set-checked", "set-style", "set-text", "set-value", "wait"
 ]);
 const ALLOWED_ASSERTIONS = new Set([
-  "attribute", "blocker-call-count", "computed-style", "dom-present", "event-default-prevented",
-  "node-count", "selection-collapsed", "text-content", "value"
+  "active-element", "attribute", "attribute-refers-to", "blocker-call-count", "bounding-rect", "computed-style", "contrast-ratio",
+  "dom-present", "event-default-prevented", "hit-test", "node-count", "property", "relative-position",
+  "scroll-offset", "selection-collapsed", "text-content", "value", "visible"
 ]);
-const ALLOWED_OPERATORS = new Set(["absent", "contains", "eq", "exists", "gte", "neq"]);
 export const FAILURE_CATEGORIES = Object.freeze([
-  "attribute-state", "blocker-state", "computed-style", "dom-state", "event-state", "selection-state", "value-state"
+  "accessibility-state", "attribute-state", "blocker-state", "computed-style", "dom-state", "event-state",
+  "focus-state", "layout-state", "property-state", "selection-state", "value-state", "visibility-state"
 ]);
 
 export function parseGeneratedTestSpec(text, skill, criteria) {
@@ -208,9 +221,18 @@ function validateStep(source, nodeIds, blockerIds) {
     assertOnlyKeys(source, ["action", "target"], "select step");
     return { action: source.action, target: source.target };
   }
-  if (source.action === "focus" || source.action === "remove-node") {
+  if (["blur", "click", "focus", "remove-node"].includes(source.action)) {
     assertOnlyKeys(source, ["action", "target"], `${source.action} step`);
     return { action: source.action, target: source.target };
+  }
+  if (source.action === "scroll") {
+    assertOnlyKeys(source, ["action", "target", "left", "top"], "scroll step");
+    return {
+      action: source.action,
+      target: source.target,
+      left: safeFiniteNumber(source.left, -10000, 10000, "Scroll offset"),
+      top: safeFiniteNumber(source.top, -10000, 10000, "Scroll offset")
+    };
   }
   if (source.action === "set-attribute") {
     assertOnlyKeys(source, ["action", "target", "name", "value"], "set-attribute step");
@@ -219,12 +241,21 @@ function validateStep(source, nodeIds, blockerIds) {
   }
   if (source.action === "remove-attribute") {
     assertOnlyKeys(source, ["action", "target", "name"], "remove-attribute step");
-    if (!ALLOWED_ATTRIBUTES.has(source.name)) throw new Error("Removed attribute is not allowed.");
+    if (!isAllowedAttribute(source.name)) throw new Error("Removed attribute is not allowed.");
     return { action: source.action, target: source.target, name: source.name };
   }
   if (source.action === "set-value") {
     assertOnlyKeys(source, ["action", "target", "value"], "set-value step");
     return { action: source.action, target: source.target, value: safeText(source.value, 500) };
+  }
+  if (source.action === "set-text") {
+    assertOnlyKeys(source, ["action", "target", "value"], "set-text step");
+    return { action: source.action, target: source.target, value: safeText(source.value, 500) };
+  }
+  if (source.action === "set-checked") {
+    assertOnlyKeys(source, ["action", "target", "value"], "set-checked step");
+    if (typeof source.value !== "boolean") throw new Error("Checked state is invalid.");
+    return { action: source.action, target: source.target, value: source.value };
   }
   assertOnlyKeys(source, ["action", "target", "property", "value"], "set-style step");
   if (!ALLOWED_STYLES.has(source.property)) throw new Error("Style property is not allowed.");
@@ -269,6 +300,13 @@ function validateAssertion(source, nodeIds, blockerIds, stepCount) {
     };
   }
   if (!nodeIds.has(source.target)) throw new Error("Assertion target is invalid.");
+  if (source.type === "active-element" || source.type === "visible" || source.type === "hit-test") {
+    assertOnlyKeys(source, ["type", "target", "expected", "point"], `${source.type} assertion`);
+    if (typeof source.expected !== "boolean") throw new Error(`${source.type} assertion is invalid.`);
+    if (source.type !== "hit-test" && source.point != null) throw new Error(`${source.type} assertion contains an unsupported point.`);
+    const point = source.type === "hit-test" ? validateHitPoint(source.point || "center") : undefined;
+    return { ...common, target: source.target, expected: source.expected, ...(point ? { point } : {}) };
+  }
   if (source.type === "dom-present") {
     assertOnlyKeys(source, ["type", "target", "expected"], "DOM assertion");
     if (typeof source.expected !== "boolean") throw new Error("DOM assertion is invalid.");
@@ -279,7 +317,9 @@ function validateAssertion(source, nodeIds, blockerIds, stepCount) {
     if (!ALLOWED_STYLES.has(source.property) || !["eq", "neq", "contains"].includes(source.operator)) {
       throw new Error("Computed-style assertion is invalid.");
     }
-    if (source.pseudo != null && source.pseudo !== "::selection") throw new Error("Computed-style pseudo-element is invalid.");
+    if (source.pseudo != null && !["::selection", "::before", "::after"].includes(source.pseudo)) {
+      throw new Error("Computed-style pseudo-element is invalid.");
+    }
     return {
       ...common,
       target: source.target,
@@ -288,6 +328,62 @@ function validateAssertion(source, nodeIds, blockerIds, stepCount) {
       operator: source.operator,
       value: safeStyleValue(source.value)
     };
+  }
+  if (source.type === "bounding-rect") {
+    assertOnlyKeys(source, ["type", "target", "property", "operator", "value", "tolerance"], "bounding-rect assertion");
+    if (!["x", "y", "top", "right", "bottom", "left", "width", "height"].includes(source.property)) {
+      throw new Error("Bounding-rect property is invalid.");
+    }
+    return {
+      ...common,
+      target: source.target,
+      property: source.property,
+      operator: validateNumericOperator(source.operator),
+      value: safeFiniteNumber(source.value, -100000, 100000, "Bounding-rect value"),
+      tolerance: safeTolerance(source.tolerance)
+    };
+  }
+  if (source.type === "relative-position") {
+    assertOnlyKeys(source, ["type", "target", "other", "relation", "tolerance"], "relative-position assertion");
+    if (!nodeIds.has(source.other) || !["above", "below", "left-of", "right-of", "inside", "overlaps", "not-overlaps", "aligned-x", "aligned-y"].includes(source.relation)) {
+      throw new Error("Relative-position assertion is invalid.");
+    }
+    return { ...common, target: source.target, other: source.other, relation: source.relation, tolerance: safeTolerance(source.tolerance) };
+  }
+  if (source.type === "contrast-ratio") {
+    assertOnlyKeys(source, ["type", "target", "operator", "value"], "contrast assertion");
+    return {
+      ...common,
+      target: source.target,
+      operator: validateNumericOperator(source.operator, false),
+      value: safeFiniteNumber(source.value, 1, 21, "Contrast ratio")
+    };
+  }
+  if (source.type === "scroll-offset") {
+    assertOnlyKeys(source, ["type", "target", "axis", "operator", "value", "tolerance"], "scroll assertion");
+    if (!["left", "top"].includes(source.axis)) throw new Error("Scroll axis is invalid.");
+    return {
+      ...common,
+      target: source.target,
+      axis: source.axis,
+      operator: validateNumericOperator(source.operator),
+      value: safeFiniteNumber(source.value, -10000, 10000, "Scroll value"),
+      tolerance: safeTolerance(source.tolerance)
+    };
+  }
+  if (source.type === "property") {
+    assertOnlyKeys(source, ["type", "target", "name", "expected"], "property assertion");
+    if (!["checked", "disabled", "readOnly", "required", "selected", "open"].includes(source.name) || typeof source.expected !== "boolean") {
+      throw new Error("Property assertion is invalid.");
+    }
+    return { ...common, target: source.target, name: source.name, expected: source.expected };
+  }
+  if (source.type === "attribute-refers-to") {
+    assertOnlyKeys(source, ["type", "target", "name", "other", "expected"], "attribute-reference assertion");
+    if (!isAllowedAttribute(source.name) || !nodeIds.has(source.other) || typeof source.expected !== "boolean") {
+      throw new Error("Attribute-reference assertion is invalid.");
+    }
+    return { ...common, target: source.target, name: source.name, other: source.other, expected: source.expected };
   }
   if (source.type === "value") {
     assertOnlyKeys(source, ["type", "target", "operator", "value"], "value assertion");
@@ -300,7 +396,7 @@ function validateAssertion(source, nodeIds, blockerIds, stepCount) {
     return { ...common, target: source.target, operator: source.operator, value: safeText(source.value, 500) };
   }
   assertOnlyKeys(source, ["type", "target", "name", "operator", "value"], "attribute assertion");
-  if (!ALLOWED_ATTRIBUTES.has(source.name) || !["exists", "absent", "eq"].includes(source.operator)) {
+  if (!isAllowedAttribute(source.name) || !["exists", "absent", "eq", "contains"].includes(source.operator)) {
     throw new Error("Attribute assertion is invalid.");
   }
   return { ...common, target: source.target, name: source.name, operator: source.operator, value: safeText(source.value || "", 500) };
@@ -311,7 +407,7 @@ function validateStringMap(value, allowlist, label) {
   assertRecord(value, `${label} map`);
   const output = {};
   for (const [key, raw] of Object.entries(value)) {
-    if (!allowlist.has(key) && !(label === "attribute" && /^data-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(key))) {
+    if (!allowlist.has(key) && !(label === "attribute" && isAllowedAttribute(key))) {
       throw new Error(`Fixture ${label} is not allowed.`);
     }
     const safe = label === "style" ? safeStyleValue(raw) : safeText(raw, 500);
@@ -355,16 +451,51 @@ function validateRelation(value) {
   return value;
 }
 
+function isAllowedAttribute(name) {
+  return ALLOWED_ATTRIBUTES.has(name)
+    || /^data-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name || "")
+    || /^aria-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name || "");
+}
+
+function validateNumericOperator(value, allowApprox = true) {
+  const allowed = allowApprox ? ["eq", "neq", "gt", "gte", "lt", "lte", "approx"] : ["eq", "neq", "gt", "gte", "lt", "lte"];
+  if (!allowed.includes(value)) throw new Error("Numeric comparison operator is invalid.");
+  return value;
+}
+
+function safeTolerance(value) {
+  return value == null ? 0 : safeFiniteNumber(value, 0, 1000, "Comparison tolerance");
+}
+
+function safeFiniteNumber(value, minimum, maximum, label) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < minimum || value > maximum) {
+    throw new Error(`${label} is invalid.`);
+  }
+  return value;
+}
+
+function validateHitPoint(value) {
+  if (!["center", "top-left", "top-right", "bottom-left", "bottom-right"].includes(value)) {
+    throw new Error("Hit-test point is invalid.");
+  }
+  return value;
+}
+
 function validateEventInit(value) {
   assertRecord(value, "event init");
-  assertOnlyKeys(value, ["button", "key", "ctrlKey", "metaKey", "shiftKey", "inputType", "data"], "event init");
+  assertOnlyKeys(value, ["button", "buttons", "key", "code", "ctrlKey", "metaKey", "shiftKey", "altKey", "inputType", "data", "clientX", "clientY", "deltaX", "deltaY"], "event init");
   const output = {};
   if (value.button != null) {
     if (!Number.isInteger(value.button) || value.button < 0 || value.button > 2) throw new Error("Event button is invalid.");
     output.button = value.button;
   }
+  if (value.buttons != null) {
+    if (!Number.isInteger(value.buttons) || value.buttons < 0 || value.buttons > 7) throw new Error("Event buttons value is invalid.");
+    output.buttons = value.buttons;
+  }
   if (value.key != null) output.key = safeText(value.key, 30);
-  for (const key of ["ctrlKey", "metaKey", "shiftKey"]) {
+  if (value.code != null) output.code = safeText(value.code, 30);
+  for (const key of ["ctrlKey", "metaKey", "shiftKey", "altKey"]) {
     if (value[key] != null) {
       if (typeof value[key] !== "boolean") throw new Error("Event modifier is invalid.");
       output[key] = value[key];
@@ -372,6 +503,9 @@ function validateEventInit(value) {
   }
   if (value.inputType != null) output.inputType = safeText(value.inputType, 50);
   if (value.data != null) output.data = safeText(value.data, 500);
+  for (const key of ["clientX", "clientY", "deltaX", "deltaY"]) {
+    if (value[key] != null) output[key] = safeFiniteNumber(value[key], -10000, 10000, "Event coordinate");
+  }
   return output;
 }
 
@@ -384,7 +518,9 @@ function boundedArray(value, label, allowEmpty = true) {
 
 function safeStyleValue(value) {
   const text = safeText(value, 200);
-  if (/url\s*\(|expression\s*\(|@import|javascript:|data:/i.test(text)) throw new Error("Style value may load or execute content.");
+  if (/[{};]/.test(text) || /url\s*\(|expression\s*\(|@import|javascript:|data:/i.test(text)) {
+    throw new Error("Style value may escape, load, or execute content.");
+  }
   return text;
 }
 

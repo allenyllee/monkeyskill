@@ -1,3 +1,5 @@
+import { FAILURE_CATEGORIES } from "./test-spec.js";
+
 export const LLM_SETTINGS_KEY = "llmSettings";
 
 const DEFAULT_ENDPOINT = "https://api.openai.com/v1/chat/completions";
@@ -92,9 +94,7 @@ export function extractCriterionIds(skillInstructions) {
 }
 
 export function buildRepairMessage(failures) {
-  const allowedCategories = new Set([
-    "attribute-state", "blocker-state", "computed-style", "dom-state", "event-state", "selection-state", "value-state"
-  ]);
+  const allowedCategories = new Set(FAILURE_CATEGORIES);
   const diagnostics = [];
   const seen = new Set();
   for (const failure of failures) {

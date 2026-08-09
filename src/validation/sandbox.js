@@ -142,6 +142,16 @@
       target.focus();
       return null;
     }
+    if (step.action === "blur") {
+      target.blur();
+      await settle();
+      return null;
+    }
+    if (step.action === "click") {
+      target.click();
+      await settle();
+      return null;
+    }
     if (step.action === "remove-node") {
       target.remove();
       await settle();
@@ -161,6 +171,21 @@
       target.value = step.value;
       return null;
     }
+    if (step.action === "set-text") {
+      target.textContent = step.value;
+      await settle();
+      return null;
+    }
+    if (step.action === "set-checked") {
+      target.checked = step.value;
+      return null;
+    }
+    if (step.action === "scroll") {
+      target.scrollLeft = step.left;
+      target.scrollTop = step.top;
+      await settle();
+      return null;
+    }
     if (step.action === "set-style") {
       target.style[step.property] = step.value;
       await settle();
@@ -175,8 +200,13 @@
   function createEvent(type, init) {
     const options = { bubbles: true, cancelable: true, ...init };
     if (type === "keydown" || type === "keyup") return new KeyboardEvent(type, options);
-    if (type === "input") return new InputEvent(type, options);
-    if (["click", "contextmenu", "mousedown", "mouseup"].includes(type)) return new MouseEvent(type, options);
+    if (type === "input" || type === "beforeinput") return new InputEvent(type, options);
+    if (type === "wheel") return new WheelEvent(type, options);
+    if (type === "focus" || type === "blur") return new FocusEvent(type, options);
+    if (type.startsWith("pointer") && typeof PointerEvent === "function") return new PointerEvent(type, options);
+    if (["click", "dblclick", "contextmenu", "mousedown", "mouseenter", "mouseleave", "mousemove", "mouseup"].includes(type)) {
+      return new MouseEvent(type, options);
+    }
     return new Event(type, options);
   }
 
@@ -195,14 +225,36 @@
     const target = state.nodes.get(assertion.target);
     if (assertion.type === "dom-present") return Boolean(target?.isConnected) === assertion.expected;
     if (!target) return false;
+    if (assertion.type === "active-element") return (document.activeElement === target) === assertion.expected;
+    if (assertion.type === "visible") return isVisible(target) === assertion.expected;
+    if (assertion.type === "hit-test") return isTopmostAt(target, assertion.point) === assertion.expected;
     if (assertion.type === "computed-style") {
       return compare(getComputedStyle(target, assertion.pseudo)[assertion.property], assertion.operator, assertion.value);
+    }
+    if (assertion.type === "bounding-rect") {
+      return compareNumeric(target.getBoundingClientRect()[assertion.property], assertion.operator, assertion.value, assertion.tolerance);
+    }
+    if (assertion.type === "relative-position") {
+      return comparePosition(target.getBoundingClientRect(), state.nodes.get(assertion.other)?.getBoundingClientRect(), assertion.relation, assertion.tolerance);
+    }
+    if (assertion.type === "contrast-ratio") {
+      return compareNumeric(contrastRatio(target), assertion.operator, assertion.value, 0);
+    }
+    if (assertion.type === "scroll-offset") {
+      return compareNumeric(assertion.axis === "left" ? target.scrollLeft : target.scrollTop, assertion.operator, assertion.value, assertion.tolerance);
+    }
+    if (assertion.type === "property") return Boolean(target[assertion.name]) === assertion.expected;
+    if (assertion.type === "attribute-refers-to") {
+      const other = state.nodes.get(assertion.other);
+      const tokens = (target.getAttribute(assertion.name) || "").split(/\s+/).filter(Boolean);
+      return (Boolean(other?.id) && tokens.includes(other.id)) === assertion.expected;
     }
     if (assertion.type === "value") return compare(target.value, assertion.operator, assertion.value);
     if (assertion.type === "text-content") return compare(target.textContent, assertion.operator, assertion.value);
     const present = target.hasAttribute(assertion.name);
     if (assertion.operator === "exists") return present;
     if (assertion.operator === "absent") return !present;
+    if (assertion.operator === "contains") return present && target.getAttribute(assertion.name).includes(assertion.value);
     return present && target.getAttribute(assertion.name) === assertion.value;
   }
 
@@ -214,10 +266,27 @@
     return false;
   }
 
+  function compareNumeric(actual, operator, expected, tolerance = 0) {
+    if (!Number.isFinite(actual)) return false;
+    if (operator === "approx") return Math.abs(actual - expected) <= tolerance;
+    if (operator === "eq") return Math.abs(actual - expected) <= tolerance;
+    if (operator === "neq") return Math.abs(actual - expected) > tolerance;
+    if (operator === "gt") return actual > expected;
+    if (operator === "gte") return actual >= expected;
+    if (operator === "lt") return actual < expected;
+    if (operator === "lte") return actual <= expected;
+    return false;
+  }
+
   function assertionCategory(type) {
     if (type === "event-default-prevented") return "event-state";
     if (type === "blocker-call-count") return "blocker-state";
     if (type === "computed-style") return "computed-style";
+    if (type === "active-element") return "focus-state";
+    if (["bounding-rect", "relative-position", "scroll-offset"].includes(type)) return "layout-state";
+    if (["contrast-ratio", "hit-test", "visible"].includes(type)) return "visibility-state";
+    if (type === "property") return "property-state";
+    if (type === "attribute-refers-to") return "accessibility-state";
     if (type === "selection-collapsed") return "selection-state";
     if (type === "value") return "value-state";
     if (type === "text-content") return "value-state";
@@ -249,6 +318,93 @@
     }
     if (match.text && !compare(node.textContent, match.text.operator, match.text.value)) return false;
     return true;
+  }
+
+  function isVisible(target) {
+    if (!target.isConnected) return false;
+    for (let node = target; node && node.nodeType === Node.ELEMENT_NODE; node = node.parentElement) {
+      const style = getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse" || Number(style.opacity) === 0) return false;
+    }
+    const rect = target.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+
+  function isTopmostAt(target, point) {
+    const rect = target.getBoundingClientRect();
+    const inset = 1;
+    const points = {
+      center: [rect.left + rect.width / 2, rect.top + rect.height / 2],
+      "top-left": [rect.left + inset, rect.top + inset],
+      "top-right": [rect.right - inset, rect.top + inset],
+      "bottom-left": [rect.left + inset, rect.bottom - inset],
+      "bottom-right": [rect.right - inset, rect.bottom - inset]
+    };
+    const [x, y] = points[point];
+    const hit = document.elementFromPoint(x, y);
+    return Boolean(hit && (hit === target || target.contains(hit)));
+  }
+
+  function comparePosition(rect, other, relation, tolerance) {
+    if (!other) return false;
+    if (relation === "above") return rect.bottom <= other.top + tolerance;
+    if (relation === "below") return rect.top >= other.bottom - tolerance;
+    if (relation === "left-of") return rect.right <= other.left + tolerance;
+    if (relation === "right-of") return rect.left >= other.right - tolerance;
+    if (relation === "inside") {
+      return rect.left >= other.left - tolerance && rect.top >= other.top - tolerance
+        && rect.right <= other.right + tolerance && rect.bottom <= other.bottom + tolerance;
+    }
+    const overlaps = rect.left < other.right && rect.right > other.left && rect.top < other.bottom && rect.bottom > other.top;
+    if (relation === "overlaps") return overlaps;
+    if (relation === "not-overlaps") return !overlaps;
+    if (relation === "aligned-x") return Math.abs((rect.left + rect.right) / 2 - (other.left + other.right) / 2) <= tolerance;
+    if (relation === "aligned-y") return Math.abs((rect.top + rect.bottom) / 2 - (other.top + other.bottom) / 2) <= tolerance;
+    return false;
+  }
+
+  function contrastRatio(target) {
+    const foreground = parseColor(getComputedStyle(target).color);
+    const background = effectiveBackground(target);
+    if (!foreground || !background) return NaN;
+    const lighter = Math.max(luminance(foreground), luminance(background));
+    const darker = Math.min(luminance(foreground), luminance(background));
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  function effectiveBackground(target) {
+    let result = [255, 255, 255, 1];
+    const layers = [];
+    for (let node = target; node && node.nodeType === Node.ELEMENT_NODE; node = node.parentElement) {
+      const color = parseColor(getComputedStyle(node).backgroundColor);
+      if (color) layers.push(color);
+    }
+    for (let index = layers.length - 1; index >= 0; index -= 1) result = composite(layers[index], result);
+    return result;
+  }
+
+  function parseColor(value) {
+    const match = String(value).match(/^rgba?\(\s*([\d.]+)[, ]+\s*([\d.]+)[, ]+\s*([\d.]+)(?:\s*[,/]\s*([\d.]+))?\s*\)$/i);
+    return match ? [Number(match[1]), Number(match[2]), Number(match[3]), match[4] == null ? 1 : Number(match[4])] : null;
+  }
+
+  function composite(foreground, background) {
+    const alpha = foreground[3] + background[3] * (1 - foreground[3]);
+    if (alpha === 0) return [0, 0, 0, 0];
+    return [
+      (foreground[0] * foreground[3] + background[0] * background[3] * (1 - foreground[3])) / alpha,
+      (foreground[1] * foreground[3] + background[1] * background[3] * (1 - foreground[3])) / alpha,
+      (foreground[2] * foreground[3] + background[2] * background[3] * (1 - foreground[3])) / alpha,
+      alpha
+    ];
+  }
+
+  function luminance(color) {
+    const channels = color.slice(0, 3).map(value => {
+      const normalized = value / 255;
+      return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
   }
 
   function settle() {
