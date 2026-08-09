@@ -156,6 +156,23 @@ test("keyboard shortcut blockers require the copy-shortcut workflow", () => {
   const propertyTest = invalidReturn.tests.find(candidate => candidate.id === "keyboard-copy-property-return-false");
   propertyTest.blockers[0].registration = "listener";
   assert.throws(() => validateTestSpec(invalidReturn, skill, criteria), /return-false requires/);
+
+  const observerCoupled = JSON.parse(fixtureText);
+  const observerTest = observerCoupled.tests.find(candidate => candidate.criterion === "keyboard-copy");
+  observerTest.blockers.push({
+    id: "copy-observer",
+    target: "target",
+    event: "copy",
+    registration: "listener",
+    effect: "flag-only"
+  });
+  observerTest.assertions.push({
+    type: "blocker-call-count",
+    blocker: "copy-observer",
+    operator: "gte",
+    value: 1
+  });
+  assert.throws(() => validateTestSpec(observerCoupled, skill, criteria), /trusted copy-shortcut result/);
 });
 
 test("selection fixtures model primary mousedown and high-specificity transparent highlights", () => {

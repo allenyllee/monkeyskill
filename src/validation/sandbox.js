@@ -108,7 +108,13 @@
     const element = document.createElement(node.tag);
     element.id = node.id;
     if (node.text) element.textContent = node.text;
-    for (const [name, value] of Object.entries(node.attributes)) element.setAttribute(name, value);
+    for (const [name, value] of Object.entries(node.attributes)) {
+      element.setAttribute(name, value);
+      // The TestSpec DSL describes initial control state, not HTML parser
+      // source text. Keep reflected DOM properties consistent across input,
+      // textarea, select, and option fixtures.
+      if (name === "value" && "value" in element) element.value = value;
+    }
     for (const [property, value] of Object.entries(node.styles)) element.style[property] = value;
     if (node.rect) {
       const { x, y, width, height } = node.rect;

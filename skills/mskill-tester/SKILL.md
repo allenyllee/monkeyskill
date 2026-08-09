@@ -19,6 +19,7 @@ Generate tests independently from the implementation. Treat the MSkill manifest 
 - Model user paste only with `paste-text`, and user drag selection only with `drag-select-text`. Never replace either workflow with `set-value`, `select-contents`, or hand-written event sequences.
 - Cover every distinct blocker family explicitly named by a criterion. For example, primary `mousedown` cancellation and `selectstart` cancellation require separate coverage; one is not a substitute for the other.
 - Model Ctrl/Cmd+C and Ctrl/Cmd+X only with `copy-shortcut`; never replace the keyboard workflow with a lone `copy`, `cut`, or `keydown` event.
+- For `copy-shortcut`, use its `event-default-prevented` result and the target's final `value` as the observable outcome. Never add a `copy` or `cut` `flag-only` observer or assert its call count: generated protection may legitimately isolate page-owned copy/cut handlers while preserving the trusted default operation.
 - Use `click-control` when testing a real primary-button transition from existing selected text into an input, textarea, button, link, or editable control. Assert that stale page selection is not restored, the control remains active, and its ordinary behavior still works.
 - Use `click-page` when testing a real primary-button transition from existing selected text into another ordinary page area. Assert that the selection collapses normally instead of being restored.
 - Assert observable outcomes for effectful blockers: default state, selection, value, style, or DOM state. Do not require an effectful handler's call count to be zero. Use a `flag-only` blocker when the human specification explicitly requires proving that a handler itself did or did not run.
@@ -79,6 +80,7 @@ Policy test:
 - Optional `rect`: `{ "x": number, "y": number, "width": non-negative number, "height": non-negative number }`. Use it when the behavior or assertion depends on geometry; the trusted runner supplies this rectangle even when Chrome's offscreen document has no reliable layout viewport.
 - Do not use `!important`, `url()`, `data:`, `javascript:`, `expression()`, or `@import` in values. Fixture rules are already emitted as `!important` by the trusted runner.
 - Each node's `parent`, when present, must refer to an earlier node ID.
+- For a `textarea`, prefer `text` for its initial editable value, matching native HTML. The runner also normalizes an attributes `value` fallback into the live DOM property so fixtures remain deterministic.
 - `fixture.rules` may contain `{ "target": "node-id", "pseudo": "::selection", "styles": {...}, "specificity": "id-ancestor" }`; no other pseudo-element is allowed. Omit `specificity` normally, and use `id-ancestor` when the human specification names an ID-specific or unusually high-specificity rule.
 
 ## Simulated blockers
