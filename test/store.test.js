@@ -51,4 +51,7 @@ test("long LLM requests still run outside the ephemeral service worker", async (
   assert.match(offscreen, /request\.builderBody/);
   assert.match(offscreen, /request\.testerBody/);
   assert.match(offscreen, /specification: packageDefinition\.specification/);
+  assert.match(offscreen, /type: "generation-progress"/);
+  assert.match(offscreen, /setInterval/);
+  assert.match(background, /job\.updatedAt \|\| job\.startedAt/);
 });

@@ -1,12 +1,22 @@
 import { createAgentApiServer } from "./agent-api.mjs";
+import { readFileSync } from "node:fs";
 
+const argv = process.argv.slice(2);
+const option = name => {
+  const index = argv.indexOf(name);
+  return index >= 0 ? argv[index + 1] : undefined;
+};
 const host = "127.0.0.1";
-const port = Number(process.env.MONKEYSKILL_AGENT_PORT || 8787);
-const mode = process.env.MONKEYSKILL_AGENT_MODE || "fixture";
+const port = Number(option("--port") || process.env.MONKEYSKILL_AGENT_PORT || 8787);
+const mode = option("--mode") || process.env.MONKEYSKILL_AGENT_MODE || "fixture";
+const bootstrapPath = option("--bootstrap") || process.env.MONKEYSKILL_AGENT_BOOTSTRAP;
+const bootstrap = bootstrapPath
+  ? JSON.parse(readFileSync(bootstrapPath, "utf8"))
+  : null;
 const { server, token } = createAgentApiServer({
   mode,
-  token: process.env.MONKEYSKILL_LOCAL_TOKEN,
-  agentTimeoutMs: Number(process.env.MONKEYSKILL_AGENT_TIMEOUT_MS || 900_000)
+  token: process.env.MONKEYSKILL_LOCAL_TOKEN || bootstrap?.token,
+  agentTimeoutMs: Number(process.env.MONKEYSKILL_AGENT_TIMEOUT_MS || bootstrap?.agentTimeoutMs || 900_000)
 });
 
 server.listen(port, host, () => {

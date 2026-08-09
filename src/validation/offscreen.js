@@ -32,7 +32,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 async function runGenerationJob({ jobId, skillId, packageDefinition, request }) {
+  const heartbeat = setInterval(() => {
+    void reportGenerationProgress(jobId, skillId, "waiting-for-generation");
+  }, 60_000);
   try {
+    await reportGenerationProgress(jobId, skillId, "requesting-initial-build-and-tests");
     const builderMessages = [...request.builderBody.messages];
     const builderSessionId = `builder-${jobId}`;
     const testerSessionId = `tester-${jobId}`;
@@ -166,7 +170,19 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
       ok: false,
       error: error.message
     });
+  } finally {
+    clearInterval(heartbeat);
   }
+}
+
+async function reportGenerationProgress(jobId, skillId, stage) {
+  await chrome.runtime.sendMessage({
+    target: "generation-background",
+    type: "generation-progress",
+    jobId,
+    skillId,
+    stage
+  }).catch(() => undefined);
 }
 
 async function generateTestSpec(request, packageDefinition, sessionId) {

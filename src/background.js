@@ -55,7 +55,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.target === "validation-offscreen") return false;
   if (message?.target === "generation-background") {
     void ready()
-      .then(() => handleGenerationCompletion(message, _sender))
+      .then(() => message.type === "generation-progress"
+        ? handleGenerationProgress(message, _sender)
+        : handleGenerationCompletion(message, _sender))
       .then(sendResponse, error => sendResponse({ ok: false, error: error.message }));
     return true;
   }
@@ -173,7 +175,8 @@ async function handleMessage(message, sender) {
       await setGenerationJob(packageSkillId, {
         id: jobId,
         state: "running",
-        startedAt: new Date().toISOString()
+        startedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       });
       try {
         await ensureUserScriptsAvailable();
@@ -204,7 +207,7 @@ async function handleMessage(message, sender) {
       requireSkillId(skillId);
       const stored = await chrome.storage.local.get(GENERATION_JOBS_KEY);
       let job = stored[GENERATION_JOBS_KEY]?.[skillId] ?? null;
-      if (job?.state === "running" && Date.now() - Date.parse(job.startedAt) > GENERATION_STALE_MS) {
+      if (job?.state === "running" && Date.now() - Date.parse(job.updatedAt || job.startedAt) > GENERATION_STALE_MS) {
         job = {
           ...job,
           state: "failed",
@@ -462,6 +465,23 @@ async function handleGenerationCompletion(message, sender) {
     });
     return { ok: true };
   }
+}
+
+async function handleGenerationProgress(message, sender) {
+  if (sender?.url !== chrome.runtime.getURL("src/validation/offscreen.html")) {
+    throw new Error("Invalid generation progress sender.");
+  }
+  const storedJobs = await chrome.storage.local.get(GENERATION_JOBS_KEY);
+  const activeJob = storedJobs[GENERATION_JOBS_KEY]?.[message.skillId];
+  if (!activeJob || activeJob.id !== message.jobId || activeJob.state !== "running") {
+    return { ok: false, ignored: true };
+  }
+  await setGenerationJob(message.skillId, {
+    ...activeJob,
+    updatedAt: new Date().toISOString(),
+    stage: typeof message.stage === "string" ? message.stage : activeJob.stage
+  });
+  return { ok: true };
 }
 
 async function loadAgentSkill(skillId) {
