@@ -183,7 +183,7 @@ export async function runFixtureAgent(request, options = {}) {
 function isTesterRequest(messages) {
   return messages.some(message => message.role === "system"
     && typeof message.content === "string"
-    && /MSkill Tester|independent.*TestSpec/i.test(message.content));
+    && /^name:\s*mskill-tester\s*$/mi.test(message.content));
 }
 
 export async function runProxyAgent(request, options = {}) {

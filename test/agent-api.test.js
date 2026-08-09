@@ -8,6 +8,8 @@ import { readFile } from "node:fs/promises";
 
 const skill = JSON.parse(await readFile(new URL("../skills/restore-right-click/skill.json", import.meta.url), "utf8"));
 const skillInstructions = await readFile(new URL("../skills/restore-right-click/SKILL.md", import.meta.url), "utf8");
+const installerInstructions = await readFile(new URL("../skills/mskill-installer/SKILL.md", import.meta.url), "utf8");
+const testerInstructions = await readFile(new URL("../skills/mskill-tester/SKILL.md", import.meta.url), "utf8");
 
 test("local fixture agent completes the generation and validation flow", async t => {
   const local = createAgentApiServer({ token: "test-token" });
@@ -21,7 +23,7 @@ test("local fixture agent completes the generation and validation flow", async t
     body: JSON.stringify({
       model: "local-agent",
       messages: buildGenerationMessages({
-        installerInstructions: "Generate only the requested safe user script.",
+        installerInstructions,
         skillInstructions,
         skill
       })
@@ -42,7 +44,7 @@ test("local fixture agent independently returns a constrained TestSpec", async (
   const response = await runFixtureAgent({
     model: "local-agent",
     messages: buildTesterMessages({
-      testerInstructions: "# MSkill Tester\nGenerate an independent TestSpec.",
+      testerInstructions,
       skillInstructions,
       skill
     })
