@@ -17,6 +17,7 @@ Generate tests independently from the implementation. Treat the MSkill manifest 
 - Use only the primitives and enum values below.
 - Keep tests minimal. Reuse one test for multiple observations of the same criterion when practical.
 - Model user paste only with `paste-text`, and user drag selection only with `drag-select-text`. Never replace either workflow with `set-value`, `select-contents`, or hand-written event sequences.
+- Assert observable outcomes for effectful blockers: default state, selection, value, style, or DOM state. Do not require an effectful handler's call count to be zero. Use a `flag-only` blocker when the human specification explicitly requires proving that a handler itself did or did not run.
 - Make fixtures neutral and give layout assertions enough viewport space; do not place a target against an edge when the required result extends beyond it.
 - Avoid styling fixtures toward the expected result except for dimensions or spacing required to make the observation fair.
 - Use a `policy` test for a `[criterion:no-<capability>]` criterion only when that capability appears in `forbiddenCapabilities`.
@@ -110,7 +111,7 @@ Each blocker has `id`, `target`, `event`, `registration`, `effect`, and optional
 ## Assertions
 
 - `event-default-prevented`: fields `step`, `expected`.
-- `blocker-call-count`: fields `blocker`, `operator` (`eq` or `gte`), `value`.
+- `blocker-call-count`: fields `blocker`, `operator` (`eq` or `gte`), `value`. An `eq: 0` assertion is allowed only for a `flag-only` blocker; effectful blockers must be checked through their observable result.
 - `computed-style`: fields `target`, allowlisted `property`, optional `pseudo` (`::selection`, `::before`, `::after`), `operator` (`eq`, `neq`, `contains`), `value`.
 - `selection-collapsed`: field `expected`.
 - `value`: fields `target`, `operator` (`eq`, `neq`, `contains`), `value`.

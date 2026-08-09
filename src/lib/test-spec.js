@@ -114,8 +114,12 @@ function validateBehaviorTest(source, skill) {
   if (blockerIds.size !== blockers.length) throw new Error("Blocker IDs must be unique.");
   const steps = boundedArray(source.steps, "steps").map(step => validateStep(step, nodeIds, blockerIds));
   validateWorkflowCoverage(blockers, steps);
+  const blockerEffects = new Map(blockers.map(blocker => [blocker.id, blocker.effect]));
+  for (const step of steps) {
+    if (step.action === "add-blocker") blockerEffects.set(step.blocker.id, step.blocker.effect);
+  }
   const assertions = boundedArray(source.assertions, "assertions", false).map(assertion => (
-    validateAssertion(assertion, nodeIds, blockerIds, steps.length)
+    validateAssertion(assertion, nodeIds, blockerEffects, steps.length)
   ));
   return { id: source.id, kind: "behavior", criterion: source.criterion, mode: source.mode, fixture, blockers, steps, assertions };
 }
@@ -289,7 +293,7 @@ function validateWorkflowCoverage(blockers, steps) {
   }
 }
 
-function validateAssertion(source, nodeIds, blockerIds, stepCount) {
+function validateAssertion(source, nodeIds, blockerEffects, stepCount) {
   assertRecord(source, "assertion");
   if (!ALLOWED_ASSERTIONS.has(source.type)) throw new Error("TestSpec assertion is not allowed.");
   const common = { type: source.type };
@@ -302,8 +306,11 @@ function validateAssertion(source, nodeIds, blockerIds, stepCount) {
   }
   if (source.type === "blocker-call-count") {
     assertOnlyKeys(source, ["type", "blocker", "operator", "value"], "blocker assertion");
-    if (!blockerIds.has(source.blocker) || !["eq", "gte"].includes(source.operator) || !Number.isInteger(source.value)) {
+    if (!blockerEffects.has(source.blocker) || !["eq", "gte"].includes(source.operator) || !Number.isInteger(source.value)) {
       throw new Error("Blocker assertion is invalid.");
+    }
+    if (source.operator === "eq" && source.value === 0 && blockerEffects.get(source.blocker) !== "flag-only") {
+      throw new Error("Zero call-count assertions require a flag-only blocker; assert the observable outcome of effectful blockers.");
     }
     return { ...common, blocker: source.blocker, operator: source.operator, value: source.value };
   }

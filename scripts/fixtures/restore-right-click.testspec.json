@@ -10,7 +10,6 @@
       "blockers": [{ "id": "block", "target": "target", "event": "contextmenu", "registration": "listener", "effect": "prevent-default", "when": { "button": 2 } }],
       "steps": [{ "action": "dispatch-event", "target": "target", "event": "contextmenu", "init": { "button": 2 } }],
       "assertions": [
-        { "type": "blocker-call-count", "blocker": "block", "operator": "eq", "value": 0 },
         { "type": "event-default-prevented", "step": 0, "expected": false }
       ]
     },
@@ -27,7 +26,6 @@
       ],
       "assertions": [
         { "type": "computed-style", "target": "target", "property": "userSelect", "pseudo": null, "operator": "neq", "value": "none" },
-        { "type": "blocker-call-count", "blocker": "block", "operator": "eq", "value": 0 },
         { "type": "event-default-prevented", "step": 1, "expected": false },
         { "type": "selection-collapsed", "expected": false }
       ]
@@ -41,7 +39,6 @@
       "blockers": [{ "id": "block", "target": "target", "event": "keydown", "registration": "listener", "effect": "prevent-default", "when": { "key": "c", "ctrlKey": true } }],
       "steps": [{ "action": "dispatch-event", "target": "target", "event": "keydown", "init": { "key": "c", "ctrlKey": true } }],
       "assertions": [
-        { "type": "blocker-call-count", "blocker": "block", "operator": "eq", "value": 0 },
         { "type": "event-default-prevented", "step": 0, "expected": false }
       ]
     },
@@ -57,8 +54,6 @@
       ],
       "steps": [{ "action": "paste-text", "target": "target", "value": "pasted text" }],
       "assertions": [
-        { "type": "blocker-call-count", "blocker": "block", "operator": "eq", "value": 0 },
-        { "type": "blocker-call-count", "blocker": "rollback", "operator": "eq", "value": 0 },
         { "type": "event-default-prevented", "step": 0, "expected": false },
         { "type": "value", "target": "target", "operator": "eq", "value": "pasted text" }
       ]

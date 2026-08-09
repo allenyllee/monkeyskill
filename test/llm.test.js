@@ -44,6 +44,7 @@ test("Tester conversation is separate and receives no package-supplied test fiel
   assert.doesNotMatch(messages[1].content, /JavaScript source/);
   assert.match(messages[1].content, /paste-text workflow/);
   assert.match(messages[1].content, /drag-select-text/);
+  assert.match(messages[1].content, /final observable outcomes/);
 });
 
 test("generation prompt includes modes and human spec but never hidden tests", () => {
