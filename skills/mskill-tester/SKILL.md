@@ -94,10 +94,10 @@ Each blocker has `id`, `target`, `event`, `registration`, `effect`, and optional
 ## Steps
 
 - `{"action":"paste-text","target":"target","value":"pasted text"}`; the trusted runner performs paste, beforeinput, default insertion, and input with `inputType: "insertFromPaste"`. Model rollback blockers on the actual `input` event.
-- `{"action":"drag-select-text","target":"target"}`; the trusted runner performs the pointer, mouse, selectstart, range-selection, and release sequence.
+- `{"action":"drag-select-text","target":"target"}`; the trusted runner performs pointer/mouse down, actual movement, selectstart, range-selection, and release.
 - `{"action":"click-control","target":"control"}`; the trusted runner performs primary pointer/mouse down, native focus/selection transition, release, and click.
 - `{"action":"click-page","target":"page-area"}`; the trusted runner performs a primary pointer/mouse click on an ordinary page target, including Chrome-like late `selectionchange` timing and the native selection-collapse transition after release.
-- `{"action":"copy-shortcut","target":"control","operation":"copy"}`; the trusted runner focuses and selects the target, dispatches the Ctrl/Cmd keyboard event, and follows the browser copy/cut command path only if keydown was not cancelled.
+- `{"action":"copy-shortcut","target":"control","operation":"copy"}`; the trusted runner focuses and selects the target, dispatches the Ctrl/Cmd keyboard event, and follows the browser copy/cut command path only if keydown was not cancelled. For `cut`, the trusted runner performs the native default deletion after un-cancelled `cut` and `beforeinput` events; generated code must not implement that edit itself.
 - `{"action":"dispatch-event","target":"target","event":"contextmenu","init":{"button":2}}`
 - `{"action":"wait","ms":50}`; use at most 2000ms and only when the specified behavior is intentionally delayed or periodically repaired.
 - `{"action":"select-contents","target":"target"}`

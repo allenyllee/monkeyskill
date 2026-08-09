@@ -68,7 +68,7 @@ export function buildTesterMessages({ testerInstructions, skillInstructions, ski
         "Do not generate or discuss the implementation. Return JSON only.",
         "For paste behavior, use the paste-text workflow; never substitute set-value plus dispatch-event. For user text selection, use drag-select-text; never substitute select-contents plus synthetic release events.",
         "Cover every blocker family explicitly named by a criterion; do not treat selectstart as a substitute for primary mousedown cancellation. For ID-specific selection styling, use fixture-rule specificity id-ancestor and never put !important inside a style value.",
-        "For keyboard copy or cut behavior, use copy-shortcut; never substitute a lone copy/cut event or hand-written keydown sequence.",
+        "For keyboard copy or cut behavior, use copy-shortcut; never substitute a lone copy/cut event or hand-written keydown sequence. The trusted runner performs the native cut edit when the default path remains un-cancelled, so do not require generated code to mutate the field value itself.",
         "Assert final observable outcomes for effectful blockers. Do not require their call count to be zero; use a flag-only blocker only when SKILL.md explicitly requires the handler itself not to run.",
         "When selected page text is followed by a real click into an ordinary control, use click-control and verify the stale selection is not restored, focus stays on the control, and ordinary input/click behavior remains usable.",
         "When selected page text is followed by a real primary click on another ordinary page area, use click-page and verify that the selection collapses normally despite late selectionchange timing during dismissal.",

@@ -245,11 +245,14 @@
   }
 
   async function dragSelectText(target) {
-    const down = { button: 0, buttons: 1 };
+    const down = { button: 0, buttons: 1, clientX: 10, clientY: 10 };
     const pointerDown = createEvent("pointerdown", down);
     target.dispatchEvent(pointerDown);
     const mouseDown = createEvent("mousedown", down);
     target.dispatchEvent(mouseDown);
+    const move = { button: 0, buttons: 1, clientX: 100, clientY: 10 };
+    target.dispatchEvent(createEvent("pointermove", move));
+    target.dispatchEvent(createEvent("mousemove", move));
     const selectStart = createEvent("selectstart", {});
     target.dispatchEvent(selectStart);
     const blocked = pointerDown.defaultPrevented || mouseDown.defaultPrevented || selectStart.defaultPrevented;
@@ -301,12 +304,31 @@
     const keydown = createEvent("keydown", { key, ctrlKey: true, metaKey: true });
     target.dispatchEvent(keydown);
     let command = null;
+    let beforeInput = null;
     if (!keydown.defaultPrevented) {
       command = createEvent(operation, {});
       target.dispatchEvent(command);
+      if (operation === "cut" && !command.defaultPrevented) {
+        beforeInput = createEvent("beforeinput", { inputType: "deleteByCut", data: null });
+        target.dispatchEvent(beforeInput);
+        if (!beforeInput.defaultPrevented) {
+          deleteSelectedContent(target);
+          target.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteByCut", data: null }));
+        }
+      }
     }
     await settle();
-    return { defaultPrevented: keydown.defaultPrevented || Boolean(command?.defaultPrevented) };
+    return {
+      defaultPrevented: keydown.defaultPrevented || Boolean(command?.defaultPrevented) || Boolean(beforeInput?.defaultPrevented)
+    };
+  }
+
+  function deleteSelectedContent(target) {
+    if ("value" in target && Number.isInteger(target.selectionStart) && Number.isInteger(target.selectionEnd)) {
+      target.setRangeText("", target.selectionStart, target.selectionEnd, "end");
+      return;
+    }
+    getSelection()?.deleteFromDocument();
   }
 
   async function clickControl(target) {

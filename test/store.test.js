@@ -81,8 +81,12 @@ test("independent TestSpec feedback cannot expose tester-controlled text", async
   assert.match(sandbox, /trackedActiveElement/);
   assert.match(sandbox, /async function pasteText\(target, value\)/);
   assert.match(sandbox, /async function copyShortcut\(target, operation\)/);
+  assert.match(sandbox, /inputType: "deleteByCut"/);
+  assert.match(sandbox, /deleteSelectedContent\(target\)/);
   assert.match(sandbox, /inputType: "insertFromPaste"/);
   assert.match(sandbox, /async function dragSelectText\(target\)/);
+  assert.match(sandbox, /createEvent\("pointermove", move\)/);
+  assert.match(sandbox, /createEvent\("mousemove", move\)/);
   assert.match(sandbox, /pointerDown\.defaultPrevented \|\| mouseDown\.defaultPrevented \|\| selectStart\.defaultPrevented/);
   assert.match(sandbox, /rule\.specificity === "id-ancestor"/);
   assert.match(sandbox, /async function clickControl\(target\)/);
