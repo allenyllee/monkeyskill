@@ -20,7 +20,7 @@ Restore the browser context menu, text selection, copying, cutting, pasting, and
 - Restore selection broadly across the page.
 - Block right-button mouse handlers while leaving left-button interactions intact.
 - Preserve a live selection when release events try to clear it.
-- Treat restoration as part of the selection gesture only. A later deliberate primary click on another ordinary page area must discard the saved range and collapse the selection normally.
+- Treat restoration as part of the selection gesture only. A later deliberate primary click on another ordinary page area must discard the saved range and collapse the selection normally, even if Chrome reports a late `selectionchange` containing the old non-collapsed range during that dismissal gesture.
 - When the user deliberately clicks an input, textarea, link, button, or editable control after selecting page text, discard the saved page range instead of restoring it; the clicked control must retain focus and remain usable.
 - Restore pointer events on blocked media and bypass empty overlays covering media or editable controls.
 - Restore visible selection colors when a page makes `::selection` transparent.
@@ -37,7 +37,7 @@ Restore the browser context menu, text selection, copying, cutting, pasting, and
 
 - [criterion:context-menu] A real user right-click can open the native context menu on ordinary elements, inputs, images, overlays, and CSS-background elements.
 - [criterion:text-selection] Selected text remains selected and page `selectstart` blockers no longer disable selection.
-- [criterion:selection-dismissal] After page text has been selected, a later real primary-button click on another ordinary page area collapses the selection instead of restoring a stale saved range.
+- [criterion:selection-dismissal] After page text has been selected, a later real primary-button click on another ordinary page area collapses the selection instead of restoring a stale saved range, including when `selectionchange` timing briefly exposes the old range during the new click.
 - [criterion:keyboard-copy] Copy and cut keyboard shortcuts reach the browser default behavior.
 - [criterion:paste] Paste reaches editable controls and the inserted value remains after the resulting `beforeinput` and `input` events, without page handlers blocking or rolling it back.
 - [criterion:pointer-overlays] Empty blocking overlays and `pointer-events: none` media are repaired.

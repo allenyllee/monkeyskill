@@ -94,7 +94,7 @@ Each blocker has `id`, `target`, `event`, `registration`, `effect`, and optional
 - `{"action":"paste-text","target":"target","value":"pasted text"}`; the trusted runner performs paste, beforeinput, default insertion, and input with `inputType: "insertFromPaste"`. Model rollback blockers on the actual `input` event.
 - `{"action":"drag-select-text","target":"target"}`; the trusted runner performs the pointer, mouse, selectstart, range-selection, and release sequence.
 - `{"action":"click-control","target":"control"}`; the trusted runner performs primary pointer/mouse down, native focus/selection transition, release, and click.
-- `{"action":"click-page","target":"page-area"}`; the trusted runner performs a primary pointer/mouse click on an ordinary page target, including the native selection-collapse transition.
+- `{"action":"click-page","target":"page-area"}`; the trusted runner performs a primary pointer/mouse click on an ordinary page target, including Chrome-like late `selectionchange` timing and the native selection-collapse transition after release.
 - `{"action":"dispatch-event","target":"target","event":"contextmenu","init":{"button":2}}`
 - `{"action":"wait","ms":50}`; use at most 2000ms and only when the specified behavior is intentionally delayed or periodically repaired.
 - `{"action":"select-contents","target":"target"}`

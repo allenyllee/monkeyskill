@@ -278,7 +278,32 @@
   }
 
   async function clickPage(target) {
-    return primaryClick(target, false);
+    const down = { button: 0, buttons: 1 };
+    const pointerDown = createEvent("pointerdown", down);
+    const mouseDown = createEvent("mousedown", down);
+    target.dispatchEvent(pointerDown);
+    target.dispatchEvent(mouseDown);
+
+    if (!pointerDown.defaultPrevented && !mouseDown.defaultPrevented) {
+      // Chrome may report the still-live range during a new primary gesture,
+      // then apply the native selection collapse after the release events.
+      document.dispatchEvent(createEvent("selectionchange", {}));
+    }
+
+    target.dispatchEvent(createEvent("pointerup", { button: 0, buttons: 0 }));
+    target.dispatchEvent(createEvent("mouseup", { button: 0, buttons: 0 }));
+    const click = createEvent("click", { button: 0, buttons: 0 });
+    target.dispatchEvent(click);
+
+    if (!pointerDown.defaultPrevented && !mouseDown.defaultPrevented) {
+      await new Promise(resolve => setTimeout(() => {
+        getSelection()?.removeAllRanges();
+        document.dispatchEvent(createEvent("selectionchange", {}));
+        resolve();
+      }, 0));
+    }
+    await settle();
+    return { defaultPrevented: click.defaultPrevented };
   }
 
   async function primaryClick(target, focusTarget) {
