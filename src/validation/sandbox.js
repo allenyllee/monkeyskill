@@ -180,6 +180,7 @@
     }
     if (step.action === "drag-select-text") return dragSelectText(target);
     if (step.action === "paste-text") return pasteText(target, step.value);
+    if (step.action === "copy-shortcut") return copyShortcut(target, step.operation);
     if (step.action === "click-control") return clickControl(target);
     if (step.action === "click-page") return clickPage(target);
     if (step.action === "focus") {
@@ -278,6 +279,29 @@
     }
     await settle();
     return { defaultPrevented: beforeInput.defaultPrevented };
+  }
+
+  async function copyShortcut(target, operation) {
+    target.focus();
+    if (typeof target.select === "function") target.select();
+    else {
+      const range = document.createRange();
+      range.selectNodeContents(target);
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(createEvent("selectionchange", {}));
+    }
+    const key = operation === "cut" ? "x" : "c";
+    const keydown = createEvent("keydown", { key, ctrlKey: true, metaKey: true });
+    target.dispatchEvent(keydown);
+    let command = null;
+    if (!keydown.defaultPrevented) {
+      command = createEvent(operation, {});
+      target.dispatchEvent(command);
+    }
+    await settle();
+    return { defaultPrevented: keydown.defaultPrevented || Boolean(command?.defaultPrevented) };
   }
 
   async function clickControl(target) {

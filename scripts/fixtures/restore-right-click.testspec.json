@@ -37,7 +37,7 @@
       "mode": "standard",
       "fixture": { "nodes": [{ "id": "target", "tag": "input", "parent": null, "text": "", "attributes": { "value": "copy me" }, "styles": {} }], "rules": [] },
       "blockers": [{ "id": "block", "target": "target", "event": "keydown", "registration": "listener", "effect": "prevent-default", "when": { "key": "c", "ctrlKey": true } }],
-      "steps": [{ "action": "dispatch-event", "target": "target", "event": "keydown", "init": { "key": "c", "ctrlKey": true } }],
+      "steps": [{ "action": "copy-shortcut", "target": "target", "operation": "copy" }],
       "assertions": [
         { "type": "event-default-prevented", "step": 0, "expected": false }
       ]

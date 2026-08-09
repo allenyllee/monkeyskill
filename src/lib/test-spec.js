@@ -33,7 +33,7 @@ const ALLOWED_EFFECTS = new Set([
   "clear-selection", "flag-only", "prevent-default", "prevent-default-and-stop", "rollback-value"
 ]);
 const ALLOWED_ACTIONS = new Set([
-  "add-blocker", "append-node", "blur", "capture-node", "click", "click-control", "click-page", "dispatch-event", "focus", "remove-attribute", "remove-node",
+  "add-blocker", "append-node", "blur", "capture-node", "click", "click-control", "click-page", "copy-shortcut", "dispatch-event", "focus", "remove-attribute", "remove-node",
   "drag-select-text", "paste-text", "scroll", "select-contents", "set-attribute", "set-checked", "set-style", "set-text", "set-value", "wait"
 ]);
 const ALLOWED_ASSERTIONS = new Set([
@@ -236,6 +236,11 @@ function validateStep(source, nodeIds, blockerIds) {
     assertOnlyKeys(source, ["action", "target", "value"], "paste-text step");
     return { action: source.action, target: source.target, value: safeText(source.value, 500) };
   }
+  if (source.action === "copy-shortcut") {
+    assertOnlyKeys(source, ["action", "target", "operation"], "copy-shortcut step");
+    if (!["copy", "cut"].includes(source.operation)) throw new Error("copy-shortcut operation is invalid.");
+    return { action: source.action, target: source.target, operation: source.operation };
+  }
   if (["click-control", "click-page"].includes(source.action)) {
     assertOnlyKeys(source, ["action", "target"], `${source.action} step`);
     return { action: source.action, target: source.target };
@@ -294,6 +299,13 @@ function validateWorkflowCoverage(blockers, steps) {
   const modelsSelection = blockers.some(blocker => blocker.event === "selectstart" || blocker.effect === "clear-selection");
   if (modelsSelection && !actions.has("drag-select-text")) {
     throw new Error("Selection blockers require the drag-select-text workflow action.");
+  }
+  const modelsCopyShortcut = blockers.some(blocker => (
+    blocker.event === "copy" || blocker.event === "cut"
+    || blocker.event === "keydown" && ["c", "x"].includes(String(blocker.when.key || "").toLowerCase())
+  ));
+  if (modelsCopyShortcut && !actions.has("copy-shortcut")) {
+    throw new Error("Copy/cut shortcut blockers require the copy-shortcut workflow action.");
   }
 }
 

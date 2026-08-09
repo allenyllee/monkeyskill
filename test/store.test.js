@@ -80,6 +80,7 @@ test("independent TestSpec feedback cannot expose tester-controlled text", async
   assert.match(offscreen, /assertion\.type === "hit-test"/);
   assert.match(sandbox, /trackedActiveElement/);
   assert.match(sandbox, /async function pasteText\(target, value\)/);
+  assert.match(sandbox, /async function copyShortcut\(target, operation\)/);
   assert.match(sandbox, /inputType: "insertFromPaste"/);
   assert.match(sandbox, /async function dragSelectText\(target\)/);
   assert.match(sandbox, /async function clickControl\(target\)/);

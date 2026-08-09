@@ -6,7 +6,7 @@ Restore the browser context menu, text selection, copying, cutting, pasting, and
 
 ## Standard mode
 
-- Stop page handlers from cancelling `contextmenu`, `copy`, `cut`, `selectstart`, and `dragstart`.
+- Stop page handlers from cancelling `contextmenu`, `copy`, `cut`, `selectstart`, and `dragstart`, including `keydown` handlers that cancel Ctrl/Cmd+C or Ctrl/Cmd+X before the copy/cut event occurs.
 - Remove equivalent inline event-handler attributes.
 - Remove inline mouse/pointer handlers only when their source explicitly cancels the event.
 - Restore text selection only where the page explicitly disables it.
@@ -38,7 +38,7 @@ Restore the browser context menu, text selection, copying, cutting, pasting, and
 - [criterion:context-menu] A real user right-click can open the native context menu on ordinary elements, inputs, images, overlays, and CSS-background elements.
 - [criterion:text-selection] Selected text remains selected and page `selectstart` blockers no longer disable selection.
 - [criterion:selection-dismissal] After page text has been selected, a later real primary-button click on another ordinary page area collapses the selection instead of restoring a stale saved range, including when `selectionchange` timing briefly exposes the old range during the new click.
-- [criterion:keyboard-copy] Copy and cut keyboard shortcuts reach the browser default behavior.
+- [criterion:keyboard-copy] Ctrl/Cmd+C and Ctrl/Cmd+X keydown handlers cannot cancel the shortcut before the browser's copy or cut default behavior occurs.
 - [criterion:paste] Paste reaches editable controls and the inserted value remains after the resulting `beforeinput` and `input` events, without page handlers blocking or rolling it back.
 - [criterion:pointer-overlays] Empty blocking overlays and `pointer-events: none` media are repaired.
 - [criterion:selection-visibility] Page styles cannot make the selection highlight transparent, even through an ID-specific `::selection` rule using `!important`.

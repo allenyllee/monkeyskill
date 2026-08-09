@@ -17,6 +17,7 @@ Generate tests independently from the implementation. Treat the MSkill manifest 
 - Use only the primitives and enum values below.
 - Keep tests minimal. Reuse one test for multiple observations of the same criterion when practical.
 - Model user paste only with `paste-text`, and user drag selection only with `drag-select-text`. Never replace either workflow with `set-value`, `select-contents`, or hand-written event sequences.
+- Model Ctrl/Cmd+C and Ctrl/Cmd+X only with `copy-shortcut`; never replace the keyboard workflow with a lone `copy`, `cut`, or `keydown` event.
 - Use `click-control` when testing a real primary-button transition from existing selected text into an input, textarea, button, link, or editable control. Assert that stale page selection is not restored, the control remains active, and its ordinary behavior still works.
 - Use `click-page` when testing a real primary-button transition from existing selected text into another ordinary page area. Assert that the selection collapses normally instead of being restored.
 - Assert observable outcomes for effectful blockers: default state, selection, value, style, or DOM state. Do not require an effectful handler's call count to be zero. Use a `flag-only` blocker when the human specification explicitly requires proving that a handler itself did or did not run.
@@ -95,6 +96,7 @@ Each blocker has `id`, `target`, `event`, `registration`, `effect`, and optional
 - `{"action":"drag-select-text","target":"target"}`; the trusted runner performs the pointer, mouse, selectstart, range-selection, and release sequence.
 - `{"action":"click-control","target":"control"}`; the trusted runner performs primary pointer/mouse down, native focus/selection transition, release, and click.
 - `{"action":"click-page","target":"page-area"}`; the trusted runner performs a primary pointer/mouse click on an ordinary page target, including Chrome-like late `selectionchange` timing and the native selection-collapse transition after release.
+- `{"action":"copy-shortcut","target":"control","operation":"copy"}`; the trusted runner focuses and selects the target, dispatches the Ctrl/Cmd keyboard event, and follows the browser copy/cut command path only if keydown was not cancelled.
 - `{"action":"dispatch-event","target":"target","event":"contextmenu","init":{"button":2}}`
 - `{"action":"wait","ms":50}`; use at most 2000ms and only when the specified behavior is intentionally delayed or periodically repaired.
 - `{"action":"select-contents","target":"target"}`
