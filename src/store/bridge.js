@@ -17,6 +17,14 @@
   window.addEventListener("message", async event => {
     const request = event.data;
     if (event.source !== window || event.origin !== pageOrigin || request?.source !== "monkeyskill-store") return;
+    if (request.action === "ping" && typeof request.requestId === "string") {
+      window.postMessage({
+        source: "monkeyskill-extension",
+        requestId: request.requestId,
+        response: { ok: true }
+      }, pageOrigin);
+      return;
+    }
     const type = actions.get(request.action);
     if (!type || typeof request.requestId !== "string") return;
     let response;

@@ -17,6 +17,8 @@ test("Store bridge is limited to local development and the official Pages origin
   assert.match(bridge, /store-list-installed-skills/);
   assert.match(bridge, /store-generate-store-skill/);
   assert.match(bridge, /skillPackage/);
+  assert.match(bridge, /request\.action === "ping"/);
+  assert.match(bridge, /response: \{ ok: true \}/);
 });
 
 test("background accepts only manifest and SKILL.md from an approved Store", async () => {
