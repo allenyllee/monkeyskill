@@ -53,6 +53,7 @@
       nodes: new Map(),
       blockerCalls: new Map(),
       inlineBlockers: new Map(),
+      crossWorldRollbacks: [],
       stepResults: []
     };
     createFixture(test.fixture, state);
@@ -149,6 +150,9 @@
     state.blockerCalls.set(blocker.id, 0);
     const initialValue = "value" in target ? target.value : "";
     const installed = { ...blocker, initialValue };
+    if (blocker.event === "input" && blocker.effect === "rollback-value") {
+      state.crossWorldRollbacks.push(installed);
+    }
     if (blocker.registration === "inline") {
       state.inlineBlockers.set(blocker.id, installed);
       target.setAttribute(`on${blocker.event}`, `return globalThis.__monkeySkillTestInlineBlocker(${JSON.stringify(blocker.id)}, event)`);
@@ -215,7 +219,7 @@
       return null;
     }
     if (step.action === "drag-select-text") return dragSelectText(target);
-    if (step.action === "paste-text") return pasteText(target, step.value);
+    if (step.action === "paste-text") return pasteText(target, step.value, state);
     if (step.action === "copy-shortcut") return copyShortcut(target, step.operation);
     if (step.action === "click-control") return clickControl(target);
     if (step.action === "click-page") return clickPage(target);
@@ -303,7 +307,7 @@
     return { defaultPrevented: blocked };
   }
 
-  async function pasteText(target, value) {
+  async function pasteText(target, value, state) {
     if (!("value" in target) && !target.isContentEditable) throw new Error("paste-text target is not editable.");
     target.focus();
     if (typeof target.setSelectionRange === "function") {
@@ -328,7 +332,16 @@
     target.dispatchEvent(beforeInput);
     if (!beforeInput.defaultPrevented) {
       insertText(target, value);
-      target.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertFromPaste", data: value }));
+      const input = new InputEvent("input", { bubbles: true, inputType: "insertFromPaste", data: value });
+      target.dispatchEvent(input);
+      // A generated MAIN/USER_SCRIPT-world guard must not make a page-world
+      // rollback disappear from the test. Reapply the declared rollback at
+      // the trusted post-dispatch checkpoint; a valid candidate must recover
+      // after this checkpoint without cancelling native paste.
+      for (const blocker of state.crossWorldRollbacks) {
+        if (blocker.target !== target.id || !matchesWhen(input, blocker.when)) continue;
+        target.value = blocker.initialValue || "";
+      }
     }
     await settle();
     return { defaultPrevented: beforeInput.defaultPrevented };

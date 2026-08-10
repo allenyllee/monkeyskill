@@ -142,6 +142,8 @@ test("shared paste workflow defines deterministic end-of-content insertion", asy
   const source = await import("node:fs/promises").then(fs => fs.readFile(new URL("../src/validation/sandbox.js", import.meta.url), "utf8"));
   assert.match(source, /setSelectionRange\(end, end\)/);
   assert.match(source, /range\.collapse\(false\)/);
+  assert.match(source, /crossWorldRollbacks/);
+  assert.match(source, /trusted post-dispatch checkpoint/);
 });
 
 test("keyboard shortcut blockers require the copy-shortcut workflow", () => {

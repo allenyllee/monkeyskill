@@ -96,7 +96,7 @@ Each blocker has `id`, `target`, `event`, `registration`, `effect`, and optional
 
 ## Steps
 
-- `{"action":"paste-text","target":"target","value":"pasted text"}`; the trusted runner focuses the target, places the caret at the end of its existing content, then performs paste, beforeinput, default insertion, and input with `inputType: "insertFromPaste"`. Model rollback blockers on the actual `input` event and expect the pasted text to be appended.
+- `{"action":"paste-text","target":"target","value":"pasted text"}`; the trusted runner focuses the target, places the caret at the end of its existing content, then performs paste, beforeinput, default insertion, and input with `inputType: "insertFromPaste"`. Model rollback blockers on the actual `input` event and expect the pasted text to be appended. An `input`/`rollback-value` blocker is also applied at a trusted page-world checkpoint after dispatch, so a candidate cannot pass merely by wrapping listener registration or stopping propagation; it must recover the final value afterward.
 - `{"action":"drag-select-text","target":"target"}`; the trusted runner performs pointer/mouse down, actual movement, selectstart, range-selection, and release.
 - `{"action":"click-control","target":"control"}`; the trusted runner performs primary pointer/mouse down, native focus/selection transition, release, and click.
 - `{"action":"click-page","target":"page-area"}`; the trusted runner performs a primary pointer/mouse click on an ordinary page target, including Chrome-like late `selectionchange` timing and the native selection-collapse transition after release.
