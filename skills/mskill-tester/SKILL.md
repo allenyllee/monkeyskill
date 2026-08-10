@@ -109,6 +109,7 @@ Each blocker has `id`, `target`, `event`, `registration`, `effect`, and optional
 - `{"action":"set-checked","target":"target","value":true}`
 - `{"action":"set-style","target":"target","property":"pointerEvents","value":"none"}`
 - `{"action":"scroll","target":"target","left":0,"top":120}`
+- `{"action":"scroll-page","left":0,"top":700}`; move the trusted sandbox viewport without mutating fixture styles. Use this to test targets and later-appended overlays that begin below the initial viewport.
 - `{"action":"append-node","node":{...fixture node...}}`
 - `{"action":"add-blocker","blocker":{...simulated blocker...}}`
 - `{"action":"capture-node","id":"result","scope":"target","relation":"descendant","match":{"text":{"operator":"eq","value":"5 min"}},"index":0}`

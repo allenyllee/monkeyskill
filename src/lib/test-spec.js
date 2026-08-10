@@ -34,7 +34,7 @@ const ALLOWED_EFFECTS = new Set([
 ]);
 const ALLOWED_ACTIONS = new Set([
   "add-blocker", "append-node", "blur", "capture-node", "click", "click-control", "click-page", "copy-shortcut", "dispatch-event", "focus", "remove-attribute", "remove-node",
-  "drag-select-text", "paste-text", "scroll", "select-contents", "set-attribute", "set-checked", "set-style", "set-text", "set-value", "wait"
+  "drag-select-text", "paste-text", "scroll", "scroll-page", "select-contents", "set-attribute", "set-checked", "set-style", "set-text", "set-value", "wait"
 ]);
 const ALLOWED_ASSERTIONS = new Set([
   "active-element", "attribute", "attribute-refers-to", "blocker-call-count", "bounding-rect", "computed-style", "contrast-ratio",
@@ -232,6 +232,14 @@ function validateStep(source, nodeIds, blockerIds) {
     const relation = validateRelation(source.relation);
     nodeIds.add(source.id);
     return { action: source.action, id: source.id, scope: source.scope, relation, match, index: source.index };
+  }
+  if (source.action === "scroll-page") {
+    assertOnlyKeys(source, ["action", "left", "top"], "scroll-page step");
+    return {
+      action: source.action,
+      left: safeFiniteNumber(source.left, -10000, 10000, "Page scroll offset"),
+      top: safeFiniteNumber(source.top, -10000, 10000, "Page scroll offset")
+    };
   }
   if (!nodeIds.has(source.target)) throw new Error("TestSpec step target is invalid.");
   if (source.action === "dispatch-event") {

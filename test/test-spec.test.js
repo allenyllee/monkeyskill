@@ -250,7 +250,8 @@ test("TestSpec exposes trusted equivalents for common JavaScript visual checks",
     { action: "focus", target: "peer" },
     { action: "click", target: "peer" },
     { action: "set-checked", target: "peer", value: true },
-    { action: "scroll", target: "peer", left: 0, top: 0 }
+    { action: "scroll", target: "peer", left: 0, top: 0 },
+    { action: "scroll-page", left: 0, top: 0 }
   );
   behavior.assertions.push(
     { type: "visible", target: "peer", expected: true },

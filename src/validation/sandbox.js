@@ -118,7 +118,7 @@
     for (const [property, value] of Object.entries(node.styles)) element.style[property] = value;
     if (node.rect) {
       const { x, y, width, height } = node.rect;
-      element.style.setProperty("position", "fixed", "important");
+      element.style.setProperty("position", "absolute", "important");
       element.style.setProperty("left", `${x}px`, "important");
       element.style.setProperty("top", `${y}px`, "important");
       element.style.setProperty("width", `${width}px`, "important");
@@ -196,6 +196,11 @@
       const scope = state.nodes.get(step.scope);
       const captured = queryNodes(scope, step.relation, step.match)[step.index];
       if (captured) state.nodes.set(step.id, captured);
+      return null;
+    }
+    if (step.action === "scroll-page") {
+      window.scrollTo(step.left, step.top);
+      await settle();
       return null;
     }
     const target = state.nodes.get(step.target);
