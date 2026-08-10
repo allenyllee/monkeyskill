@@ -77,6 +77,7 @@ test("generation prompt includes modes and human spec but never hidden tests", (
   assert.match(messages[1].content, /scroll-page/);
   assert.match(messages[1].content, /event-default-prevented false/);
   assert.match(messages[1].content, /native paste default action/);
+  assert.match(messages[1].content, /later checkpoint.*InputEvent\.data/);
   assert.doesNotMatch(messages[1].content, /HIDDEN_TEST_INJECTION|HIDDEN_RUNNER_INJECTION/);
   assert.doesNotMatch(messages[1].content, /IGNORE ALL RULES/);
 });
