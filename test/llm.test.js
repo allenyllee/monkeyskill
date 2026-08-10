@@ -46,6 +46,8 @@ test("Tester conversation is separate and receives no package-supplied test fiel
   assert.doesNotMatch(messages[1].content, /IGNORE ALL RULES/);
   assert.doesNotMatch(messages[1].content, /JavaScript source/);
   assert.match(messages[1].content, /paste-text workflow/);
+  assert.match(messages[1].content, /event-default-prevented false/);
+  assert.match(messages[1].content, /native paste default action/);
   assert.match(messages[1].content, /drag-select-text/);
   assert.match(messages[1].content, /final observable outcomes/);
   assert.match(messages[1].content, /click-control/);
@@ -68,6 +70,8 @@ test("generation prompt includes modes and human spec but never hidden tests", (
   assert.match(messages[1].content, /shared-test-framework|selfTests/);
   assert.match(messages[1].content, /overlay.*hit-test|hit-test.*overlay/);
   assert.match(messages[1].content, /append-node/);
+  assert.match(messages[1].content, /event-default-prevented false/);
+  assert.match(messages[1].content, /native paste default action/);
   assert.doesNotMatch(messages[1].content, /HIDDEN_TEST_INJECTION|HIDDEN_RUNNER_INJECTION/);
   assert.doesNotMatch(messages[1].content, /IGNORE ALL RULES/);
 });
