@@ -138,6 +138,12 @@ test("TestSpec requires high-level paste and drag-selection workflows", () => {
   assert.throws(() => validateTestSpec(implementationSpecific, skill, criteria), /observable outcome of effectful blockers/);
 });
 
+test("shared paste workflow defines deterministic end-of-content insertion", async () => {
+  const source = await import("node:fs/promises").then(fs => fs.readFile(new URL("../src/validation/sandbox.js", import.meta.url), "utf8"));
+  assert.match(source, /setSelectionRange\(end, end\)/);
+  assert.match(source, /range\.collapse\(false\)/);
+});
+
 test("keyboard shortcut blockers require the copy-shortcut workflow", () => {
   const parsed = parseGeneratedTestSpec(fixtureText, skill, criteria);
   const keyboardTests = parsed.tests.filter(candidate => candidate.criterion === "keyboard-copy");

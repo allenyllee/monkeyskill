@@ -306,6 +306,17 @@
   async function pasteText(target, value) {
     if (!("value" in target) && !target.isContentEditable) throw new Error("paste-text target is not editable.");
     target.focus();
+    if (typeof target.setSelectionRange === "function") {
+      const end = String(target.value || "").length;
+      target.setSelectionRange(end, end);
+    } else if (target.isContentEditable) {
+      const range = document.createRange();
+      range.selectNodeContents(target);
+      range.collapse(false);
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
     const paste = createEvent("paste", {});
     target.dispatchEvent(paste);
     if (paste.defaultPrevented) {
