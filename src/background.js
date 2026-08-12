@@ -116,6 +116,18 @@ async function handleMessage(message, sender) {
       setTimeout(() => chrome.runtime.reload(), 100);
       return { ok: true };
     }
+    case "set-test-mode": {
+      assertLocalReloadSender(sender);
+      requireSkillId(skillId);
+      const installed = updateSkillConfig(await getInstalledSkills(), skillId, (config, record) => {
+        if (message.mode !== MODES.OFF && !record.skill.modes.includes(message.mode)) {
+          throw new Error("Invalid test mode.");
+        }
+        config.globalMode = message.mode;
+      });
+      await saveInstalledSkills(installed);
+      return { ok: true, skill: installed[skillId] };
+    }
     case "get-state": {
       requireSkillId(skillId);
       const installed = await getInstalledSkills();

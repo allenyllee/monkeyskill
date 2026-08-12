@@ -13,7 +13,10 @@
     ["status", "store-get-generation-status"],
     ["clear-history", "store-clear-generation-history"]
   ]);
-  if (localPage) actions.set("reload-extension", "store-reload-extension");
+  if (localPage) {
+    actions.set("reload-extension", "store-reload-extension");
+    actions.set("set-test-mode", "store-set-test-mode");
+  }
 
   window.addEventListener("message", async event => {
     const request = event.data;
@@ -33,6 +36,7 @@
       response = await chrome.runtime.sendMessage({
         type,
         skillId: request.skillId,
+        mode: request.action === "set-test-mode" ? request.mode : undefined,
         skillPackage: request.action === "generate" ? request.skillPackage : undefined
       });
     } catch (error) {

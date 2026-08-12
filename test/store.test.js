@@ -19,7 +19,9 @@ test("Store bridge is limited to local development and the official Pages origin
   assert.match(bridge, /skillPackage/);
   assert.match(bridge, /request\.action === "ping"/);
   assert.match(bridge, /response: \{ ok: true \}/);
-  assert.match(bridge, /if \(localPage\) actions\.set\("reload-extension"/);
+  assert.match(bridge, /if \(localPage\) \{/);
+  assert.match(bridge, /actions\.set\("reload-extension", "store-reload-extension"\)/);
+  assert.match(bridge, /actions\.set\("set-test-mode", "store-set-test-mode"\)/);
 });
 
 test("automatic Extension reload is restricted to the local development Store", async () => {
@@ -29,6 +31,13 @@ test("automatic Extension reload is restricted to the local development Store", 
   assert.match(background, /\["127\.0\.0\.1", "localhost"\]/);
   assert.match(background, /url\.port === "4174"/);
   assert.match(background, /chrome\.runtime\.reload\(\)/);
+});
+
+test("closed-loop mode switching is restricted to the local development Store", async () => {
+  const background = await readFile(new URL("src/background.js", root), "utf8");
+  assert.match(background, /case "set-test-mode"/);
+  assert.match(background, /assertLocalReloadSender\(sender\)/);
+  assert.match(background, /config\.globalMode = message\.mode/);
 });
 
 test("background accepts only manifest and SKILL.md from an approved Store", async () => {
