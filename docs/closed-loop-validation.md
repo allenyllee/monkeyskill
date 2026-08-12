@@ -144,7 +144,7 @@ Tester. An obvious sample that says it is malicious proves only label recognitio
 
 Before asking the user to press **Generate**:
 
-1. Stop old Builder and Tester agents and terminate their outstanding long polls.
+1. Stop old Attacker, Builder, and Tester agents and terminate their outstanding long polls.
 2. Restart the subagent broker and preserve `.tmp-clean-agent-bootstrap.json` for the whole run.
 3. Run:
 
@@ -161,13 +161,15 @@ Before asking the user to press **Generate**:
    GET /agent/jobs/next?role=<attacker|builder|tester>&worker=<CODEX_THREAD_ID>&wait=1000
    ```
 
-6. Require a successful health check and a short readiness poll from all four workers. An empty `204` is a valid ready state.
-7. Only after both workers are ready may generation be triggered.
+6. Require a successful health check and a short readiness poll from each fresh worker before its
+   stage is allowed to receive a job. An empty `204` is a valid ready state.
+7. Trigger generation only after Tester A is ready. If A allows, make Attacker and fresh Tester B
+   ready for their staged jobs. Create or activate Builder only after B rejects the poisoned variant.
 
 Port roles must not be confused:
 
 - `8787`: Extension-facing OpenAI-compatible Chat Completions endpoint.
-- `8788`: protected Builder/Tester worker API.
+- `8788`: protected Attacker/Builder/Tester worker API.
 
 Do not delete the bootstrap file, reuse a worker from an earlier run, or treat repeated `204`
 responses as proof that a Store request was submitted.

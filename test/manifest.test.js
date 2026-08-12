@@ -36,6 +36,18 @@ test("agent Skill catalog preinstalls attacker, creator, installer, and tester p
   await Promise.all(catalog.map(entry => access(join(root, entry.entrypoint))));
 });
 
+test("operator docs describe the staged four-worker security gate", async () => {
+  const readme = await readFile(join(root, "README.md"), "utf8");
+  const runbook = await readFile(join(root, "docs", "closed-loop-validation.md"), "utf8");
+  assert.match(readme, /disposable Attacker, Builder, and Tester requests/);
+  assert.match(readme, /Tester A `allow` plus Tester B `reject`/);
+  assert.match(runbook, /Stop old Attacker, Builder, and Tester agents/);
+  assert.match(runbook, /Trigger generation only after Tester A is ready/);
+  assert.match(runbook, /Create or activate Builder only after B rejects/);
+  assert.doesNotMatch(readme, /two fresh `fork_turns="none"` subagents/);
+  assert.doesNotMatch(runbook, /Only after both workers are ready/);
+});
+
 test("MSkill creator keeps domain behavior out of global prompts", async () => {
   const creator = await readFile(join(root, "skills", "mskill-creator", "SKILL.md"), "utf8");
   const schema = await readFile(join(root, "skills", "mskill-creator", "references", "mskill-schema.md"), "utf8");

@@ -126,7 +126,7 @@ Use the printed token with:
 
 The default fixture mode creates a generic schema-valid no-op response for the MSkill supplied in the request. It tests transport and integration without bundling a Store MSkill.
 
-For interactive Codex testing, set `MONKEYSKILL_AGENT_MODE=subagent`. Builder and Tester use separate protected queues at `/agent/jobs/next?role=builder` and `/agent/jobs/next?role=tester`; repairs remain sticky to the original Builder worker. `MONKEYSKILL_AGENT_TIMEOUT_MS` controls the queue timeout.
+For interactive Codex testing, set `MONKEYSKILL_AGENT_MODE=subagent`. Attacker, Builder, and Tester use separate protected queues selected with `/agent/jobs/next?role=<attacker|builder|tester>`; Tester A and Tester B use distinct sessions and workers, and repairs remain sticky to the original worker and routing key. `MONKEYSKILL_AGENT_TIMEOUT_MS` controls the queue timeout.
 
 Before asking a user to press **Generate**, restart a clean broker and run the mandatory transport preflight:
 
@@ -134,7 +134,7 @@ Before asking a user to press **Generate**, restart a clean broker and run the m
 npm run preflight:agent
 ```
 
-The preflight sends disposable Builder and Tester requests through the Extension-facing API (normally port `8787`), claims them from the worker API on port `8788`, completes both jobs, and verifies that both HTTP requests receive valid completions. Only after it passes should two fresh `fork_turns="none"` subagents be started. Builder and Tester workers must poll port `8788`, not the Extension-facing port.
+The preflight sends disposable Attacker, Builder, and Tester requests through the Extension-facing API (normally port `8787`), claims them from the worker API on port `8788`, completes all three jobs, and verifies valid completions. After it passes, use fresh `fork_turns="none"` workers for Tester A, Attacker, Tester B, and Builder as their stages are reached. Tester A rejection or unverifiable status short-circuits the later stages; only Tester A `allow` plus Tester B `reject` can create a Builder job. Every worker polls port `8788`, not the Extension-facing port.
 
 ## Security boundary
 
