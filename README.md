@@ -56,21 +56,30 @@ Developer mode is needed only because this repository is loaded unpacked. A Chro
 1. The Store reads its generated `catalog.json`.
 2. After the user chooses an MSkill, the Store sends only its `skill.json` and `SKILL.md` to the Extension.
 3. The Extension validates the manifest and specification; the Store cannot submit a Build, JavaScript, HTML, or TestSpec.
-4. Independent Tester first treats the MSkill as untrusted input and returns `allow`, `reject`, or `unverifiable`. Only `allow` includes a hidden Independent TestSpec and permits Builder generation to begin.
-5. Builder creates a candidate Build and public Builder TestSpec.
-6. The shared Runner executes the Builder TestSpec and returns detailed structured failures for repair.
-7. The same Runner executes the hidden TestSpec, enforces capability-denial policy tests against the candidate, and returns only constrained diagnostics for repair.
-8. After validation passes, the user reviews the summary, hash, validation results, and generated code.
-9. The user approves installation or discards the candidate. Hidden behavior tests run again immediately before installation.
+4. Tester A treats the original MSkill as untrusted input and returns `allow`, `reject`, or `unverifiable`. A rejection or unverifiable result stops the flow immediately.
+5. After `allow`, the isolated Attacker selects only allowlisted canary dimensions. Trusted Extension code—not the Attacker—renders and inserts a known-reject poisoned variant.
+6. Fresh Tester B reviews only that poisoned MSkill as an ordinary untrusted request. Only the differential result `Tester A = allow` and `Tester B = reject` may proceed.
+7. Builder receives only the original, unpoisoned MSkill and creates a candidate Build plus public Builder TestSpec. Tester A's Independent TestSpec remains hidden from Builder.
+8. The shared Runner executes the Builder TestSpec and returns detailed structured failures for repair.
+9. The same Runner executes the Independent TestSpec, enforces capability-denial policy tests against the candidate, and returns only constrained diagnostics for repair.
+10. After validation passes, the user reviews the summary, hash, validation results, and generated code.
+11. The user approves installation or discards the candidate. Independent behavior tests run again immediately before installation.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
     Demo["Minimal Demo"] --> Skill["Human-readable MSkill"]
-    Skill --> Review{"Independent Tester<br/>security review"}
-    Review -- "reject / unverifiable" --> Stop["Stop automatic generation"]
-    Review -- "allow + Independent TestSpec" --> Builder["Builder"]
+    Skill --> TesterA{"Tester A<br/>original security review"}
+    TesterA -- "reject / unverifiable" --> Stop["Stop automatic generation"]
+    TesterA -- "allow + Independent TestSpec" --> Attacker["Attacker<br/>select allowlisted IDs"]
+    Attacker --> Composer["Trusted orchestrator<br/>renders known-reject canary"]
+    Skill -. "original content" .-> Composer
+    Composer --> TesterB{"Fresh Tester B<br/>poisoned security review"}
+    TesterB -- "allow / unverifiable" --> Bypass["Fail closed:<br/>possible policy bypass"]
+    TesterB -- "reject" --> Gate["Differential gate<br/>allow / reject"]
+    Skill -. "only original MSkill" .-> Builder["Builder"]
+    Gate --> Builder
     Builder --> Candidate["Build + Builder TestSpec"]
     Candidate --> PublicRun["Trusted Runner: public tests"]
     PublicRun -- "detailed repair evidence" --> Builder
@@ -82,16 +91,20 @@ flowchart LR
     Browser -- "pass" --> Stable["Replayable validated result"]
 ```
 
-The public loop gives Builder detailed evidence from its own TestSpec. The independent loop keeps
-Tester's TestSpec hidden and exposes only constrained diagnostics. The Demo and installed browser
-catch specification gaps shared by both agents.
+Tester A rejection short-circuits the flow; Tester B is consulted only after an allowed original
+has been poisoned by trusted code. `allow/reject` is the only pair that reaches Builder, and
+Builder receives the original MSkill rather than the poisoned variant. The public loop gives
+Builder detailed evidence from its own TestSpec. The independent loop keeps Tester A's TestSpec
+hidden and exposes only constrained diagnostics. The Demo and installed browser catch
+specification gaps shared by both agents.
 
 ## Project boundaries
 
 - `skills/mskill-creator/` defines how an agent authors implementation-independent MSkill specifications.
+- `skills/mskill-attacker/` constrains Attacker output to allowlisted canary dimension IDs.
 - `skills/mskill-installer/` is the isolated Builder policy.
 - `skills/mskill-tester/` is the isolated Tester policy and shared MonkeyTest framework.
-- `agent-skills.json` catalogs those three preinstalled agent policies.
+- `agent-skills.json` catalogs all four preinstalled agent policies.
 - `src/lib/skill-store.js` validates, installs, removes, configures, and builds registrations for generated artifacts.
 - `src/lib/llm.js` builds prompts, parses responses, and scans generated Builds.
 - `src/store/bridge.js` accepts only constrained actions from approved Store pages.
