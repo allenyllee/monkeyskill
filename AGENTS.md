@@ -25,3 +25,9 @@ Additional non-negotiable rules:
 - Builder and Tester must remain pinned to their first routing key. Repairs may not be handled by a worker from another generation.
 - Do not call a run stable solely because schema checks, public self-tests, or hidden tests passed. Perform the real-browser checks in the closed-loop runbook and report inconclusive visual checks honestly.
 - Any acceptance criterion about rendered pixels, selection highlighting, overlays, visibility, contrast, or native browser UI requires a screenshot after the real interaction on the registered origin. A DOM assertion alone cannot promote that criterion from inconclusive to passed.
+
+## Commit policy
+
+- After completing and validating requested file changes, automatically create a focused Git commit in each modified repository without waiting for a separate commit request.
+- Preserve unrelated pre-existing changes and never include them merely to make the working tree clean.
+- Report the resulting commit hash and message. Do not push unless the user explicitly requests it.
