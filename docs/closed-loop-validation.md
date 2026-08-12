@@ -162,6 +162,17 @@ Do not pipe the completion body through PowerShell stdin and do not rely on
 shape and nested content, then submit it with `curl.exe --data-binary @<absolute-file>` while
 capturing both the response body and HTTP status. Only an explicit HTTP 200 counts as completion.
 
+Prefer the checked-in completion helper, which reads the nested response with Node's UTF-8
+`readFile`, validates it, constructs the exact string envelope, posts it, requires HTTP 200, and
+deletes the temporary envelope:
+
+```powershell
+node scripts/complete-agent-job.mjs <job.id> <CODEX_THREAD_ID> .tmp-content.json .tmp-envelope.json
+```
+
+Do not use PowerShell `Get-Content` to populate `content`; depending on the pipeline it can
+serialize provider metadata or a collection instead of a JSON string.
+
 Builder repairs follow two distinct loops:
 
 - Public self-test failures provide detailed traces. Builder may repair the candidate or its public tests, but must return the complete Build and complete self-test suite each time.
