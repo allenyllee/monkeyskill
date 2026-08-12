@@ -121,6 +121,17 @@ from the session suffix or routing key. If the raw response or `id` was lost, th
 cannot be reconstructed through the public API; abort that generation, restart the clean broker,
 and restart the consecutive-success count.
 
+Use the checked-in poll helper instead of PowerShell `Invoke-WebRequest`, whose `Content` may be
+a `Byte[]` and can silently produce an empty file:
+
+```powershell
+node scripts/poll-agent-job.mjs tester <CODEX_THREAD_ID> .tmp-tester-job.json
+node scripts/poll-agent-job.mjs builder <CODEX_THREAD_ID> .tmp-builder-job.json
+```
+
+The helper writes the complete response with exclusive creation before parsing `job.id`. Delete
+the short-lived output after completion. A `204` creates no file and remains a valid ready state.
+
 Complete a claimed job with the exact envelope:
 
 ```json
