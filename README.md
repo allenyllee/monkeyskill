@@ -24,10 +24,13 @@ evidence, two independent TestSpecs in one constrained DSL, and trusted Runner p
 evidence.
 
 Generated JavaScript and CSS are replaceable. Stability means fresh generations repeatedly
-satisfy the same contract and safety boundary, not that they produce identical code. Criteria
-start small and grow only when a reproducible Demo failure proves a durable missing requirement.
-Failures are attributed to the global framework, the MSkill specification, or the disposable
-candidate before any prompt or contract is changed.
+converge through the defined repair loop and satisfy the same contract and safety boundary, not
+that they produce identical code or succeed perfectly on the first attempt. An intermediate
+defect may be repaired and the run may still count toward the consecutive-success threshold when
+the final candidate is fully revalidated with no unresolved error. Criteria start small and grow
+only when a reproducible Demo failure proves a durable missing requirement. Failures are
+attributed to the global framework, the MSkill specification, or the disposable candidate before
+any prompt or contract is changed.
 
 Read [Evidence-driven generative development](docs/evidence-driven-generative-development.md)
 for the complete method and [Closed-loop validation](docs/closed-loop-validation.md) for its

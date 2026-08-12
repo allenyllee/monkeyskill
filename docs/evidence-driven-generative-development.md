@@ -56,7 +56,10 @@ recipe that misleads future MSkills.
    candidate implementation before changing anything.
 10. Preserve a reproducible Demo failure and add or clarify a criterion only when it proves a
     durable product requirement not already covered. Regenerate with fresh agent contexts.
-11. Require the configured consecutive clean-run threshold before claiming generation stability.
+11. Require the configured consecutive converged-run threshold before claiming generation
+    stability. A run may repair intermediate defects; it counts when the final candidate has no
+    unresolved errors and the complete Runner, browser, visual, and safety evidence is replayed
+    successfully.
 
 ## Independent agents and the Demo
 
@@ -101,8 +104,11 @@ clean-room generations reveal an MSkill-specific platform constraint, record it 
 ## Meaning of stability
 
 Stability does not mean identical generated code or a perfect first attempt. It means fresh,
-independent generations repeatedly reach a candidate that satisfies the same readable contract,
-passes both TestSpecs, survives browser and visual checks, and stays inside the safety boundary
-without manual repair outside the defined loop.
+independent generations repeatedly converge through the defined repair loop on a candidate that
+satisfies the same readable contract, passes both TestSpecs, survives browser and visual checks,
+and stays inside the safety boundary. An intermediate defect that is corrected and fully
+revalidated is evidence that the loop works, not a reason to reset the streak. A run does not
+count when a defect remains unresolved, required evidence is unavailable, transport or routing
+state is lost, or work is interrupted before the final zero-error checkpoint.
 
 See [closed-loop-validation.md](closed-loop-validation.md) for the operational runbook.

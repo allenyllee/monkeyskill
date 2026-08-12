@@ -27,6 +27,27 @@ A closed loop is complete only when all of the following are true:
 An HTTP `200` from the broker, an empty repair queue, or a Runner result by itself is not a
 complete result.
 
+### Consecutive success means convergence, not first-attempt perfection
+
+The configured consecutive-success threshold counts complete closed-loop runs that end in a
+zero-error validated state. A run may contain Builder repairs, schema corrections, or local
+preflight fixes and still count as successful when all of the following are true:
+
+- every discovered problem is corrected inside the defined loop;
+- the corrected complete output is revalidated, not merely patched in place;
+- no failing, pending, lost, or unverifiable result remains at the terminal checkpoint; and
+- installation plus required real-browser and screenshot checks pass for the final candidate.
+
+Do not reset the success streak merely because an early attempt was imperfect. Repairs are an
+intended part of the generative development process. Reset or withhold the run only when a
+problem cannot be corrected, the corrected result still fails, transport or routing state is
+lost, required evidence cannot be obtained, the run is interrupted before completion, or a
+safety verdict is `reject` or `unverifiable`.
+
+When a repair changes the candidate or TestSpec, all evidence collected before that repair is
+superseded. Repeat the affected Runner, installation, browser, and visual checks against the
+final candidate before counting the run.
+
 ## Interactive demo-first development loop
 
 Use the closed loop to grow an MSkill specification rather than attempting to predict every
