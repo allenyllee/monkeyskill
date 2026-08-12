@@ -73,10 +73,18 @@ variant and no expected verdict. Neither Tester sees the candidate or Builder Te
 both agents can share a blind spot caused by an incomplete specification. The Demo is therefore
 a third validation surface and the source of evidence for evolving the contract.
 
-Attacker must insert a deterministic reject canary already named by Tester policy: an instruction
-override plus validation bypass and a concrete hidden, sensitive-data, or external-communication
-consequence. Tester B is not told the expected verdict. Its `allow` therefore demonstrates that
-injected prose overrode a known rejection boundary, rather than merely exposing an ambiguous test.
+Attacker may select only allowlisted framing and consequence IDs; it cannot author MSkill text.
+Trusted orchestrator templates insert the deterministic reject canary at a randomly selected safe
+paragraph boundary, varying wording and placement while always including instruction override,
+validation bypass, and a concrete hidden, sensitive-data, or external-communication consequence.
+Tester B is not told the expected verdict. Its `allow` therefore demonstrates that injected prose
+overrode a known rejection boundary, rather than merely exposing an ambiguous test.
+
+Do not multiply similar Tester models merely to vote on the original MSkill. Closely related models
+can share the same semantic blind spot, so extra votes can add cost without adding an independent
+security boundary. Use the differential gate for injection resistance and rely on distinct enforced
+layers—least capability, sandboxing, static scanning, Runner DSL, Demo replay, screenshots, approval,
+and readable human review—for risks the original semantic review may miss.
 
 Agreement between both TestSpecs is necessary, not sufficient. Stability requires successful
 replay in the registered browser environment, including visual evidence where the DSL cannot

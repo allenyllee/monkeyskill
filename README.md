@@ -10,7 +10,7 @@ MonkeySkill is an experimental Manifest V3 Chrome extension that generates, vali
 - A GitHub Pages Store that publishes only `skill.json` manifests and human-readable `SKILL.md` specifications.
 - BYOK settings for an OpenAI-compatible Chat Completions endpoint, model, and API key.
 - Isolated Attacker, Builder, original-Tester, and poisoned-Tester conversations.
-- A mandatory differential gate: Tester A rejection short-circuits immediately; only an allowed original is poisoned by Attacker and must then be rejected by Tester B before Builder runs.
+- A mandatory differential gate: Tester A rejection short-circuits immediately; only an allowed original reaches an allowlist-only Attacker, trusted code renders a varied known-reject canary, and Tester B must reject it before Builder runs.
 - Builder-authored public Builder TestSpec and an independently generated hidden TestSpec.
 - One shared, non-executable MonkeyTest DSL and trusted Runner for both test layers.
 - Static capability, remote-content, size, schema, and Chrome `userScripts` parse checks.

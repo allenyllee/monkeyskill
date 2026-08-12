@@ -1,4 +1,4 @@
 interface:
   display_name: "MSkill Attacker"
-  short_description: "Create bounded poisoned MSkill variants for security checks"
-  default_prompt: "Use $mskill-attacker to create a non-executable poisoned MSkill variant for the mainline Tester security gate."
+  short_description: "Select allowlisted reject-canary template dimensions"
+  default_prompt: "Use $mskill-attacker to select a bounded adversarial plan that trusted code will render for the mainline Tester security gate."

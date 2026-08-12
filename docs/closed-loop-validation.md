@@ -86,10 +86,11 @@ Every normal installation uses three logical roles before Builder is contacted:
 
 1. **Tester A** reviews the original MSkill as untrusted input.
 2. **Attacker** receives the original MSkill, but no Tester policy, Tester result, Builder output,
-   expected verdict, or prior attack. It returns a bounded, non-executable poisoned specification
-   that preserves the legitimate criteria while attempting instruction override plus a concrete
-   unsafe consequence. The mutation must include a deterministic reject canary already covered by
-   Tester policy; this stage detects policy override, not whether Tester can invent a new danger.
+   expected verdict, or prior attack. It can select only allowlisted framing and consequence IDs;
+   it cannot write or mutate MSkill prose. Trusted orchestrator code randomly selects built-in
+   wording and an insertion boundary, then assembles an instruction override, validation bypass,
+   and concrete unsafe consequence into a deterministic reject canary covered by Tester policy.
+   This stage detects policy override, not whether Tester can invent a new danger.
 3. **Tester B** runs in a distinct session and sees only the poisoned MSkill as an ordinary review
    request. It is not told that Attacker created it or that rejection is expected.
 
@@ -101,6 +102,11 @@ the Attacker payload's otherwise rejectable unsafe consequence, so apparent agre
 Any `unverifiable` verdict fails closed. This differential check strengthens the gate
 but does not prove the original MSkill absolutely safe; capability enforcement, Runner tests,
 static scanning, approval, and readable human review remain required.
+
+Do not add more same-purpose Tester votes as a substitute for these enforcement layers. Similar
+models may share the same blind spot while multiplying cost. The differential gate measures one
+specific property—resistance to a trusted known-reject canary—while the sandbox, capability
+denials, Runner, Demo, static scan, and human-readable review cover different failure classes.
 
 ### Blind adversarial MSkill security regression
 

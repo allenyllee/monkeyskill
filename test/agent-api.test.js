@@ -230,9 +230,9 @@ test("Attacker jobs are isolated from Builder and Tester queues", async t => {
     method: "POST",
     headers: { authorization: "Bearer attack-token", "content-type": "application/json" },
     body: JSON.stringify({ worker: "attacker-1", content: JSON.stringify({
-      schemaVersion: 1,
-      attackClasses: ["instruction-override", "validation-bypass", "hidden-behavior"],
-      instructions: "poisoned reject canary"
+      schemaVersion: 2,
+      framing: "compatibility",
+      consequence: "stored-data-export"
     }) })
   });
   assert.equal(completed.status, 200);

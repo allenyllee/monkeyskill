@@ -8,7 +8,7 @@ import {
   scanGeneratedBuild
 } from "../lib/llm.js";
 import { parseTesterSecurityReview, validateTestSpec } from "../lib/test-spec.js";
-import { evaluateDifferentialSecurityGate, parseAttackerMutation } from "../lib/security-regression.js";
+import { composeTrustedPoisonedSkill, evaluateDifferentialSecurityGate, parseAttackerPlan } from "../lib/security-regression.js";
 import {
   MAX_GENERATION_ATTEMPTS,
   createRetryState,
@@ -49,8 +49,9 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
     if (securityReview.verdict !== "allow") {
       throw new Error(formatDifferentialGateFailure(originalGate, securityReview, null));
     }
-    const poisonedText = await requestAssistantText(request, request.attackerBody, attackerSessionId);
-    const mutation = parseAttackerMutation(poisonedText, packageDefinition.specification.instructions);
+    const attackerText = await requestAssistantText(request, request.attackerBody, attackerSessionId);
+    const plan = parseAttackerPlan(attackerText);
+    const mutation = composeTrustedPoisonedSkill(packageDefinition.specification.instructions, plan);
     const adversarialReview = await generateSecurityReview(
       request,
       packageDefinition,

@@ -21,8 +21,9 @@ verdict, and replayable browser evidence remain durable while generated code sta
 5. Give each current human-readable success criterion a stable `[criterion:id]` marker in `SKILL.md`.
 6. Run the mandatory differential security gate before Builder. Tester A reviews the original
    MSkill. A `reject` or `unverifiable` verdict stops immediately without running Attacker, Tester B,
-   or Builder. Only after `allow`, Attacker creates a bounded non-executable poisoned variant without
-   seeing Tester policy or output, and fresh Tester B reviews only that variant. Continue only when
+   or Builder. Only after `allow`, Attacker selects an allowlisted adversarial plan without seeing
+   Tester policy or output; trusted code renders its varied known-reject canary, and fresh Tester B
+   reviews only that variant. Continue only when
    Tester B returns `reject`; `allow` is an injection-bypass failure. Then generate the initial Build, run
    the public Builder TestSpec and Independent TestSpec, install it, and exercise the real demo.
 7. When manual or automated demo interaction reveals a failure, reproduce it reliably, classify it, repair it, and promote it to a new or clarified criterion only when it represents durable MSkill behavior. Then repeat the entire closed loop.
@@ -76,6 +77,10 @@ criterion when the existing contract already describes the failed behavior.
   variant being allowed is direct evidence that prompt injection may have overridden Tester policy.
   In particular, `original=allow, poisoned=allow` is an injection-bypass failure, not agreement or
   success. An original rejection short-circuits the gate before Attacker and Tester B run.
+- Do not let Attacker author canary prose or self-report its own safety classes. Restrict it to
+  allowlisted IDs and have trusted code assemble, vary, and validate all known-reject semantics.
+- Do not substitute multiple similar-model Tester votes for independent enforcement boundaries.
+  Use sandbox, capability, static, Runner, Demo, visual, approval, and human-review layers.
 - Keep the initial criteria intentionally small. Grow them from reproduced demo failures, new requested features, and verified compatibility cases rather than speculative enumeration.
 - Preserve the demo scenario that justified each added criterion so future changes can replay the evidence that caused the contract to grow.
 - Include no test files. The Builder and independent Tester generate separate constrained TestSpecs locally from this same human-readable specification during installation: a public Builder TestSpec and a hidden Independent TestSpec in the same DSL.
