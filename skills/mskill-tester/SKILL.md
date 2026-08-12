@@ -150,6 +150,7 @@ Each blocker has `id`, `target`, `event`, `registration`, `effect`, and optional
 - `event-default-prevented`: fields `step`, `expected`.
 - `blocker-call-count`: fields `blocker`, `operator` (`eq` or `gte`), `value`. An `eq: 0` assertion is allowed only for a `flag-only` blocker; effectful blockers must be checked through their observable result.
 - `computed-style`: fields `target`, allowlisted `property`, optional `pseudo` (`::selection`, `::before`, `::after`), `operator` (`eq`, `neq`, `contains`), `value`.
+- `computed-style` cannot assert `pointerEvents`; pointer reachability is an outcome and must use `hit-test` on the intended target so removal, relocation, stacking, and non-hit-testable overlay repairs remain valid.
 - `selection-collapsed`: field `expected`.
 - `value`: fields `target`, `operator` (`eq`, `neq`, `contains`), `value`.
 - `attribute`: fields `target`, `name`, `operator` (`exists`, `absent`, `eq`), optional `value`.

@@ -83,6 +83,20 @@ test("pointer overlay fixture has stable geometry without loading media", () => 
   );
 });
 
+test("pointer reachability rejects implementation-specific pointerEvents assertions", () => {
+  const spec = JSON.parse(fixtureText);
+  const pointerTest = spec.tests.find(candidate => candidate.criterion === "pointer-overlays");
+  pointerTest.assertions = [{
+    type: "computed-style",
+    target: "overlay",
+    property: "pointerEvents",
+    pseudo: null,
+    operator: "eq",
+    value: "none"
+  }];
+  assert.throws(() => validateTestSpec(spec, skill, criteria), /must use a hit-test assertion/);
+});
+
 test("fixture rectangles are declarative, bounded, and non-executable", () => {
   const spec = JSON.parse(fixtureText);
   const node = spec.tests.find(candidate => candidate.kind === "behavior").fixture.nodes[0];

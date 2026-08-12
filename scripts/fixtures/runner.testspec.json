@@ -82,7 +82,7 @@
       "fixture": {
         "nodes": [
           { "id": "wrap", "tag": "div", "parent": null, "text": "", "attributes": {}, "styles": { "position": "relative", "width": "240px", "height": "120px" } },
-          { "id": "target", "tag": "canvas", "parent": "wrap", "text": "", "attributes": {}, "styles": { "pointerEvents": "none", "width": "240px", "height": "120px" }, "rect": { "x": 8, "y": 8, "width": 240, "height": 120 } },
+          { "id": "target", "tag": "canvas", "parent": "wrap", "text": "", "attributes": {}, "styles": { "width": "240px", "height": "120px" }, "rect": { "x": 8, "y": 8, "width": 240, "height": 120 } },
           { "id": "overlay", "tag": "div", "parent": "wrap", "text": "", "attributes": {}, "styles": { "position": "absolute", "inset": "0" }, "rect": { "x": 8, "y": 8, "width": 240, "height": 120 } }
         ],
         "rules": []
@@ -90,8 +90,7 @@
       "blockers": [],
       "steps": [{ "action": "wait", "ms": 1600 }],
       "assertions": [
-        { "type": "computed-style", "target": "target", "property": "pointerEvents", "pseudo": null, "operator": "neq", "value": "none" },
-        { "type": "computed-style", "target": "overlay", "property": "pointerEvents", "pseudo": null, "operator": "eq", "value": "none" }
+        { "type": "hit-test", "target": "target", "expected": true, "point": "center" }
       ]
     },
     {

@@ -457,6 +457,9 @@ function validateAssertion(source, nodeIds, blockerMetadata, stepCount) {
     if (source.pseudo != null && !["::selection", "::before", "::after"].includes(source.pseudo)) {
       throw new Error("Computed-style pseudo-element is invalid.");
     }
+    if (source.property === "pointerEvents") {
+      throw new Error("Pointer reachability must use a hit-test assertion, not implementation-specific pointerEvents style.");
+    }
     return {
       ...common,
       target: source.target,
