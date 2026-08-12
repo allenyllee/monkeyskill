@@ -132,8 +132,12 @@ For interactive Codex testing, set `MONKEYSKILL_AGENT_MODE=subagent`. Attacker, 
 Before asking a user to press **Generate**, restart a clean broker and run the mandatory transport preflight:
 
 ```powershell
+npm run serve:agent-forwarder
 npm run preflight:agent
 ```
+
+Run the checked-in forwarder alongside the protected broker: it exposes the Extension-facing
+port `8787` and forwards only to the local worker API on `8788`.
 
 The preflight sends disposable Attacker, Builder, and Tester requests through the Extension-facing API (normally port `8787`), claims them from the worker API on port `8788`, completes all three jobs, and verifies valid completions. After it passes, use fresh `fork_turns="none"` workers for Tester A, Attacker, Tester B, and Builder as their stages are reached. Tester A rejection or unverifiable status short-circuits the later stages; only Tester A `allow` plus Tester B `reject` can create a Builder job. Every worker polls port `8788`, not the Extension-facing port.
 

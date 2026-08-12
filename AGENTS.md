@@ -14,6 +14,7 @@ When a user asks to simulate the LLM with Codex subagents, the following preflig
 
 1. Finish or stop every previous Attacker, Builder, and Tester task and terminate their outstanding long-poll cells.
 2. Restart the clean subagent broker on port `8788`, preserving the token from `.tmp-clean-agent-bootstrap.json`.
+   Start the checked-in `npm run serve:agent-forwarder` on port `8787`; do not depend on a temporary forwarder script.
 3. Run `npm run preflight:agent`. It must complete disposable Attacker, Builder, and Tester round-trips through the client API and worker queues.
 4. Create fresh clean-room workers with `fork_turns="none"` for every role reached by the gate: Tester A first; only after it allows, Attacker and a distinct Tester B; only after Tester B rejects, Builder. Never reuse a previous generation worker.
 5. Workers must read the token from `.tmp-clean-agent-bootstrap.json`, but poll and complete jobs through the worker API on port `8788`. Port `8787` is the Extension-facing Chat Completions endpoint.
