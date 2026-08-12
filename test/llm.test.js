@@ -45,16 +45,12 @@ test("Tester conversation is separate and receives no package-supplied test fiel
   assert.match(messages[1].content, /visible-behavior/);
   assert.doesNotMatch(messages[1].content, /IGNORE ALL RULES/);
   assert.doesNotMatch(messages[1].content, /JavaScript source/);
-  assert.match(messages[1].content, /paste-text workflow/);
-  assert.match(messages[1].content, /event-default-prevented false/);
-  assert.match(messages[1].content, /native paste default action/);
-  assert.match(messages[1].content, /drag-select-text/);
+  assert.match(messages[1].content, /Derive every test solely from an explicit criterion/);
+  assert.match(messages[1].content, /separately named blocker families/);
+  assert.match(messages[1].content, /shared framework action.*real user workflow|real user workflow.*shared framework action/);
   assert.match(messages[1].content, /final observable outcomes/);
-  assert.match(messages[1].content, /click-control/);
-  assert.match(messages[1].content, /overlay.*hit-test|hit-test.*overlay/);
-  assert.match(messages[1].content, /append-node/);
-  assert.match(messages[1].content, /viewport-independent/);
-  assert.match(messages[1].content, /elementFromPoint|elementsFromPoint/);
+  assert.match(messages[1].content, /not as a source of new product requirements/);
+  assert.doesNotMatch(messages[1].content, /paste-text|drag-select-text|click-control|elementFromPoint/);
 });
 
 test("generation prompt includes modes and human spec but never hidden tests", () => {
@@ -70,14 +66,11 @@ test("generation prompt includes modes and human spec but never hidden tests", (
   assert.match(messages[1].content, /"standard"/);
   assert.match(messages[1].content, /visible-behavior/);
   assert.match(messages[1].content, /shared-test-framework|selfTests/);
-  assert.match(messages[1].content, /overlay.*hit-test|hit-test.*overlay/);
-  assert.match(messages[1].content, /append-node/);
-  assert.match(messages[1].content, /below the initial viewport/);
-  assert.match(messages[1].content, /elementsFromPoint/);
-  assert.match(messages[1].content, /scroll-page/);
-  assert.match(messages[1].content, /event-default-prevented false/);
-  assert.match(messages[1].content, /native paste default action/);
-  assert.match(messages[1].content, /later checkpoint.*InputEvent\.data/);
+  assert.match(messages[1].content, /Test only behavior explicitly stated in SKILL\.md/);
+  assert.match(messages[1].content, /shared framework action.*real user workflow|real user workflow.*shared framework action/);
+  assert.match(messages[1].content, /do not introduce selection, paste, overlay, keyboard/);
+  assert.match(messages[1].content, /behavior-specific repairs scoped to the supplied SKILL\.md/);
+  assert.doesNotMatch(messages[1].content, /InputEvent\.data|value setter|pointerup\/mouseup capture|elementFromPoint/);
   assert.doesNotMatch(messages[1].content, /HIDDEN_TEST_INJECTION|HIDDEN_RUNNER_INJECTION/);
   assert.doesNotMatch(messages[1].content, /IGNORE ALL RULES/);
 });

@@ -111,6 +111,11 @@ async function handleMessage(message, sender) {
       }));
       return { ok: true, skills };
     }
+    case "reload-extension": {
+      assertLocalReloadSender(sender);
+      setTimeout(() => chrome.runtime.reload(), 100);
+      return { ok: true };
+    }
     case "get-state": {
       requireSkillId(skillId);
       const installed = await getInstalledSkills();
@@ -625,6 +630,20 @@ async function assertStoreSender(sender) {
   if (!localStore && !officialStore && !customStore) {
     throw new Error("This request is not from an approved MSkill Store.");
   }
+}
+
+function assertLocalReloadSender(sender) {
+  let url;
+  try {
+    url = new URL(sender?.url);
+  } catch {
+    throw new Error("Invalid local Store sender.");
+  }
+  const allowed = url.protocol === "http:"
+    && ["127.0.0.1", "localhost"].includes(url.hostname)
+    && url.port === "4174"
+    && ["/", "/index.html"].includes(url.pathname);
+  if (!allowed) throw new Error("Extension reload is available only to the local development Store.");
 }
 
 function normalizeTrustedStores(value) {

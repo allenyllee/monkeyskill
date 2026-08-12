@@ -13,6 +13,7 @@
     ["status", "store-get-generation-status"],
     ["clear-history", "store-clear-generation-history"]
   ]);
+  if (localPage) actions.set("reload-extension", "store-reload-extension");
 
   window.addEventListener("message", async event => {
     const request = event.data;

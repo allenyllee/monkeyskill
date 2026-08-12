@@ -144,6 +144,14 @@ test("shared paste workflow defines deterministic end-of-content insertion", asy
   assert.match(source, /range\.collapse\(false\)/);
   assert.match(source, /crossWorldRollbacks/);
   assert.match(source, /trusted post-dispatch checkpoint/);
+  assert.match(source, /inputType: "insertFromPaste", data: null/);
+  assert.doesNotMatch(source, /inputType: "insertFromPaste", data: value/);
+  assert.match(source, /inputType: "", data: null/);
+  assert.match(source, /blocker\.when\?\.inputType && blocker\.when\.inputType !== "insertFromPaste"/);
+  assert.match(source, /nativeInputValue/);
+  assert.match(source, /writeNativeValue\(target,/);
+  assert.match(source, /descriptor\.set\.call\(target, value\)/);
+  assert.match(source, /later page rollback deliberately uses target\.value/);
 });
 
 test("keyboard shortcut blockers require the copy-shortcut workflow", () => {

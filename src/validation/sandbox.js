@@ -3,6 +3,8 @@
   const nativeEval = eval;
   const nativeFocus = HTMLElement.prototype.focus;
   const nativeBlur = HTMLElement.prototype.blur;
+  const nativeInputValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+  const nativeTextareaValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value");
   const releaseClearEvents = new Set(["mouseup", "pointerup", "keyup", "touchend", "contextmenu"]);
   let trackedActiveElement = null;
 
@@ -311,7 +313,7 @@
     if (!("value" in target) && !target.isContentEditable) throw new Error("paste-text target is not editable.");
     target.focus();
     if (typeof target.setSelectionRange === "function") {
-      const end = String(target.value || "").length;
+      const end = String(readNativeValue(target) || "").length;
       target.setSelectionRange(end, end);
     } else if (target.isContentEditable) {
       const range = document.createRange();
@@ -327,19 +329,29 @@
       await settle();
       return { defaultPrevented: true };
     }
-    const inputInit = { inputType: "insertFromPaste", data: value };
+    // Chromium does not guarantee that native paste exposes the inserted text
+    // through InputEvent.data. Keep the trusted text inside the workflow for
+    // the browser-equivalent edit, but do not leak it through the synthetic
+    // beforeinput/input events. This catches candidates that pass the sandbox
+    // only by replaying event.data and then fail on real pages.
+    const inputInit = { inputType: "insertFromPaste", data: null };
     const beforeInput = createEvent("beforeinput", inputInit);
     target.dispatchEvent(beforeInput);
     if (!beforeInput.defaultPrevented) {
       insertText(target, value);
-      const input = new InputEvent("input", { bubbles: true, inputType: "insertFromPaste", data: value });
+      // The resulting input event is even less reliable across Chromium
+      // versions and automation paths: neither data nor inputType is a safe
+      // paste transaction identifier. Candidates must carry forward the
+      // target marked by paste/beforeinput instead of keying off this event.
+      const input = new InputEvent("input", { bubbles: true, inputType: "", data: null });
       target.dispatchEvent(input);
       // A generated MAIN/USER_SCRIPT-world guard must not make a page-world
       // rollback disappear from the test. Reapply the declared rollback at
       // the trusted post-dispatch checkpoint; a valid candidate must recover
       // after this checkpoint without cancelling native paste.
       for (const blocker of state.crossWorldRollbacks) {
-        if (blocker.target !== target.id || !matchesWhen(input, blocker.when)) continue;
+        if (blocker.target !== target.id) continue;
+        if (blocker.when?.inputType && blocker.when.inputType !== "insertFromPaste") continue;
         target.value = blocker.initialValue || "";
       }
     }
@@ -442,13 +454,34 @@
 
   function insertText(target, value) {
     if ("value" in target) {
-      const start = Number.isInteger(target.selectionStart) ? target.selectionStart : target.value.length;
+      const current = String(readNativeValue(target) || "");
+      const start = Number.isInteger(target.selectionStart) ? target.selectionStart : current.length;
       const end = Number.isInteger(target.selectionEnd) ? target.selectionEnd : start;
-      target.value = `${target.value.slice(0, start)}${value}${target.value.slice(end)}`;
+      // Model Chromium's native edit, which bypasses an instance-level value
+      // setter guard. The later page rollback deliberately uses target.value
+      // so a generated transaction guard can distinguish the two writes.
+      writeNativeValue(target, `${current.slice(0, start)}${value}${current.slice(end)}`);
       if (typeof target.setSelectionRange === "function") target.setSelectionRange(start + value.length, start + value.length);
       return;
     }
     target.textContent += value;
+  }
+
+  function nativeValueDescriptor(target) {
+    if (target instanceof HTMLInputElement) return nativeInputValue;
+    if (target instanceof HTMLTextAreaElement) return nativeTextareaValue;
+    return null;
+  }
+
+  function readNativeValue(target) {
+    const descriptor = nativeValueDescriptor(target);
+    return descriptor?.get ? descriptor.get.call(target) : target.value;
+  }
+
+  function writeNativeValue(target, value) {
+    const descriptor = nativeValueDescriptor(target);
+    if (descriptor?.set) descriptor.set.call(target, value);
+    else target.value = value;
   }
 
   function createEvent(type, init) {

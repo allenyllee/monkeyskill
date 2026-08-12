@@ -35,6 +35,20 @@ test("agent Skill catalog preinstalls creator, installer, and tester policies", 
   await Promise.all(catalog.map(entry => access(join(root, entry.entrypoint))));
 });
 
+test("MSkill creator keeps domain behavior out of global prompts", async () => {
+  const creator = await readFile(join(root, "skills", "mskill-creator", "SKILL.md"), "utf8");
+  const schema = await readFile(join(root, "skills", "mskill-creator", "references", "mskill-schema.md"), "utf8");
+  assert.match(creator, /Global contract problem/);
+  assert.match(creator, /MSkill specification problem/);
+  assert.match(creator, /Candidate implementation problem/);
+  assert.match(creator, /preserve that constraint in this MSkill rather than promoting it into a global prompt/);
+  assert.match(creator, /record it in that MSkill under a clearly labeled validated-implementation section/);
+  assert.match(creator, /Do not force future Builders to rediscover it/);
+  assert.match(schema, /Global prompts own portable output shape, security, validation, and shared framework contracts/);
+  assert.match(schema, /MSkill owns its domain behavior and platform conditions/);
+  assert.match(schema, /Validated implementation constraints/);
+});
+
 test("Extension does not bundle Store MSkills", async () => {
   await assert.rejects(access(join(root, "preinstalled-skills.json")));
   const background = await readFile(join(root, "src", "background.js"), "utf8");
