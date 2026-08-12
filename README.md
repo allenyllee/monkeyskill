@@ -76,10 +76,11 @@ flowchart LR
     Attacker --> Composer["Trusted orchestrator<br/>renders known-reject canary"]
     Skill -. "original content" .-> Composer
     Composer --> TesterB{"Fresh Tester B<br/>poisoned security review"}
-    TesterB -- "allow / unverifiable" --> Bypass["Fail closed:<br/>possible policy bypass"]
-    TesterB -- "reject" --> Gate["Differential gate<br/>allow / reject"]
+    TesterB --> Gate{"Differential gate<br/>A = allow, B = ?"}
+    Gate -- "B = allow" --> Bypass["Fail closed:<br/>potential prompt injection"]
+    Gate -- "B = unverifiable" --> Unverifiable["Fail closed:<br/>cannot verify safety"]
     Skill -. "only original MSkill" .-> Builder["Builder"]
-    Gate --> Builder
+    Gate -- "B = reject" --> Builder
     Builder --> Candidate["Build + Builder TestSpec"]
     Candidate --> PublicRun["Trusted Runner: public tests"]
     PublicRun -- "detailed repair evidence" --> Builder
