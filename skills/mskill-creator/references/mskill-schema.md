@@ -1,5 +1,10 @@
 # MSkill source schema
 
+This schema implements the project methodology described in
+[`../../../docs/evidence-driven-generative-development.md`](../../../docs/evidence-driven-generative-development.md):
+the readable MSkill and replayable Demo are durable, while generated Build and TestSpecs remain
+local installation artifacts.
+
 `skill.json` requires:
 
 ```json

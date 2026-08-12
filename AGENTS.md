@@ -5,6 +5,11 @@ For an end-to-end generation, installation, or regression request, read and foll
 Runner pass alone is not a closed-loop result: the generated Skill must be installed and
 exercised on the real published demo origin when the user has authorized those actions.
 
+For MSkill creation, criterion evolution, safety-boundary changes, or methodology work, also
+read [`docs/evidence-driven-generative-development.md`](docs/evidence-driven-generative-development.md).
+Keep generated code replaceable, grow criteria from reproducible evidence, and classify failures
+before changing global policy or an MSkill contract.
+
 When a user asks to simulate the LLM with Codex subagents, the following preflight is mandatory before asking the user to press **Generate**:
 
 1. Finish or stop every previous Builder and Tester task and terminate their outstanding long-poll cells.

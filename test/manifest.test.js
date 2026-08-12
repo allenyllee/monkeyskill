@@ -38,6 +38,7 @@ test("agent Skill catalog preinstalls creator, installer, and tester policies", 
 test("MSkill creator keeps domain behavior out of global prompts", async () => {
   const creator = await readFile(join(root, "skills", "mskill-creator", "SKILL.md"), "utf8");
   const schema = await readFile(join(root, "skills", "mskill-creator", "references", "mskill-schema.md"), "utf8");
+  const methodology = await readFile(join(root, "docs", "evidence-driven-generative-development.md"), "utf8");
   assert.match(creator, /Global contract problem/);
   assert.match(creator, /MSkill specification problem/);
   assert.match(creator, /Candidate implementation problem/);
@@ -57,6 +58,12 @@ test("MSkill creator keeps domain behavior out of global prompts", async () => {
   assert.match(schema, /minimum criteria justified by the initial demo/);
   assert.match(schema, /machine-readable security verdict: `allow`, `reject`, or `unverifiable`/);
   assert.match(schema, /executable acceptance gates/);
+  assert.match(creator, /evidence-driven-generative-development\.md/);
+  assert.match(methodology, /Generated JavaScript and CSS are disposable derivatives/);
+  assert.match(methodology, /Three layers of constraint/);
+  assert.match(methodology, /Agreement between both TestSpecs is necessary, not sufficient/);
+  assert.match(methodology, /A sensitive behavior outside[\s\S]*`unverifiable`/);
+  assert.match(methodology, /Stability does not mean identical generated code/);
 });
 
 test("Extension does not bundle Store MSkills", async () => {

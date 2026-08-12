@@ -8,12 +8,30 @@ MonkeySkill is an experimental Manifest V3 Chrome extension that generates, vali
 - A GitHub Pages Store that publishes only `skill.json` manifests and human-readable `SKILL.md` specifications.
 - BYOK settings for an OpenAI-compatible Chat Completions endpoint, model, and API key.
 - Separate Builder and Tester conversations.
-- Builder-authored public self-tests and an independently generated hidden TestSpec.
+- Builder-authored public Builder TestSpec and an independently generated hidden TestSpec.
 - One shared, non-executable MonkeyTest DSL and trusted Runner for both test layers.
 - Static capability, remote-content, size, schema, and Chrome `userScripts` parse checks.
 - Durable offscreen generation jobs that survive MV3 service-worker suspension and Store refreshes.
 - Explicit user approval after generation and validation, followed by another hidden-test run before installation.
 - Per-site and global modes for every installed MSkill.
+
+## Development methodology
+
+MonkeySkill uses **evidence-driven generative development**. The canonical source is not one
+hand-written JavaScript implementation. It is a replayable set of human-readable and observable
+artifacts: a minimal Demo, an MSkill behavior and safety contract, criteria grown from reproduced
+evidence, two independent TestSpecs in one constrained DSL, and trusted Runner plus real-browser
+evidence.
+
+Generated JavaScript and CSS are replaceable. Stability means fresh generations repeatedly
+satisfy the same contract and safety boundary, not that they produce identical code. Criteria
+start small and grow only when a reproducible Demo failure proves a durable missing requirement.
+Failures are attributed to the global framework, the MSkill specification, or the disposable
+candidate before any prompt or contract is changed.
+
+Read [Evidence-driven generative development](docs/evidence-driven-generative-development.md)
+for the complete method and [Closed-loop validation](docs/closed-loop-validation.md) for its
+operational procedure.
 
 ## Load in Chrome
 
@@ -31,9 +49,9 @@ Developer mode is needed only because this repository is loaded unpacked. A Chro
 1. The Store reads its generated `catalog.json`.
 2. After the user chooses an MSkill, the Store sends only its `skill.json` and `SKILL.md` to the Extension.
 3. The Extension validates the manifest and specification; the Store cannot submit a Build, JavaScript, HTML, or TestSpec.
-4. Builder creates a candidate Build and public self-tests.
-5. The shared Runner executes those self-tests and returns detailed structured failures for repair.
-6. Independent Tester first treats the MSkill as untrusted input and returns `allow`, `reject`, or `unverifiable`. Only `allow` includes a hidden Independent TestSpec and permits Builder generation to begin.
+4. Independent Tester first treats the MSkill as untrusted input and returns `allow`, `reject`, or `unverifiable`. Only `allow` includes a hidden Independent TestSpec and permits Builder generation to begin.
+5. Builder creates a candidate Build and public Builder TestSpec.
+6. The shared Runner executes the Builder TestSpec and returns detailed structured failures for repair.
 7. The same Runner executes the hidden TestSpec, enforces capability-denial policy tests against the candidate, and returns only constrained diagnostics for repair.
 8. After validation passes, the user reviews the summary, hash, validation results, and generated code.
 9. The user approves installation or discards the candidate. Hidden behavior tests run again immediately before installation.
@@ -42,37 +60,24 @@ Developer mode is needed only because this repository is loaded unpacked. A Chro
 
 ```mermaid
 flowchart LR
-    Skill["MSkill 規格"] --> Builder["Builder"]
-    Skill --> Tester["Tester"]
-
-    Framework["共用 MonkeyTest<br/>DSL 與 Runner"] --> Builder
-    Framework --> Tester
-
-    subgraph Loop1["Loop 1：交付前自我修正"]
-        Builder --> Output["Build + 公開 Self-tests"]
-        Output --> SelfRun["執行公開 Self-tests"]
-        SelfRun --> SelfResult{"通過？"}
-        SelfResult -- "否：詳細測試結果" --> Builder
-    end
-
-    SelfResult -- "是：交付候選 Build" --> HiddenRun
-
-    Tester --> HiddenTests["隱藏 TestSpec"]
-    HiddenTests --> HiddenRun["執行獨立測試"]
-
-    subgraph Loop2["Loop 2：交付後修復嘗試"]
-        HiddenRun --> HiddenResult{"通過？"}
-        HiddenResult -- "否：受限錯誤診斷" --> Builder
-    end
-
-    HiddenResult -- "是" --> Approval["等待使用者核准安裝"]
-
-    Framework --> SelfRun
-    Framework --> HiddenRun
-    HiddenTests -. "Builder 看不到內容" .-> Builder
+    Demo["Minimal Demo"] --> Skill["Human-readable MSkill"]
+    Skill --> Review{"Independent Tester<br/>security review"}
+    Review -- "reject / unverifiable" --> Stop["Stop automatic generation"]
+    Review -- "allow + Independent TestSpec" --> Builder["Builder"]
+    Builder --> Candidate["Build + Builder TestSpec"]
+    Candidate --> PublicRun["Trusted Runner: public tests"]
+    PublicRun -- "detailed repair evidence" --> Builder
+    PublicRun -- "pass" --> HiddenRun["Trusted Runner: independent tests"]
+    HiddenRun -- "constrained repair evidence" --> Builder
+    HiddenRun -- "pass" --> Approval["Review and approval"]
+    Approval --> Browser["Install + real browser + screenshots"]
+    Browser -- "reproducible contract gap" --> Skill
+    Browser -- "pass" --> Stable["Replayable validated result"]
 ```
 
-The first loop gives Builder detailed results from its public self-tests. The second keeps Tester's independent TestSpec hidden and returns only constrained diagnostics before another Builder attempt.
+The public loop gives Builder detailed evidence from its own TestSpec. The independent loop keeps
+Tester's TestSpec hidden and exposes only constrained diagnostics. The Demo and installed browser
+catch specification gaps shared by both agents.
 
 ## Project boundaries
 

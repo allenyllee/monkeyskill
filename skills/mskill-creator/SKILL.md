@@ -7,6 +7,11 @@ description: Create or iteratively revise portable, human-readable MonkeySkill s
 
 Create a behavior-level source package that another LLM can independently compile into an installable browser script.
 
+When working inside the MonkeySkill repository, follow
+[../../docs/evidence-driven-generative-development.md](../../docs/evidence-driven-generative-development.md).
+It defines why the Demo, readable contract, evidence-grown criteria, two TestSpecs, safety
+verdict, and replayable browser evidence remain durable while generated code stays replaceable.
+
 ## Workflow
 
 1. Reproduce the motivating browser problem in a smallest practical demo page before trying to enumerate a comprehensive specification. If the user supplies a failing site or interaction, copy only the minimum relevant DOM, styles, event blockers, timing, and assets into the demo; remove unrelated content, credentials, analytics, and network dependencies.
