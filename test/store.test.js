@@ -68,7 +68,17 @@ test("long LLM requests still run outside the ephemeral service worker", async (
   assert.match(background, /message\?\.target === "generation-background"/);
   assert.match(offscreen, /async function runGenerationJob/);
   assert.match(offscreen, /request\.builderBody/);
+  assert.match(offscreen, /request\.attackerBody/);
   assert.match(offscreen, /request\.testerBody/);
+  assert.match(offscreen, /tester-original-/);
+  assert.match(offscreen, /attacker-/);
+  assert.match(offscreen, /tester-adversarial-/);
+  assert.match(offscreen, /differential-security-gate:original=/);
+  assert.match(offscreen, /securityReview\.verdict !== "allow"/);
+  assert.ok(offscreen.indexOf("securityReview.verdict !== \"allow\"") < offscreen.indexOf("request.attackerBody"));
+  assert.match(offscreen, /Differential security gate failed/);
+  assert.match(offscreen, /formatDifferentialGateFailure/);
+  assert.match(offscreen, /Attacker, Tester B, and Builder were not contacted/);
   assert.match(offscreen, /specification: packageDefinition\.specification/);
   assert.match(offscreen, /type: "generation-progress"/);
   assert.match(offscreen, /setInterval/);

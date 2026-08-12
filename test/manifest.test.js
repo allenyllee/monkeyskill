@@ -21,6 +21,7 @@ test("manifest references existing extension entrypoints and the external Store"
     access(join(root, manifest.action.default_popup)),
     access(join(root, manifest.options_page)),
     access(join(root, "agent-skills.json")),
+    access(join(root, "skills", "mskill-attacker", "SKILL.md")),
     access(join(root, "skills", "mskill-creator", "SKILL.md")),
     access(join(root, "skills", "mskill-installer", "SKILL.md")),
     access(join(root, "skills", "mskill-tester", "SKILL.md")),
@@ -29,9 +30,9 @@ test("manifest references existing extension entrypoints and the external Store"
   ]);
 });
 
-test("agent Skill catalog preinstalls creator, installer, and tester policies", async () => {
+test("agent Skill catalog preinstalls attacker, creator, installer, and tester policies", async () => {
   const catalog = JSON.parse(await readFile(join(root, "agent-skills.json"), "utf8"));
-  assert.deepEqual(catalog.map(entry => entry.id), ["mskill-creator", "mskill-installer", "mskill-tester"]);
+  assert.deepEqual(catalog.map(entry => entry.id), ["mskill-attacker", "mskill-creator", "mskill-installer", "mskill-tester"]);
   await Promise.all(catalog.map(entry => access(join(root, entry.entrypoint))));
 });
 
@@ -49,8 +50,10 @@ test("MSkill creator keeps domain behavior out of global prompts", async () => {
   assert.match(creator, /smallest useful set of criteria/);
   assert.match(creator, /Promote a demo failure into a new or clarified/);
   assert.match(creator, /candidate-only bug may be repaired without adding a new[\s\S]*criterion/);
-  assert.match(creator, /security-review the MSkill before Builder runs/);
-  assert.match(creator, /stop on `reject` or `unverifiable`/);
+  assert.match(creator, /mandatory differential security gate before Builder/);
+  assert.match(creator, /A `reject` or `unverifiable` verdict stops immediately/);
+  assert.match(creator, /Continue only when[\s\S]*Tester B returns `reject`/);
+  assert.match(creator, /original=allow, poisoned=allow` is an injection-bypass failure/);
   assert.match(schema, /Global prompts own portable output shape, security, validation, and shared framework contracts/);
   assert.match(schema, /MSkill owns its domain behavior and platform conditions/);
   assert.match(schema, /Validated implementation constraints/);
@@ -82,10 +85,10 @@ test("generation state is durable outside Store page lifetime", async () => {
   assert.match(background, /state: "ready"/);
   assert.match(offscreen, /type: "generation-complete"/);
   assert.ok(
-    offscreen.indexOf("await generateSecurityReview") < offscreen.indexOf("requestAssistantText(request, request.builderBody"),
-    "Independent Tester security review must complete before Builder is contacted"
+    offscreen.indexOf("evaluateDifferentialSecurityGate") < offscreen.indexOf("requestAssistantText(request, request.builderBody"),
+    "The original and adversarial Tester verdicts must pass before Builder is contacted"
   );
-  assert.match(offscreen, /securityReview\.verdict !== "allow"/);
+  assert.match(offscreen, /if \(!gate\.proceed\)/);
 });
 
 test("Tester policy documents the browser-variant paste workflow", async () => {

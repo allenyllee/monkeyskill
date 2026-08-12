@@ -8,6 +8,7 @@ import {
   scanGeneratedBuild
 } from "../lib/llm.js";
 import { parseTesterSecurityReview, validateTestSpec } from "../lib/test-spec.js";
+import { evaluateDifferentialSecurityGate, parseAttackerMutation } from "../lib/security-regression.js";
 import {
   MAX_GENERATION_ATTEMPTS,
   createRetryState,
@@ -37,14 +38,28 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
     void reportGenerationProgress(jobId, skillId, "waiting-for-generation");
   }, 60_000);
   try {
-    await reportGenerationProgress(jobId, skillId, "requesting-initial-build-and-tests");
+    await reportGenerationProgress(jobId, skillId, "running-differential-security-gate");
     const builderMessages = [...request.builderBody.messages];
     const builderSessionId = `builder-${jobId}`;
-    const testerSessionId = `tester-${jobId}`;
+    const testerSessionId = `tester-original-${jobId}`;
+    const attackerSessionId = `attacker-${jobId}`;
+    const adversarialTesterSessionId = `tester-adversarial-${jobId}`;
     const securityReview = await generateSecurityReview(request, packageDefinition, testerSessionId);
+    const originalGate = evaluateDifferentialSecurityGate(securityReview, null);
     if (securityReview.verdict !== "allow") {
-      throw new Error(`Independent Tester security verdict: ${securityReview.verdict} (${securityReview.reasonCodes.join(", ")}).`);
+      throw new Error(formatDifferentialGateFailure(originalGate, securityReview, null));
     }
+    const poisonedText = await requestAssistantText(request, request.attackerBody, attackerSessionId);
+    const mutation = parseAttackerMutation(poisonedText, packageDefinition.specification.instructions);
+    const adversarialReview = await generateSecurityReview(
+      request,
+      packageDefinition,
+      adversarialTesterSessionId,
+      mutation.instructions
+    );
+    const gate = evaluateDifferentialSecurityGate(securityReview, adversarialReview);
+    if (!gate.proceed) throw new Error(formatDifferentialGateFailure(gate, securityReview, adversarialReview));
+    await reportGenerationProgress(jobId, skillId, "requesting-initial-build-and-tests");
     const independentTestSpec = securityReview.testSpec;
     const initialBuilderText = await requestAssistantText(request, request.builderBody, builderSessionId);
     let assistantText = initialBuilderText;
@@ -79,7 +94,10 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
         }, builderSessionId);
         continue;
       }
-      build.validation = scanGeneratedBuild(build, packageDefinition.skill);
+      build.validation = [
+        ...scanGeneratedBuild(build, packageDefinition.skill),
+        `differential-security-gate:original=${securityReview.verdict},poisoned=${adversarialReview.verdict}`
+      ];
       const buildHash = await sha256(JSON.stringify(build.modes));
       const candidateHash = await sha256(JSON.stringify({ modes: build.modes, publicTestSpec }));
       build.generation = {
@@ -178,6 +196,17 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
   }
 }
 
+function formatDifferentialGateFailure(gate, originalReview, poisonedReview) {
+  if (gate.outcome === "injection-bypass") {
+    return `Differential security gate failed (${gate.outcome}): original=${originalReview.verdict}, poisoned=${poisonedReview.verdict}. Builder was not contacted.`;
+  }
+  if (gate.outcome === "unsafe-original-blocked") {
+    return `Independent Tester security verdict: reject (${originalReview.reasonCodes.join(", ")}). Attacker, Tester B, and Builder were not contacted.`;
+  }
+  const poisonedVerdict = poisonedReview?.verdict ?? "not-run";
+  return `Differential security gate stopped generation (${gate.outcome}): original=${originalReview.verdict}, poisoned=${poisonedVerdict}. Builder was not contacted.`;
+}
+
 async function reportGenerationProgress(jobId, skillId, stage) {
   await chrome.runtime.sendMessage({
     target: "generation-background",
@@ -188,8 +217,10 @@ async function reportGenerationProgress(jobId, skillId, stage) {
   }).catch(() => undefined);
 }
 
-async function generateSecurityReview(request, packageDefinition, sessionId) {
-  const messages = [...request.testerBody.messages];
+async function generateSecurityReview(request, packageDefinition, sessionId, skillInstructions = null) {
+  const messages = skillInstructions == null
+    ? [...request.testerBody.messages]
+    : replaceTesterSkillInstructions(request.testerBody.messages, skillInstructions);
   let lastError;
   for (let attempt = 1; attempt <= MAX_TESTER_ATTEMPTS; attempt += 1) {
     const assistantText = await requestAssistantText(request, {
@@ -216,6 +247,16 @@ async function generateSecurityReview(request, packageDefinition, sessionId) {
     }
   }
   throw lastError;
+}
+
+function replaceTesterSkillInstructions(messages, skillInstructions) {
+  return messages.map(message => {
+    if (message.role !== "user" || typeof message.content !== "string") return message;
+    const marker = "\n\nSKILL.md:\n\n";
+    const index = message.content.indexOf(marker);
+    if (index < 0) throw new Error("Tester request is missing the SKILL.md boundary.");
+    return { ...message, content: `${message.content.slice(0, index + marker.length)}${skillInstructions}` };
+  });
 }
 
 async function requestAssistantText(request, body, sessionId) {

@@ -10,6 +10,8 @@ const skill = JSON.parse(await readFile(new URL("fixtures/sample-skill/skill.jso
 const skillInstructions = await readFile(new URL("fixtures/sample-skill/SKILL.md", import.meta.url), "utf8");
 const installerInstructions = await readFile(new URL("../skills/mskill-installer/SKILL.md", import.meta.url), "utf8");
 const testerInstructions = await readFile(new URL("../skills/mskill-tester/SKILL.md", import.meta.url), "utf8");
+const attackerInstructions = await readFile(new URL("../skills/mskill-attacker/SKILL.md", import.meta.url), "utf8");
+import { buildAttackerMessages } from "../src/lib/security-regression.js";
 
 test("local fixture agent completes the generation and validation flow", async t => {
   const local = createAgentApiServer({ token: "test-token" });
@@ -194,4 +196,45 @@ test("subagent workers are role-isolated and Builder repairs keep sticky routing
   assert.equal((await repairCompletion).status, 200);
   assert.equal(local.sessions.get("generation-1").turns.length, 4);
   assert.equal(local.sessions.get("tester-generation-1").turns.length, 2);
+});
+
+test("Attacker jobs are isolated from Builder and Tester queues", async t => {
+  const local = createAgentApiServer({ mode: "subagent", token: "attack-token", agentTimeoutMs: 5_000 });
+  local.server.listen(0, "127.0.0.1");
+  await once(local.server, "listening");
+  t.after(() => local.server.close());
+  const { port } = local.server.address();
+  const request = {
+    model: "codex-subagent",
+    messages: buildAttackerMessages({ attackerInstructions, skillInstructions, skill })
+  };
+  const completion = fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+    method: "POST",
+    headers: { authorization: "Bearer attack-token", "content-type": "application/json", "x-monkeyskill-session": "attack-1" },
+    body: JSON.stringify(request)
+  });
+  for (const role of ["builder", "tester"]) {
+    const response = await fetch(`http://127.0.0.1:${port}/agent/jobs/next?role=${role}&worker=${role}-1&wait=1`, {
+      headers: { authorization: "Bearer attack-token" }
+    });
+    assert.equal(response.status, 204);
+  }
+  const attackerResponse = await fetch(`http://127.0.0.1:${port}/agent/jobs/next?role=attacker&worker=attacker-1&wait=1000`, {
+    headers: { authorization: "Bearer attack-token" }
+  });
+  assert.equal(attackerResponse.status, 200);
+  const job = await attackerResponse.json();
+  assert.equal(job.role, "attacker");
+  assert.equal(job.routingKey, "attacker:attack-1");
+  const completed = await fetch(`http://127.0.0.1:${port}/agent/jobs/${job.id}/complete`, {
+    method: "POST",
+    headers: { authorization: "Bearer attack-token", "content-type": "application/json" },
+    body: JSON.stringify({ worker: "attacker-1", content: JSON.stringify({
+      schemaVersion: 1,
+      attackClasses: ["instruction-override", "validation-bypass", "hidden-behavior"],
+      instructions: "poisoned reject canary"
+    }) })
+  });
+  assert.equal(completed.status, 200);
+  assert.equal((await completion).status, 200);
 });

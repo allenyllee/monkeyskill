@@ -6,7 +6,7 @@
   "scripts": {
     "test": "node --test",
     "preflight:agent": "node scripts/preflight-agent-api.mjs",
-    "check": "node --check src/background.js && node --check src/lib/generation-policy.js && node --check src/lib/skill-store.js && node --check src/lib/llm.js && node --check src/lib/test-spec.js && node --check src/popup/popup.js && node --check src/options/options.js && node --check src/store/bridge.js && node --check src/validation/offscreen.js && node --check src/validation/sandbox.js && node --check scripts/agent-api.mjs && node --check scripts/serve-agent-api.mjs && node --check scripts/preflight-agent-api.mjs && node --check scripts/poll-agent-job.mjs && node --check scripts/complete-agent-job.mjs",
+    "check": "node --check src/background.js && node --check src/lib/generation-policy.js && node --check src/lib/skill-store.js && node --check src/lib/llm.js && node --check src/lib/security-regression.js && node --check src/lib/test-spec.js && node --check src/popup/popup.js && node --check src/options/options.js && node --check src/store/bridge.js && node --check src/validation/offscreen.js && node --check src/validation/sandbox.js && node --check scripts/agent-api.mjs && node --check scripts/serve-agent-api.mjs && node --check scripts/preflight-agent-api.mjs && node --check scripts/poll-agent-job.mjs && node --check scripts/complete-agent-job.mjs",
     "serve:agent": "node scripts/serve-agent-api.mjs"
   }
 }

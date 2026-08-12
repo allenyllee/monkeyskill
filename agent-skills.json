@@ -1,5 +1,11 @@
 [
   {
+    "id": "mskill-attacker",
+    "entrypoint": "skills/mskill-attacker/SKILL.md",
+    "role": "generate-adversarial-specification",
+    "preinstall": true
+  },
+  {
     "id": "mskill-creator",
     "entrypoint": "skills/mskill-creator/SKILL.md",
     "role": "create-specification",

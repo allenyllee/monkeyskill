@@ -1,0 +1,4 @@
+interface:
+  display_name: "MSkill Attacker"
+  short_description: "Create bounded poisoned MSkill variants for security checks"
+  default_prompt: "Use $mskill-attacker to create a non-executable poisoned MSkill variant for the mainline Tester security gate."

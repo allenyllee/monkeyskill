@@ -25,6 +25,7 @@ server.listen(port, host, () => {
   console.log(`Local API token: ${token}`);
   console.log(`Sessions: http://${host}:${port}/sessions`);
   if (mode === "subagent") {
+    console.log(`Attacker queue: http://${host}:${port}/agent/jobs/next?role=attacker&worker=attacker-1&wait=30000`);
     console.log(`Builder queue: http://${host}:${port}/agent/jobs/next?role=builder&worker=builder-1&wait=30000`);
     console.log(`Tester queue: http://${host}:${port}/agent/jobs/next?role=tester&worker=tester-1&wait=30000`);
   }

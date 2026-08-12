@@ -24,6 +24,7 @@ import {
   publicLlmSettings,
   scanGeneratedBuild
 } from "./lib/llm.js";
+import { buildAttackerMessages } from "./lib/security-regression.js";
 
 const PENDING_BUILDS_KEY = "pendingSkillBuilds";
 const GENERATION_JOBS_KEY = "generationJobs";
@@ -386,7 +387,8 @@ async function prepareGenerationRequest(packageDefinition) {
   const settings = normalizeLlmSettings(stored[LLM_SETTINGS_KEY]);
   if (!settings.model || !settings.apiKey) throw new Error("請先在設定頁保存自己的 LLM API。");
 
-  const [installerInstructions, testerInstructions, skillInstructions] = await Promise.all([
+  const [attackerInstructions, installerInstructions, testerInstructions, skillInstructions] = await Promise.all([
+    loadAgentSkill("mskill-attacker"),
     loadAgentSkill("mskill-installer"),
     loadAgentSkill("mskill-tester"),
     resolveSkillInstructions(packageDefinition)
@@ -402,6 +404,11 @@ async function prepareGenerationRequest(packageDefinition) {
     skillInstructions,
     skill: packageDefinition.skill
   });
+  const attackerMessages = buildAttackerMessages({
+    attackerInstructions,
+    skillInstructions,
+    skill: packageDefinition.skill
+  });
   const criteria = extractCriterionIds(skillInstructions);
   if (criteria.length === 0) throw new Error("MSkill must declare human-readable criterion IDs in SKILL.md.");
 
@@ -410,6 +417,12 @@ async function prepareGenerationRequest(packageDefinition) {
       endpoint: settings.endpoint,
       apiKey: settings.apiKey,
       model: settings.model,
+      attackerBody: {
+        model: settings.model,
+        messages: attackerMessages,
+        temperature: 0.7,
+        response_format: { type: "json_object" }
+      },
       builderBody: {
         model: settings.model,
         messages: builderMessages,

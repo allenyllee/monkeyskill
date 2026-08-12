@@ -13,6 +13,7 @@ await assertHealthy(workerEndpoint, "worker");
 
 const runId = randomUUID();
 await Promise.all([
+  roundTrip("attacker", [{ role: "system", content: "name: mskill-attacker" }]),
   roundTrip("builder", [{ role: "system", content: "name: mskill-installer" }]),
   roundTrip("tester", [{ role: "system", content: "name: mskill-tester" }])
 ]);

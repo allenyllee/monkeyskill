@@ -1,8 +1,8 @@
 import { readFile, writeFile } from "node:fs/promises";
 
 const [role, worker, output] = process.argv.slice(2);
-if (!['builder', 'tester'].includes(role) || !worker || !output) {
-  throw new Error('Usage: node scripts/poll-agent-job.mjs <builder|tester> <worker> <output>');
+if (!['attacker', 'builder', 'tester'].includes(role) || !worker || !output) {
+  throw new Error('Usage: node scripts/poll-agent-job.mjs <attacker|builder|tester> <worker> <output>');
 }
 
 const bootstrap = JSON.parse(await readFile('.tmp-clean-agent-bootstrap.json', 'utf8'));
