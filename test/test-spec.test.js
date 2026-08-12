@@ -200,6 +200,7 @@ test("shared paste workflow defines deterministic end-of-content insertion", asy
   assert.match(source, /crossWorldRollbacks/);
   assert.match(source, /trusted post-dispatch checkpoint/);
   assert.match(source, /inputType: "insertFromPaste", data: null/);
+  assert.match(source, /await new Promise\(resolve => setTimeout\(resolve, 0\)\)/);
   assert.doesNotMatch(source, /inputType: "insertFromPaste", data: value/);
   assert.match(source, /inputType: "", data: null/);
   assert.match(source, /blocker\.when\?\.inputType && blocker\.when\.inputType !== "insertFromPaste"/);

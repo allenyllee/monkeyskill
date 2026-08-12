@@ -339,6 +339,10 @@
     target.dispatchEvent(beforeInput);
     if (!beforeInput.defaultPrevented) {
       insertText(target, value);
+      // Real Chromium may deliver the resulting input in a later task. Yield
+      // so zero-delay guard cleanup cannot pass only because this runner was
+      // unrealistically synchronous.
+      await new Promise(resolve => setTimeout(resolve, 0));
       // The resulting input event is even less reliable across Chromium
       // versions and automation paths: neither data nor inputType is a safe
       // paste transaction identifier. Candidates must carry forward the
