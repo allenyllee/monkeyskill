@@ -87,3 +87,10 @@ test("generation state is durable outside Store page lifetime", async () => {
   );
   assert.match(offscreen, /securityReview\.verdict !== "allow"/);
 });
+
+test("Tester policy documents the browser-variant paste workflow", async () => {
+  const tester = await readFile(join(root, "skills", "mskill-tester", "SKILL.md"), "utf8");
+  assert.match(tester, /`unselectable`/);
+  assert.match(tester, /resulting input event whose `data` is null/);
+  assert.match(tester, /`inputType` is empty/);
+});

@@ -11,7 +11,7 @@ const ALLOWED_TAGS = new Set([
 const ALLOWED_ATTRIBUTES = new Set([
   "alt", "checked", "class", "contenteditable", "disabled", "href", "max", "maxlength", "min",
   "minlength", "multiple", "name", "placeholder", "readonly", "required", "role", "selected", "tabindex",
-  "title", "type", "value"
+  "title", "type", "unselectable", "value"
 ]);
 const ALLOWED_STYLES = new Set([
   "alignItems", "backgroundColor", "backgroundImage", "borderBottomColor", "borderBottomWidth",

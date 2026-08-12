@@ -195,6 +195,15 @@ test("shared paste workflow defines deterministic end-of-content insertion", asy
   assert.match(source, /later page rollback deliberately uses target\.value/);
 });
 
+test("TestSpec models legacy unselectable fixtures without executable markup", () => {
+  const spec = JSON.parse(fixtureText);
+  const behavior = spec.tests.find(candidate => candidate.kind === "behavior");
+  behavior.fixture.nodes[0].attributes.unselectable = "on";
+  assert.doesNotThrow(() => validateTestSpec(spec, skill, criteria));
+  behavior.fixture.nodes[0].attributes.onclick = "fetch('https://evil')";
+  assert.throws(() => validateTestSpec(spec, skill, criteria), /attribute is not allowed/);
+});
+
 test("keyboard shortcut blockers require the copy-shortcut workflow", () => {
   const parsed = parseGeneratedTestSpec(fixtureText, skill, criteria);
   const keyboardTests = parsed.tests.filter(candidate => candidate.criterion === "keyboard-copy");
