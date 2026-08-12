@@ -270,6 +270,12 @@ test("selection fixtures model primary mousedown and high-specificity transparen
   assert.throws(() => validateTestSpec(duplicatedImportant, skill, criteria), /Style value may escape/);
 });
 
+test("id-ancestor selection rules target descendants rather than the ancestor pseudo-element", async () => {
+  const source = await readFile(new URL("../src/validation/sandbox.js", import.meta.url), "utf8");
+  assert.match(source, /`#fixture \*\$\{rule\.pseudo\}`/);
+  assert.doesNotMatch(source, /`#fixture \$\{target\}\$\{rule\.pseudo\}`/);
+});
+
 test("preserve-controls fixture models a real click after page selection", () => {
   const spec = parseGeneratedTestSpec(fixtureText, skill, criteria);
   const preserve = spec.tests.find(candidate => candidate.criterion === "preserve-controls");

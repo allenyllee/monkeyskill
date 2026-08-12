@@ -101,7 +101,11 @@
         .map(([property, value]) => `${toCssProperty(property)}:${value}!important`)
         .join(";");
       const target = `#${CSS.escape(rule.target)}`;
-      const selector = rule.specificity === "id-ancestor" ? `#fixture ${target}${rule.pseudo}` : `${target}${rule.pseudo}`;
+      // `id-ancestor` models a page rule whose ID belongs to an ancestor,
+      // while the selected descendant itself may have no useful ID. Do not
+      // include the target ID in that selector: candidates must override the
+      // descendant pseudo-element, not merely the ancestor's own ::selection.
+      const selector = rule.specificity === "id-ancestor" ? `#fixture *${rule.pseudo}` : `${target}${rule.pseudo}`;
       style.textContent = `${selector}{${declarations}}`;
       document.head.append(style);
     }
