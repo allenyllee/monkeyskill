@@ -44,9 +44,15 @@ test("MSkill creator keeps domain behavior out of global prompts", async () => {
   assert.match(creator, /preserve that constraint in this MSkill rather than promoting it into a global prompt/);
   assert.match(creator, /record it in that MSkill under a clearly labeled validated-implementation section/);
   assert.match(creator, /Do not force future Builders to rediscover it/);
+  assert.match(creator, /Reproduce the motivating browser problem/);
+  assert.match(creator, /smallest useful set of criteria/);
+  assert.match(creator, /Promote a demo failure into a new or clarified/);
+  assert.match(creator, /candidate-only bug may be repaired without adding a new[\s\S]*criterion/);
   assert.match(schema, /Global prompts own portable output shape, security, validation, and shared framework contracts/);
   assert.match(schema, /MSkill owns its domain behavior and platform conditions/);
   assert.match(schema, /Validated implementation constraints/);
+  assert.match(schema, /self-contained reproducible demo/);
+  assert.match(schema, /minimum criteria justified by the initial demo/);
 });
 
 test("Extension does not bundle Store MSkills", async () => {

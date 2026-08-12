@@ -22,6 +22,30 @@ A closed loop is complete only when all of the following are true:
 An HTTP `200` from the broker, an empty repair queue, or a Runner result by itself is not a
 complete result.
 
+## Interactive demo-first development loop
+
+Use the closed loop to grow an MSkill specification rather than attempting to predict every
+criterion at the beginning:
+
+1. Reproduce the motivating site problem in a minimal, self-contained demo page. Confirm the
+   blocked baseline without the MSkill and define the visible expected result.
+2. Write only the smallest initial criteria supported by that evidence.
+3. Generate the Build plus public Builder TestSpec and independent Tester TestSpec.
+4. Run both TestSpecs, install the candidate, then exercise the real demo manually or through
+   browser automation. Capture screenshots for pixel-dependent results.
+5. If the demo fails despite both TestSpecs passing, preserve the failing demo scenario and
+   classify the gap before editing anything.
+6. Add or clarify a criterion only when the failure is reproducible, belongs to the MSkill's
+   intended contract, is not already specified, and has an observable result and safety boundary.
+7. If the existing criterion already covers the failure, treat it as a candidate implementation
+   problem or inaccurate shared Runner model instead of duplicating the criterion.
+8. Regenerate with fresh Builder and Tester workers and repeat the full loop. New features and
+   newly discovered site variants enter through the same demo-first process.
+
+Builder TestSpec and Independent TestSpec agreement is therefore necessary but not sufficient.
+The demo is a third validation surface and the source of evidence for evolving the portable
+contract.
+
 ## 1. Prepare a clean simulation
 
 Before asking the user to press **Generate**:

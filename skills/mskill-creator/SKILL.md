@@ -1,6 +1,6 @@
 ---
 name: mskill-creator
-description: Create or revise portable, human-readable MonkeySkill specifications from a requested browser behavior, an extension feature description, or a legacy extension analysis. Use when an agent must define goals, modes, capabilities, restrictions, and observable criterion markers without writing runtime code or tests; independent tests are generated locally at installation time.
+description: Create or iteratively revise portable, human-readable MonkeySkill specifications from a reproducible browser problem, demo page, requested behavior, extension feature description, or legacy extension analysis. Use when an agent must build a demo-first MSkill, evolve criteria from observed failures, and define goals, modes, capabilities, restrictions, and observable criterion markers without packaging generated TestSpecs or runtime code.
 ---
 
 # MSkill Creator
@@ -9,25 +9,48 @@ Create a behavior-level source package that another LLM can independently compil
 
 ## Workflow
 
-1. Describe observable user behavior, supported pages, modes, and known limits.
-2. Declare only the capabilities required by the behavior.
-3. Explicitly forbid sensitive capabilities that are unnecessary.
-4. Give every human-readable success criterion a stable `[criterion:id]` marker in `SKILL.md`.
-5. Do not package acceptance tests, fixtures, test scripts, or hidden requirements. At installation time the Builder creates a local public TestSpec and an independent Tester creates a local Independent TestSpec from the same human-readable criteria. Both use the same TestSpec schema and MonkeyTest DSL.
-6. Keep responsibility correctly layered: put behavior, domain constraints, browser/event timing assumptions, and required preservation cases in this MSkill; keep only output format, security enforcement, and shared framework semantics in installer-wide prompts.
-7. Validate the manifest against [references/mskill-schema.md](references/mskill-schema.md).
+1. Reproduce the motivating browser problem in a smallest practical demo page before trying to enumerate a comprehensive specification. If the user supplies a failing site or interaction, copy only the minimum relevant DOM, styles, event blockers, timing, and assets into the demo; remove unrelated content, credentials, analytics, and network dependencies.
+2. Confirm the demo fails without the MSkill and exposes an observable pass condition. Treat the demo as a reproducible scenario surface, not as executable TestSpec DSL or a hidden test.
+3. Describe the initial observable user behavior, supported pages, modes, and known limits. Start with the smallest useful set of criteria supported by current evidence; do not speculate about every possible edge case.
+4. Declare only the capabilities required by the behavior and explicitly forbid sensitive capabilities that are unnecessary.
+5. Give each current human-readable success criterion a stable `[criterion:id]` marker in `SKILL.md`.
+6. Generate the initial Build, run the public Builder TestSpec and Independent TestSpec, install it, and exercise the real demo. Let Builder, Tester, and demo evidence challenge different parts of the specification.
+7. When manual or automated demo interaction reveals a failure, reproduce it reliably, classify it, repair it, and promote it to a new or clarified criterion only when it represents durable MSkill behavior. Then repeat the entire closed loop.
+8. Do not package generated TestSpecs or hidden requirements. At installation time the Builder creates a local public TestSpec and an independent Tester creates a local Independent TestSpec from the same human-readable criteria. Both use the same TestSpec schema and MonkeyTest DSL.
+9. Keep responsibility correctly layered: put behavior, domain constraints, browser/event timing assumptions, and required preservation cases in this MSkill; keep only output format, security enforcement, and shared framework semantics in installer-wide prompts.
+10. Validate the manifest against [references/mskill-schema.md](references/mskill-schema.md).
 
 ## Output
 
-Create only:
+Create the portable MSkill source and, when a reproducible scenario exists, its demo:
 
 ```text
 skills/<skill-id>/
 ├── SKILL.md
-└── skill.json
+├── skill.json
+└── demo/                 # optional but preferred for interactive development
+    ├── index.html
+    └── local assets
 ```
 
-Use lowercase hyphenated IDs. Treat the human-readable specification as the canonical source; generated TestSpecs and runtime JS/CSS are local installation artifacts and must be reproducible from this package.
+Use lowercase hyphenated IDs. When `demo/` exists, declare `"demo": "demo/index.html"` in `skill.json`. Keep the demo self-contained, deterministic, free of sensitive data and network access, and visibly distinguish the blocked baseline from the installed result. Treat the human-readable specification as the canonical contract; the demo is evidence and a regression surface, while generated TestSpecs and runtime JS/CSS are local installation artifacts.
+
+## Criterion evolution
+
+Do not start by converting every visible demo element into a criterion. A criterion is a durable
+product contract, not a list of speculative cases.
+
+Promote a demo failure into a new or clarified `[criterion:id]` only when all are true:
+
+1. The failure is reproducible on the demo through a real user workflow.
+2. The expected result belongs to the intended MSkill rather than to browser-native behavior, another extension, or an environmental artifact.
+3. The case is not already covered clearly by an existing criterion.
+4. The result is observable enough for both Builder and Tester to express independently in the TestSpec DSL, or it is explicitly marked for real-browser/visual verification when the DSL cannot prove it.
+5. The new criterion includes its safety and preservation boundaries so fixing it cannot silently break ordinary behavior.
+
+After promotion, require both generated TestSpecs to cover the criterion, regenerate the Build,
+install it, and rerun the entire demo. A candidate-only bug may be repaired without adding a new
+criterion when the existing contract already describes the failed behavior.
 
 ## Quality bar
 
@@ -37,6 +60,8 @@ Use lowercase hyphenated IDs. Treat the human-readable specification as the cano
 - Do not solve an MSkill-specific failure by adding its event names, DOM APIs, selectors, timing workaround, or implementation technique to a global Builder or Tester prompt. Amend this MSkill when the missing rule belongs only to its behavior.
 - Make every mode meaningfully distinct.
 - Include failure and safety cases, not only the happy path.
+- Keep the initial criteria intentionally small. Grow them from reproduced demo failures, new requested features, and verified compatibility cases rather than speculative enumeration.
+- Preserve the demo scenario that justified each added criterion so future changes can replay the evidence that caused the contract to grow.
 - Include no test files. The Builder and independent Tester generate separate constrained TestSpecs locally from this same human-readable specification during installation: a public Builder TestSpec and a hidden Independent TestSpec in the same DSL.
 - Make criteria observable enough that an independent tester can verify them without inventing requirements.
 - When timing or a multi-event user gesture matters, describe the complete observable workflow in plain language (for example, paste through the resulting input event or selection after pointer release) without prescribing implementation code.

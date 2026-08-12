@@ -12,11 +12,19 @@
   "capabilities": ["dom", "events", "styles"],
   "forbiddenCapabilities": ["network", "cookies", "history", "downloads"],
   "modes": ["standard"],
-  "entrypoint": "SKILL.md"
+  "entrypoint": "SKILL.md",
+  "demo": "demo/index.html"
 }
 ```
 
-Do not add `tests`, test paths, fixtures, scripts, prompts, or executable resources. The portable MSkill source contains only `skill.json` and the human-readable entrypoint.
+`demo` is optional. When present, it must be exactly `demo/index.html`; keep its local assets in
+the same `demo/` directory. The demo may contain the minimal page code needed to reproduce the
+browser problem, but it must not contain generated TestSpecs, Build artifacts, credentials,
+analytics, or network dependencies.
+
+Do not add `tests`, TestSpec paths, fixtures for the trusted runner, prompts, or generated runtime
+resources. The portable MSkill source contains `skill.json`, the human-readable entrypoint, and
+optionally a self-contained reproducible demo.
 
 Give every observable outcome a stable marker in `SKILL.md`:
 
@@ -26,6 +34,11 @@ Give every observable outcome a stable marker in `SKILL.md`:
 ```
 
 Use lowercase criterion IDs. A capability-denial criterion must be named `no-<capability>` and that capability must appear in `forbiddenCapabilities`. During installation, the Builder converts these criteria into a public TestSpec and a separate Tester LLM creates an Independent TestSpec. Both use the same TestSpec schema and MonkeyTest DSL; neither local TestSpec is part of the shared MSkill.
+
+Start with the minimum criteria justified by the initial demo. Add or clarify a criterion after a
+manual or automated demo failure only when the case is reproducible, belongs to the MSkill
+contract, is not already covered, and has a defined observable result plus safety boundaries.
+Retain the corresponding demo scenario as the regression evidence for that criterion.
 
 Describe complete user-visible workflows when correctness depends on browser event order. State the outcome after the real gesture completes, such as the value remaining after paste emits its input event or the range remaining selected after pointer release. Keep this human-readable and implementation-independent.
 
