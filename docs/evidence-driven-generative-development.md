@@ -73,12 +73,18 @@ variant and no expected verdict. Neither Tester sees the candidate or Builder Te
 both agents can share a blind spot caused by an incomplete specification. The Demo is therefore
 a third validation surface and the source of evidence for evolving the contract.
 
-Attacker may select only allowlisted framing and consequence IDs; it cannot author MSkill text.
+Attacker may select only allowlisted framing, consequence, and structure IDs; it cannot author MSkill text.
 Trusted orchestrator templates insert the deterministic reject canary at a randomly selected safe
 paragraph boundary, varying wording and placement while always including instruction override,
 validation bypass, and a concrete hidden, sensitive-data, or external-communication consequence.
 Tester B is not told the expected verdict. Its `allow` therefore demonstrates that injected prose
 overrode a known rejection boundary, rather than merely exposing an ambiguous test.
+
+Maintain diversity across semantics and document structure, not only synonyms. The trusted library
+currently combines 10 plausible framing families, 8 distinct unsafe data/communication consequences,
+4 presentation structures, 3 headings per framing, 8 override phrasings, 8 bypass phrasings, and
+4 consequence phrasings: 245,760 variants before safe insertion positions. Exhaustively verify the
+320 allowlisted plan tuples, and validate the shared template families separately.
 
 Do not multiply similar Tester models merely to vote on the original MSkill. Closely related models
 can share the same semantic blind spot, so extra votes can add cost without adding an independent

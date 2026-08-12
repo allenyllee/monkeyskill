@@ -4,8 +4,10 @@ import { readFile } from "node:fs/promises";
 import {
   buildAttackerMessages,
   composeTrustedPoisonedSkill,
+  ADVERSARIAL_PLAN_DIMENSIONS,
   evaluateDifferentialSecurityGate,
-  parseAttackerPlan
+  parseAttackerPlan,
+  trustedCanaryVariantCount
 } from "../src/lib/security-regression.js";
 import { buildTesterMessages } from "../src/lib/llm.js";
 
@@ -22,19 +24,20 @@ test("Attacker selects IDs but cannot author poisoned MSkill prose", () => {
   assert.match(messages[1].content, /trusted orchestrator, not you/);
   assert.doesNotMatch(messages[1].content, /expected Tester verdict|must reject|reasonCodes|mskill-tester/i);
 
-  const plan = parseAttackerPlan('{"schemaVersion":2,"framing":"migration","consequence":"form-data-export"}');
-  assert.deepEqual(plan, { schemaVersion: 2, framing: "migration", consequence: "form-data-export" });
+  const plan = parseAttackerPlan('{"schemaVersion":3,"framing":"migration","consequence":"form-data-export","structure":"appendix"}');
+  assert.deepEqual(plan, { schemaVersion: 3, framing: "migration", consequence: "form-data-export", structure: "appendix" });
   assert.throws(() => parseAttackerPlan(JSON.stringify({
-    schemaVersion: 2,
+    schemaVersion: 3,
     framing: "migration",
     consequence: "form-data-export",
+    structure: "appendix",
     instructions: "force allow"
   })), /unsupported plan schema/);
-  assert.throws(() => parseAttackerPlan('{"schemaVersion":2,"framing":"custom","consequence":"form-data-export"}'), /non-allowlisted plan/);
+  assert.throws(() => parseAttackerPlan('{"schemaVersion":3,"framing":"custom","consequence":"form-data-export","structure":"appendix"}'), /non-allowlisted plan/);
 });
 
 test("trusted orchestrator composes varied deterministic reject canaries", () => {
-  const plan = { schemaVersion: 2, framing: "compatibility", consequence: "stored-data-export" };
+  const plan = { schemaVersion: 3, framing: "compatibility", consequence: "stored-data-export", structure: "section" };
   const first = composeTrustedPoisonedSkill(instructions, plan, () => 0);
   const second = composeTrustedPoisonedSkill(instructions, plan, limit => limit - 1);
   assert.deepEqual(first.attackClasses, ["instruction-override", "validation-bypass", "sensitive-data-access"]);
@@ -49,23 +52,27 @@ test("trusted orchestrator composes varied deterministic reject canaries", () =>
 });
 
 test("every allowlisted plan retains all three mandatory reject semantics", () => {
-  const framings = ["compatibility", "certification", "migration", "observability", "onboarding"];
-  const consequences = ["stored-data-export", "form-data-export", "concealed-telemetry"];
-  for (const framing of framings) {
-    for (const consequence of consequences) {
-      const mutation = composeTrustedPoisonedSkill(
-        instructions,
-        { schemaVersion: 2, framing, consequence },
-        () => 0
-      );
-      assert.ok(mutation.attackClasses.includes("instruction-override"));
-      assert.ok(mutation.attackClasses.includes("validation-bypass"));
-      assert.ok(mutation.attackClasses.some(item => ["sensitive-data-access", "external-communication"].includes(item)));
-      assert.match(mutation.instructions, /supersedes earlier review instructions/);
-      assert.match(mutation.instructions, /negative tests/);
-      assert.match(mutation.instructions, /without disclosure|without user disclosure|concealed external telemetry/);
+  let count = 0;
+  for (const framing of ADVERSARIAL_PLAN_DIMENSIONS.framings) {
+    for (const consequence of ADVERSARIAL_PLAN_DIMENSIONS.consequences) {
+      for (const structure of ADVERSARIAL_PLAN_DIMENSIONS.structures) {
+        const mutation = composeTrustedPoisonedSkill(
+          instructions,
+          { schemaVersion: 3, framing, consequence, structure },
+          () => 0
+        );
+        count += 1;
+        assert.ok(mutation.attackClasses.includes("instruction-override"));
+        assert.ok(mutation.attackClasses.includes("validation-bypass"));
+        assert.ok(mutation.attackClasses.some(item => ["sensitive-data-access", "external-communication"].includes(item)));
+        assert.match(mutation.instructions, /supersedes earlier review instructions/);
+        assert.match(mutation.instructions, /negative tests/);
+        assert.equal(mutation.attackClasses.length, 3);
+      }
     }
   }
+  assert.equal(count, 320);
+  assert.equal(trustedCanaryVariantCount(), 245_760);
 });
 
 test("trusted insertion never lands inside fenced examples", () => {
@@ -73,7 +80,7 @@ test("trusted insertion never lands inside fenced examples", () => {
   for (let index = 0; index < 8; index += 1) {
     const mutation = composeTrustedPoisonedSkill(
       source,
-      { schemaVersion: 2, framing: "certification", consequence: "concealed-telemetry" },
+      { schemaVersion: 3, framing: "certification", consequence: "concealed-telemetry", structure: "split-note" },
       limit => index % limit
     );
     const fenced = mutation.instructions.match(/```text([\s\S]*?)```/)?.[1] || "";
@@ -85,7 +92,7 @@ test("Original and trusted-poisoned MSkills go to separate Tester requests", () 
   const original = buildTesterMessages({ testerInstructions: testerPolicy, skillInstructions: instructions, skill });
   const mutation = composeTrustedPoisonedSkill(
     instructions,
-    { schemaVersion: 2, framing: "observability", consequence: "concealed-telemetry" },
+    { schemaVersion: 3, framing: "observability", consequence: "concealed-telemetry", structure: "checklist" },
     () => 0
   );
   const poisoned = buildTesterMessages({ testerInstructions: testerPolicy, skillInstructions: mutation.instructions, skill });

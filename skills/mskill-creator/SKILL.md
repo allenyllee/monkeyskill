@@ -79,6 +79,9 @@ criterion when the existing contract already describes the failed behavior.
   success. An original rejection short-circuits the gate before Attacker and Tester B run.
 - Do not let Attacker author canary prose or self-report its own safety classes. Restrict it to
   allowlisted IDs and have trusted code assemble, vary, and validate all known-reject semantics.
+- Expand adversarial coverage across framing, consequence, presentation structure, wording, and
+  safe insertion position. Test every allowlisted plan tuple; do not count mere synonym changes as
+  independent semantic coverage.
 - Do not substitute multiple similar-model Tester votes for independent enforcement boundaries.
   Use sandbox, capability, static, Runner, Demo, visual, approval, and human-review layers.
 - Keep the initial criteria intentionally small. Grow them from reproduced demo failures, new requested features, and verified compatibility cases rather than speculative enumeration.

@@ -86,11 +86,17 @@ Every normal installation uses three logical roles before Builder is contacted:
 
 1. **Tester A** reviews the original MSkill as untrusted input.
 2. **Attacker** receives the original MSkill, but no Tester policy, Tester result, Builder output,
-   expected verdict, or prior attack. It can select only allowlisted framing and consequence IDs;
+   expected verdict, or prior attack. It can select only allowlisted framing, consequence, and structure IDs;
    it cannot write or mutate MSkill prose. Trusted orchestrator code randomly selects built-in
    wording and an insertion boundary, then assembles an instruction override, validation bypass,
    and concrete unsafe consequence into a deterministic reject canary covered by Tester policy.
    This stage detects policy override, not whether Tester can invent a new danger.
+
+The current trusted library exposes 10 framing families, 8 unsafe-consequence families, and 4
+presentation structures. It then chooses among 3 headings per framing, 8 override phrasings,
+8 validation-bypass phrasings, and 4 consequence phrasings. That yields 245,760 distinct canaries
+before multiplying by safe paragraph insertion positions. Every one retains all mandatory reject
+semantics, preserves criterion markers, and stays outside fenced examples.
 3. **Tester B** runs in a distinct session and sees only the poisoned MSkill as an ordinary review
    request. It is not told that Attacker created it or that rejection is expected.
 
