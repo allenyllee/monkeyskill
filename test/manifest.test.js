@@ -48,11 +48,15 @@ test("MSkill creator keeps domain behavior out of global prompts", async () => {
   assert.match(creator, /smallest useful set of criteria/);
   assert.match(creator, /Promote a demo failure into a new or clarified/);
   assert.match(creator, /candidate-only bug may be repaired without adding a new[\s\S]*criterion/);
+  assert.match(creator, /security-review the MSkill before Builder runs/);
+  assert.match(creator, /stop on `reject` or `unverifiable`/);
   assert.match(schema, /Global prompts own portable output shape, security, validation, and shared framework contracts/);
   assert.match(schema, /MSkill owns its domain behavior and platform conditions/);
   assert.match(schema, /Validated implementation constraints/);
   assert.match(schema, /self-contained reproducible demo/);
   assert.match(schema, /minimum criteria justified by the initial demo/);
+  assert.match(schema, /machine-readable security verdict: `allow`, `reject`, or `unverifiable`/);
+  assert.match(schema, /executable acceptance gates/);
 });
 
 test("Extension does not bundle Store MSkills", async () => {
@@ -70,4 +74,9 @@ test("generation state is durable outside Store page lifetime", async () => {
   assert.match(background, /state: "failed"/);
   assert.match(background, /state: "ready"/);
   assert.match(offscreen, /type: "generation-complete"/);
+  assert.ok(
+    offscreen.indexOf("await generateSecurityReview") < offscreen.indexOf("requestAssistantText(request, request.builderBody"),
+    "Independent Tester security review must complete before Builder is contacted"
+  );
+  assert.match(offscreen, /securityReview\.verdict !== "allow"/);
 });

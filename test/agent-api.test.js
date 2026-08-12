@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import { createAgentApiServer, runFixtureAgent } from "../scripts/agent-api.mjs";
 import { buildGenerationMessages, buildTesterMessages, extractAssistantText, extractCriterionIds, extractSharedTestFramework, parseGeneratedBuild, parseGeneratedPublicTestSpec, scanGeneratedBuild } from "../src/lib/llm.js";
-import { parseGeneratedTestSpec } from "../src/lib/test-spec.js";
+import { parseTesterSecurityReview } from "../src/lib/test-spec.js";
 import { readFile } from "node:fs/promises";
 
 const skill = JSON.parse(await readFile(new URL("fixtures/sample-skill/skill.json", import.meta.url), "utf8"));
@@ -53,11 +53,13 @@ test("local fixture agent independently returns a constrained TestSpec", async (
       skill
     })
   });
-  const spec = parseGeneratedTestSpec(
+  const review = parseTesterSecurityReview(
     extractAssistantText(response),
     skill,
     extractCriterionIds(skillInstructions)
   );
+  assert.equal(review.verdict, "allow");
+  const spec = review.testSpec;
   assert.ok(spec.tests.some(test => test.kind === "behavior"));
   assert.ok(spec.tests.some(test => test.kind === "policy"));
 });

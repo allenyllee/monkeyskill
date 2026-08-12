@@ -43,8 +43,68 @@ const ALLOWED_ASSERTIONS = new Set([
 ]);
 export const FAILURE_CATEGORIES = Object.freeze([
   "accessibility-state", "attribute-state", "blocker-state", "computed-style", "dom-state", "event-state",
-  "focus-state", "layout-state", "property-state", "selection-state", "value-state", "visibility-state"
+  "focus-state", "layout-state", "policy-state", "property-state", "selection-state", "value-state", "visibility-state"
 ]);
+
+export const SECURITY_VERDICTS = Object.freeze(["allow", "reject", "unverifiable"]);
+export const SECURITY_REASON_CODES = Object.freeze([
+  "safe-declarative-behavior",
+  "instruction-override",
+  "validation-bypass",
+  "hidden-behavior",
+  "undeclared-capability",
+  "sensitive-data-access",
+  "external-communication",
+  "unverifiable-capability"
+]);
+
+export function parseTesterSecurityReview(text, skill, criteria) {
+  const cleaned = String(text).trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "");
+  let review;
+  try {
+    review = JSON.parse(cleaned);
+  } catch {
+    throw new Error("Tester LLM did not return valid JSON.");
+  }
+  return validateTesterSecurityReview(review, skill, criteria);
+}
+
+export function validateTesterSecurityReview(review, skill, criteria) {
+  assertRecord(review, "Tester security review");
+  assertOnlyKeys(review, ["schemaVersion", "verdict", "reasonCodes", "testSpec"], "Tester security review");
+  if (review.schemaVersion !== 1 || !SECURITY_VERDICTS.includes(review.verdict)) {
+    throw new Error("Tester LLM returned an unsupported security-review schema.");
+  }
+  if (!Array.isArray(review.reasonCodes) || review.reasonCodes.length === 0 || review.reasonCodes.length > 8
+    || review.reasonCodes.some(code => !SECURITY_REASON_CODES.includes(code))) {
+    throw new Error("Tester security review contains invalid reason codes.");
+  }
+  const reasonCodes = [...new Set(review.reasonCodes)];
+  if (review.verdict === "allow") {
+    if (reasonCodes.length !== 1 || reasonCodes[0] !== "safe-declarative-behavior" || !review.testSpec) {
+      throw new Error("An allowed MSkill requires a complete Independent TestSpec.");
+    }
+    return {
+      schemaVersion: 1,
+      verdict: "allow",
+      reasonCodes,
+      testSpec: validateTestSpec(review.testSpec, skill, criteria)
+    };
+  }
+  if (review.testSpec !== null) throw new Error("Rejected or unverifiable MSkills must not include a TestSpec.");
+  if (reasonCodes.includes("safe-declarative-behavior")) {
+    throw new Error("A blocked MSkill cannot be marked as safe declarative behavior.");
+  }
+  if (review.verdict === "unverifiable" && !reasonCodes.includes("unverifiable-capability")) {
+    throw new Error("An unverifiable MSkill requires the unverifiable-capability reason code.");
+  }
+  if (review.verdict === "reject" && reasonCodes.includes("unverifiable-capability")) {
+    throw new Error("Use the unverifiable verdict when the Runner cannot enforce a required capability.");
+  }
+  return { schemaVersion: 1, verdict: review.verdict, reasonCodes, testSpec: null };
+}
 
 export function parseGeneratedTestSpec(text, skill, criteria) {
   const cleaned = String(text).trim()

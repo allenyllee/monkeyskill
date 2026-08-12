@@ -200,7 +200,12 @@ export async function runFixtureAgent(request) {
   const skill = extractSkillManifest(request.messages);
   const testSpec = makeFixtureTestSpec(skill, extractCriteria(request.messages));
   if (isTesterRequest(request.messages)) {
-    return chatCompletion(request.model, JSON.stringify(testSpec));
+    return chatCompletion(request.model, JSON.stringify({
+      schemaVersion: 1,
+      verdict: "allow",
+      reasonCodes: ["safe-declarative-behavior"],
+      testSpec
+    }));
   }
   const modes = {};
   for (const mode of skill.modes) {

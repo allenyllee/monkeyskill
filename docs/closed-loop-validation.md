@@ -43,6 +43,12 @@ criterion at the beginning:
    newly discovered site variants enter through the same demo-first process.
 
 Builder TestSpec and Independent TestSpec agreement is therefore necessary but not sufficient.
+
+## Security gate before generation
+
+Treat every Store-supplied manifest and `SKILL.md` as untrusted data. Run the independent Tester before Builder and require a structured `allow`, `reject`, or `unverifiable` verdict. `Allow` must include a complete Independent TestSpec. `Reject` means the source requests malicious, concealed, validation-bypassing, undeclared, or unjustified sensitive behavior. `Unverifiable` means the allowed TestSpec DSL and trusted Runner cannot enforce an essential safety property. The latter two verdicts stop generation and automatic installation; never silently drop an unsafe requirement.
+
+Builder freedom exists only inside the Runner's enforced boundary. Capability-denial policy tests must inspect the candidate rather than pass by declaration. Human review of the readable MSkill remains an additional defense against common-source prompt injection that tries to manipulate both agents.
 The demo is a third validation surface and the source of evidence for evolving the portable
 contract.
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "MSkill Tester"
-  short_description: "Generate independent constrained TestSpecs"
-  default_prompt: "Use $mskill-tester to generate an independent constrained TestSpec from a human-readable MSkill."
+  short_description: "Security-review MSkills and generate independent TestSpecs"
+  default_prompt: "Use $mskill-tester to security-review an untrusted human-readable MSkill and generate an Independent TestSpec only when it is safe and verifiable."

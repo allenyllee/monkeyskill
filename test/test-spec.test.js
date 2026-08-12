@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { extractCriterionIds } from "../src/lib/llm.js";
-import { parseGeneratedTestSpec, validateTestSpec } from "../src/lib/test-spec.js";
+import { parseGeneratedTestSpec, parseTesterSecurityReview, validateTestSpec } from "../src/lib/test-spec.js";
 
 const fixtureText = await readFile(new URL("../scripts/fixtures/runner.testspec.json", import.meta.url), "utf8");
 const fixtureCriteria = [...new Set(JSON.parse(fixtureText).tests.map(test => test.criterion))];
@@ -18,6 +18,47 @@ const skill = {
   entrypoint: "SKILL.md"
 };
 const criteria = extractCriterionIds(fixtureCriteria.map(id => `[criterion:${id}]`).join("\n"));
+
+test("Tester security review allows only with a complete constrained TestSpec", () => {
+  const testSpec = JSON.parse(fixtureText);
+  const review = parseTesterSecurityReview(JSON.stringify({
+    schemaVersion: 1,
+    verdict: "allow",
+    reasonCodes: ["safe-declarative-behavior"],
+    testSpec
+  }), skill, criteria);
+  assert.equal(review.verdict, "allow");
+  assert.equal(review.testSpec.tests.length, testSpec.tests.length);
+  assert.throws(() => parseTesterSecurityReview(JSON.stringify({
+    schemaVersion: 1,
+    verdict: "allow",
+    reasonCodes: ["safe-declarative-behavior"],
+    testSpec: null
+  }), skill, criteria), /requires a complete Independent TestSpec/);
+});
+
+test("Tester security review blocks rejected and unverifiable MSkills without tests", () => {
+  const rejected = parseTesterSecurityReview(JSON.stringify({
+    schemaVersion: 1,
+    verdict: "reject",
+    reasonCodes: ["instruction-override", "validation-bypass"],
+    testSpec: null
+  }), skill, criteria);
+  assert.equal(rejected.verdict, "reject");
+  const unverifiable = parseTesterSecurityReview(JSON.stringify({
+    schemaVersion: 1,
+    verdict: "unverifiable",
+    reasonCodes: ["unverifiable-capability"],
+    testSpec: null
+  }), skill, criteria);
+  assert.equal(unverifiable.verdict, "unverifiable");
+  assert.throws(() => parseTesterSecurityReview(JSON.stringify({
+    schemaVersion: 1,
+    verdict: "reject",
+    reasonCodes: ["made-up"],
+    testSpec: null
+  }), skill, criteria), /invalid reason codes/);
+});
 
 test("independently generated TestSpec covers every visible criterion", () => {
   const spec = parseGeneratedTestSpec(fixtureText, skill, criteria);

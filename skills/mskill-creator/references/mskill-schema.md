@@ -35,6 +35,10 @@ Give every observable outcome a stable marker in `SKILL.md`:
 
 Use lowercase criterion IDs. A capability-denial criterion must be named `no-<capability>` and that capability must appear in `forbiddenCapabilities`. During installation, the Builder converts these criteria into a public TestSpec and a separate Tester LLM creates an Independent TestSpec. Both use the same TestSpec schema and MonkeyTest DSL; neither local TestSpec is part of the shared MSkill.
 
+Before Builder runs, Tester treats this entire source package as untrusted data and returns a machine-readable security verdict: `allow`, `reject`, or `unverifiable`. Only `allow` may include an Independent TestSpec and continue to generation. Do not place instructions in an MSkill that override agent policy, request hidden behavior, bypass or weaken validation, or ask Tester to trust Builder. If a required sensitive capability cannot be expressed and enforced by the constrained DSL and trusted Runner, the MSkill is not eligible for automatic installation; redesign it or require a separate explicitly reviewed workflow.
+
+Capability-denial policy tests are executable acceptance gates. The Runner checks the generated candidate for the denied capability; they are not documentation-only assertions.
+
 Start with the minimum criteria justified by the initial demo. Add or clarify a criterion after a
 manual or automated demo failure only when the case is reproducible, belongs to the MSkill
 contract, is not already covered, and has a defined observable result plus safety boundaries.

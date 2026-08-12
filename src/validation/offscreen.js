@@ -1,12 +1,13 @@
 import {
   buildRepairMessage,
   buildPublicTestSpecRepairMessage,
+  buildUsesCapability,
   extractAssistantText,
   parseGeneratedBuild,
   parseGeneratedPublicTestSpec,
   scanGeneratedBuild
 } from "../lib/llm.js";
-import { parseGeneratedTestSpec, validateTestSpec } from "../lib/test-spec.js";
+import { parseTesterSecurityReview, validateTestSpec } from "../lib/test-spec.js";
 import {
   MAX_GENERATION_ATTEMPTS,
   createRetryState,
@@ -40,10 +41,12 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
     const builderMessages = [...request.builderBody.messages];
     const builderSessionId = `builder-${jobId}`;
     const testerSessionId = `tester-${jobId}`;
-    const [initialBuilderText, independentTestSpec] = await Promise.all([
-      requestAssistantText(request, request.builderBody, builderSessionId),
-      generateTestSpec(request, packageDefinition, testerSessionId)
-    ]);
+    const securityReview = await generateSecurityReview(request, packageDefinition, testerSessionId);
+    if (securityReview.verdict !== "allow") {
+      throw new Error(`Independent Tester security verdict: ${securityReview.verdict} (${securityReview.reasonCodes.join(", ")}).`);
+    }
+    const independentTestSpec = securityReview.testSpec;
+    const initialBuilderText = await requestAssistantText(request, request.builderBody, builderSessionId);
     let assistantText = initialBuilderText;
     let retryState = createRetryState();
 
@@ -185,7 +188,7 @@ async function reportGenerationProgress(jobId, skillId, stage) {
   }).catch(() => undefined);
 }
 
-async function generateTestSpec(request, packageDefinition, sessionId) {
+async function generateSecurityReview(request, packageDefinition, sessionId) {
   const messages = [...request.testerBody.messages];
   let lastError;
   for (let attempt = 1; attempt <= MAX_TESTER_ATTEMPTS; attempt += 1) {
@@ -194,7 +197,7 @@ async function generateTestSpec(request, packageDefinition, sessionId) {
       messages
     }, sessionId);
     try {
-      return parseGeneratedTestSpec(assistantText, packageDefinition.skill, packageDefinition.criteria);
+      return parseTesterSecurityReview(assistantText, packageDefinition.skill, packageDefinition.criteria);
     } catch (error) {
       lastError = error;
       if (attempt < MAX_TESTER_ATTEMPTS) {
@@ -203,9 +206,9 @@ async function generateTestSpec(request, packageDefinition, sessionId) {
           {
             role: "user",
             content: [
-              "The TestSpec was rejected by the trusted schema validator.",
+              "The security review or its TestSpec was rejected by the trusted schema validator.",
               `Validator category: ${testerErrorCategory(error.message)}`,
-              "Return a complete corrected TestSpec using only the original SKILL.md and the allowed DSL."
+              "Return a complete corrected security-review envelope using only the original untrusted SKILL.md and the allowed DSL."
             ].join("\n")
           }
         );
@@ -251,7 +254,7 @@ async function runTestSpec({ testSpec, build, publicDiagnostics = false }) {
   const results = [];
   for (const test of testSpec.tests) {
     if (test.kind === "policy") {
-      results.push({ criterion: test.criterion, ok: true, category: "policy-state" });
+      results.push({ criterion: test.criterion, ok: !buildUsesCapability(build, test.capability), category: "policy-state" });
       continue;
     }
     const unsupportedCapability = requiredCapabilities(test).find(capability => !capabilities[capability]?.ok);

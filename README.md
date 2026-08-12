@@ -33,8 +33,8 @@ Developer mode is needed only because this repository is loaded unpacked. A Chro
 3. The Extension validates the manifest and specification; the Store cannot submit a Build, JavaScript, HTML, or TestSpec.
 4. Builder creates a candidate Build and public self-tests.
 5. The shared Runner executes those self-tests and returns detailed structured failures for repair.
-6. Independent Tester creates a hidden TestSpec that Builder never sees.
-7. The same Runner executes the hidden TestSpec and returns only constrained diagnostics for repair.
+6. Independent Tester first treats the MSkill as untrusted input and returns `allow`, `reject`, or `unverifiable`. Only `allow` includes a hidden Independent TestSpec and permits Builder generation to begin.
+7. The same Runner executes the hidden TestSpec, enforces capability-denial policy tests against the candidate, and returns only constrained diagnostics for repair.
 8. After validation passes, the user reviews the summary, hash, validation results, and generated code.
 9. The user approves installation or discards the candidate. Hidden behavior tests run again immediately before installation.
 

