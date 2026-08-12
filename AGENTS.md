@@ -23,7 +23,7 @@ Additional non-negotiable rules:
 - A Builder or Tester completion is accepted only after `POST /agent/jobs/{job.id}/complete` returns success. A `404` lease/lifecycle response is not completion.
 - On Windows, submit completion from a validated UTF-8 no-BOM JSON file with `curl.exe --data-binary @file`; do not use PowerShell stdin/pipelines. Capture an explicit HTTP 200 and response body before reporting success.
 - Builder and Tester must remain pinned to their first routing key. Repairs may not be handled by a worker from another generation.
-- Do not call a run stable solely because schema checks, public self-tests, or hidden tests passed. Perform the real-browser checks in the closed-loop runbook and report inconclusive visual checks honestly.
+- Do not call a run stable solely because schema checks, the public Builder TestSpec, or the Independent TestSpec passed. Perform the real-browser checks in the closed-loop runbook and report inconclusive visual checks honestly.
 - Any acceptance criterion about rendered pixels, selection highlighting, overlays, visibility, contrast, or native browser UI requires a screenshot after the real interaction on the registered origin. A DOM assertion alone cannot promote that criterion from inconclusive to passed.
 
 ## Commit policy

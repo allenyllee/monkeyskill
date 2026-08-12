@@ -11,7 +11,7 @@ A closed loop is complete only when all of the following are true:
 
 1. The local transport and both clean-room queues passed preflight.
 2. Fresh Builder and Tester workers completed the same generation session.
-3. Builder finished its public self-test repair loop and Tester supplied an independent TestSpec.
+3. Builder finished its public TestSpec repair loop and Tester supplied an Independent TestSpec.
 4. The approval dialog was reviewed and approved by the user, or by the agent only when the user explicitly pre-authorized approval.
 5. The Build was installed successfully.
 6. The installed Skill was exercised on the real origin covered by its `userScripts` match pattern.
@@ -106,7 +106,7 @@ successful completion. Diagnose the lifecycle and restart or re-dispatch a clean
 
 On Windows, large payloads may exceed command-line limits and PowerShell collections may become
 objects such as `{value:[...],Count:n}`. Validate the nested JSON before sending it, ensure
-`selfTests.tests` is a real JSON array, and use a short-lived validated payload file when
+`publicTestSpec.tests` is a real JSON array, and use a short-lived validated payload file when
 necessary. Delete that file immediately after a confirmed POST.
 
 Do not pipe the completion body through PowerShell stdin and do not rely on
@@ -118,7 +118,7 @@ capturing both the response body and HTTP status. Only an explicit HTTP 200 coun
 Builder repairs follow two distinct loops:
 
 - Public self-test failures provide detailed traces. Builder may repair the candidate or its public tests, but must return the complete Build and complete self-test suite each time.
-- Independent Tester failures expose only constrained diagnostics. Builder must not receive or infer the hidden TestSpec.
+- Independent TestSpec failures expose only constrained diagnostics. Builder must not receive or infer that TestSpec.
 
 An empty repair queue after a submission means only that no repair is currently queued. Use the
 Store state and final validation/approval dialog as the authoritative user-facing outcome.

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import { createAgentApiServer, runFixtureAgent } from "../scripts/agent-api.mjs";
-import { buildGenerationMessages, buildTesterMessages, extractAssistantText, extractCriterionIds, extractSharedTestFramework, parseGeneratedBuild, parseGeneratedSelfTests, scanGeneratedBuild } from "../src/lib/llm.js";
+import { buildGenerationMessages, buildTesterMessages, extractAssistantText, extractCriterionIds, extractSharedTestFramework, parseGeneratedBuild, parseGeneratedPublicTestSpec, scanGeneratedBuild } from "../src/lib/llm.js";
 import { parseGeneratedTestSpec } from "../src/lib/test-spec.js";
 import { readFile } from "node:fs/promises";
 
@@ -35,12 +35,12 @@ test("local fixture agent completes the generation and validation flow", async t
   assert.ok(response.headers.get("x-monkeyskill-agent-session"));
   const assistantText = extractAssistantText(await response.json());
   const build = parseGeneratedBuild(assistantText, skill);
-  const selfTests = parseGeneratedSelfTests(assistantText, skill, extractCriterionIds(skillInstructions));
+  const publicTestSpec = parseGeneratedPublicTestSpec(assistantText, skill, extractCriterionIds(skillInstructions));
   assert.deepEqual(scanGeneratedBuild(build, skill), [
     "schema", "size", "forbidden-capabilities", "remote-content"
   ]);
   assert.deepEqual(Object.keys(build.modes), ["standard"]);
-  assert.ok(selfTests.tests.length > 0);
+  assert.ok(publicTestSpec.tests.length > 0);
   assert.equal(local.sessions.size, 1);
 });
 

@@ -25,7 +25,7 @@ Give every observable outcome a stable marker in `SKILL.md`:
 - [criterion:no-network] The implementation makes no network requests.
 ```
 
-Use lowercase criterion IDs. A capability-denial criterion must be named `no-<capability>` and that capability must appear in `forbiddenCapabilities`. During installation, the Builder converts these criteria into public self-tests and a separate Tester LLM independently creates a hidden TestSpec. Neither local TestSpec is part of the shared MSkill.
+Use lowercase criterion IDs. A capability-denial criterion must be named `no-<capability>` and that capability must appear in `forbiddenCapabilities`. During installation, the Builder converts these criteria into a public TestSpec and a separate Tester LLM creates an Independent TestSpec. Both use the same TestSpec schema and MonkeyTest DSL; neither local TestSpec is part of the shared MSkill.
 
 Describe complete user-visible workflows when correctness depends on browser event order. State the outcome after the real gesture completes, such as the value remaining after paste emits its input event or the range remaining selected after pointer release. Keep this human-readable and implementation-independent.
 

@@ -248,7 +248,7 @@ async function handleMessage(message, sender) {
       scanGeneratedBuild(packageDefinition.build, packageDefinition.skill);
       await validateUserScriptBuild(packageDefinition);
       const behaviorResults = await validatePackagedBehavior(packageDefinition);
-      packageDefinition.build.behaviorTests = behaviorResults;
+      packageDefinition.build.independentTestResults = behaviorResults;
       const installed = installSkillPackage(await getInstalledSkills(), packageDefinition);
       await saveInstalledSkills(installed);
       delete pending[skillId];
@@ -438,15 +438,15 @@ async function handleGenerationCompletion(message, sender) {
     const generatedPackage = message.packageDefinition;
     await validateUserScriptBuild(generatedPackage);
     generatedPackage.build.validation.push("chrome-userScripts-parse");
-    const selfTestResults = generatedPackage.build.selfTestResults ?? [];
-    const selfPassedCount = selfTestResults.filter(result => result.ok).length;
-    const selfInconclusiveCount = selfTestResults.filter(result => result.inconclusive).length;
-    generatedPackage.build.validation.push(`builder-self-tests:${selfPassedCount}/${selfTestResults.length}`);
-    if (selfInconclusiveCount > 0) generatedPackage.build.validation.push(`builder-self-inconclusive:${selfInconclusiveCount}`);
-    const behaviorResults = generatedPackage.build.behaviorTests;
-    const inconclusiveCount = behaviorResults.filter(result => result.inconclusive).length;
-    const passedCount = behaviorResults.filter(result => result.ok).length;
-    generatedPackage.build.validation.push(`behavior-tests:${passedCount}/${behaviorResults.length}`);
+    const publicTestResults = generatedPackage.build.publicTestResults ?? generatedPackage.build.selfTestResults ?? [];
+    const publicPassedCount = publicTestResults.filter(result => result.ok).length;
+    const publicInconclusiveCount = publicTestResults.filter(result => result.inconclusive).length;
+    generatedPackage.build.validation.push(`public-testspec:${publicPassedCount}/${publicTestResults.length}`);
+    if (publicInconclusiveCount > 0) generatedPackage.build.validation.push(`public-testspec-inconclusive:${publicInconclusiveCount}`);
+    const independentTestResults = generatedPackage.build.independentTestResults ?? generatedPackage.build.behaviorTests ?? [];
+    const inconclusiveCount = independentTestResults.filter(result => result.inconclusive).length;
+    const passedCount = independentTestResults.filter(result => result.ok).length;
+    generatedPackage.build.validation.push(`independent-testspec:${passedCount}/${independentTestResults.length}`);
     if (inconclusiveCount > 0) generatedPackage.build.validation.push(`behavior-inconclusive:${inconclusiveCount}`);
     const stored = await chrome.storage.local.get(PENDING_BUILDS_KEY);
     const pending = stored[PENDING_BUILDS_KEY] && typeof stored[PENDING_BUILDS_KEY] === "object"
@@ -526,8 +526,8 @@ async function validateUserScriptBuild(packageDefinition) {
 async function validatePackagedBehavior(packageDefinition) {
   const skillInstructions = await resolveSkillInstructions(packageDefinition);
   const criteria = extractCriterionIds(skillInstructions);
-  const testSpec = packageDefinition.build.testSpec;
-  if (!testSpec) throw new Error("Generated build is missing its independently generated TestSpec.");
+  const testSpec = packageDefinition.build.independentTestSpec ?? packageDefinition.build.testSpec;
+  if (!testSpec) throw new Error("Generated build is missing its Independent TestSpec.");
   await ensureValidationDocument();
   const response = await chrome.runtime.sendMessage({
     target: "validation-offscreen",
@@ -560,7 +560,7 @@ async function ensureValidationDocument() {
   offscreenCreationPromise ??= chrome.offscreen.createDocument({
     url: "src/validation/offscreen.html",
     reasons: ["IFRAME_SCRIPTING"],
-    justification: "Generate and run independent constrained MSkill TestSpecs in isolated sandbox frames before installation."
+    justification: "Generate and run public and independent constrained MSkill TestSpecs in isolated sandbox frames before installation."
   }).finally(() => {
     offscreenCreationPromise = null;
   });
@@ -593,13 +593,17 @@ function publicGeneratedDraft(packageDefinition) {
     summary: build.summary,
     validation: build.validation,
     generation: build.generation,
-    selfTestCount: Array.isArray(build.selfTests?.tests) ? build.selfTests.tests.length : 0,
-    selfInconclusiveCount: Array.isArray(build.selfTestResults)
-      ? build.selfTestResults.filter(result => result.inconclusive).length
+    publicTestCount: Array.isArray((build.publicTestSpec ?? build.selfTests)?.tests)
+      ? (build.publicTestSpec ?? build.selfTests).tests.length
       : 0,
-    testCount: Array.isArray(build.testSpec?.tests) ? build.testSpec.tests.length : 0,
-    inconclusiveCount: Array.isArray(build.behaviorTests)
-      ? build.behaviorTests.filter(result => result.inconclusive).length
+    publicTestInconclusiveCount: Array.isArray(build.publicTestResults ?? build.selfTestResults)
+      ? (build.publicTestResults ?? build.selfTestResults).filter(result => result.inconclusive).length
+      : 0,
+    independentTestCount: Array.isArray((build.independentTestSpec ?? build.testSpec)?.tests)
+      ? (build.independentTestSpec ?? build.testSpec).tests.length
+      : 0,
+    independentTestInconclusiveCount: Array.isArray(build.independentTestResults ?? build.behaviorTests)
+      ? (build.independentTestResults ?? build.behaviorTests).filter(result => result.inconclusive).length
       : 0,
     modes: Object.fromEntries(Object.entries(build.modes).map(([mode, artifact]) => [mode, {
       js: artifact.js,

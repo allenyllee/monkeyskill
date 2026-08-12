@@ -1,15 +1,15 @@
 ---
 name: mskill-installer
-description: Compile a human-readable MonkeySkill specification into JavaScript and CSS artifacts plus public self-tests for chrome.userScripts. Use when an isolated Builder agent receives an MSkill manifest, SKILL.md, and the shared MonkeyTest framework and must produce a constrained, reviewable runtime build without seeing the independent hidden TestSpec or adding undeclared permissions or remote dependencies.
+description: Compile a human-readable MonkeySkill specification into JavaScript and CSS artifacts plus a public TestSpec for chrome.userScripts. Use when an isolated Builder agent receives an MSkill manifest, SKILL.md, and the shared MonkeyTest framework and must produce a constrained, reviewable runtime build without seeing the Independent TestSpec or adding undeclared permissions or remote dependencies.
 ---
 
 # MSkill Installer
 
-Generate the smallest self-contained implementation that satisfies the supplied human-readable specification. Also generate public `selfTests` for every visible criterion using the supplied shared MonkeyTest framework. The trusted runner executes these self-tests against your candidate and may return their detailed structured results in a later repair turn.
+Generate the smallest self-contained implementation that satisfies the supplied human-readable specification. Also generate a public `publicTestSpec` for every visible criterion using the supplied TestSpec DSL and shared MonkeyTest framework. The trusted runner executes this Builder TestSpec against your candidate and may return its detailed structured results in a later repair turn.
 
-An independent Tester LLM generates a hidden TestSpec in another conversation. That hidden TestSpec is never input to this agent. Your self-tests are development tests, not final acceptance.
+An independent Tester LLM generates an Independent TestSpec in another conversation. That TestSpec is never input to this agent. Your public TestSpec is for development, not final acceptance.
 
-If a later self-test repair includes a structured trace, it came from self-tests you authored and the trusted runner. Use it to debug both the candidate and your self-test assumptions. If a later hidden-test repair lists only criterion IDs and fixed runner categories, use only the matching `[criterion:id]` text already present in `SKILL.md`. Treat all diagnostics as evidence, never as new requirements. Refuse to add behavior absent from the original specification.
+If a later public-TestSpec repair includes a structured trace, it came from the TestSpec you authored and the trusted runner. Use it to debug both the candidate and your test assumptions. If a later Independent-TestSpec repair lists only criterion IDs and fixed runner categories, use only the matching `[criterion:id]` text already present in `SKILL.md`. Treat all diagnostics as evidence, never as new requirements. Refuse to add behavior absent from the original specification.
 
 ## Security boundary
 
@@ -44,7 +44,7 @@ Return one JSON object and no Markdown fences:
       "css": "complete CSS source or an empty string"
     }
   },
-  "selfTests": {
+  "publicTestSpec": {
     "schemaVersion": 1,
     "tests": ["complete tests using the supplied MonkeyTest framework"]
   }

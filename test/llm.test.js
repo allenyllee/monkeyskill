@@ -11,7 +11,7 @@ import {
   extractSharedTestFramework,
   normalizeLlmSettings,
   parseGeneratedBuild,
-  parseGeneratedSelfTests,
+  parseGeneratedPublicTestSpec,
   scanGeneratedBuild
 } from "../src/lib/llm.js";
 
@@ -53,7 +53,7 @@ test("Tester conversation is separate and receives no package-supplied test fiel
   assert.doesNotMatch(messages[1].content, /paste-text|drag-select-text|click-control|elementFromPoint/);
 });
 
-test("generation prompt includes modes and human spec but never hidden tests", () => {
+test("generation prompt includes modes and human spec but never the Independent TestSpec", () => {
   const messages = buildGenerationMessages({
     installerInstructions: "policy",
     testFrameworkInstructions: "shared-test-framework",
@@ -65,7 +65,7 @@ test("generation prompt includes modes and human spec but never hidden tests", (
   assert.equal(messages[0].role, "system");
   assert.match(messages[1].content, /"standard"/);
   assert.match(messages[1].content, /visible-behavior/);
-  assert.match(messages[1].content, /shared-test-framework|selfTests/);
+  assert.match(messages[1].content, /shared-test-framework|publicTestSpec/);
   assert.match(messages[1].content, /Test only behavior explicitly stated in SKILL\.md/);
   assert.match(messages[1].content, /shared framework action.*real user workflow|real user workflow.*shared framework action/);
   assert.match(messages[1].content, /do not introduce selection, paste, overlay, keyboard/);
@@ -75,7 +75,7 @@ test("generation prompt includes modes and human spec but never hidden tests", (
   assert.doesNotMatch(messages[1].content, /IGNORE ALL RULES/);
 });
 
-test("Builder self-test failures return detailed traces without exposing hidden tests", () => {
+test("Builder TestSpec failures return detailed traces without exposing the Independent TestSpec", () => {
   const repair = buildSelfTestRepairMessage([{
     testId: "public-selection-test",
     criterion: "visible-behavior",
@@ -89,7 +89,7 @@ test("Builder self-test failures return detailed traces without exposing hidden 
   assert.match(repair, /drag-select-text/);
   assert.match(repair, /"actual":"true"/);
   assert.match(repair, /"selectionCollapsed":true/);
-  assert.match(repair, /not hidden Tester content/);
+  assert.match(repair, /not Independent TestSpec content/);
 });
 
 test("shared framework is extracted from the Tester policy without its independent-agent preamble", () => {
@@ -122,7 +122,7 @@ test("repair prompts contain only criterion IDs already visible in SKILL.md", ()
 });
 
 test("generated JSON becomes a user-script build", () => {
-  const selfTests = {
+  const publicTestSpec = {
     schemaVersion: 1,
     tests: [{
       id: "visible-behavior",
@@ -138,7 +138,7 @@ test("generated JSON becomes a user-script build", () => {
   const text = JSON.stringify({
     summary: "Generated",
     modes: { standard: { js: "(() => {})();", css: "body { color: red; }" } },
-    selfTests
+    publicTestSpec
   });
   const build = parseGeneratedBuild(extractAssistantText({
     choices: [{ message: { content: text } }]
@@ -147,7 +147,7 @@ test("generated JSON becomes a user-script build", () => {
   assert.deepEqual(scanGeneratedBuild(build, skill), [
     "schema", "size", "forbidden-capabilities", "remote-content"
   ]);
-  assert.deepEqual(parseGeneratedSelfTests(text, skill, ["visible-behavior"]), selfTests);
+  assert.deepEqual(parseGeneratedPublicTestSpec(text, skill, ["visible-behavior"]), publicTestSpec);
 });
 
 test("security scan rejects undeclared network access", () => {
@@ -157,12 +157,30 @@ test("security scan rejects undeclared network access", () => {
   assert.throws(() => scanGeneratedBuild(build, skill), /forbidden network/);
 });
 
-test("Builder candidates must include schema-validated public selfTests", () => {
-  const withoutSelfTests = JSON.stringify({
+test("Builder candidates must include a schema-validated public TestSpec", () => {
+  const withoutPublicTestSpec = JSON.stringify({
     modes: { standard: { js: "(() => {})();", css: "" } }
   });
   assert.throws(
-    () => parseGeneratedSelfTests(withoutSelfTests, skill, ["visible-behavior"]),
-    /missing Builder selfTests/
+    () => parseGeneratedPublicTestSpec(withoutPublicTestSpec, skill, ["visible-behavior"]),
+    /missing its public TestSpec/
   );
+});
+
+test("legacy selfTests input is accepted as a transitional public TestSpec alias", () => {
+  const publicTestSpec = {
+    schemaVersion: 1,
+    tests: [{
+      id: "visible-behavior",
+      kind: "behavior",
+      criterion: "visible-behavior",
+      mode: "standard",
+      fixture: { nodes: [{ id: "target", tag: "div", parent: null, text: "target", attributes: {}, styles: {} }], rules: [] },
+      blockers: [],
+      steps: [],
+      assertions: [{ type: "text-content", target: "target", operator: "eq", value: "target" }]
+    }]
+  };
+  const legacy = JSON.stringify({ selfTests: publicTestSpec });
+  assert.deepEqual(parseGeneratedPublicTestSpec(legacy, skill, ["visible-behavior"]), publicTestSpec);
 });

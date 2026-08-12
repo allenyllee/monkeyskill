@@ -1,9 +1,9 @@
 import {
   buildRepairMessage,
-  buildSelfTestRepairMessage,
+  buildPublicTestSpecRepairMessage,
   extractAssistantText,
   parseGeneratedBuild,
-  parseGeneratedSelfTests,
+  parseGeneratedPublicTestSpec,
   scanGeneratedBuild
 } from "../lib/llm.js";
 import { parseGeneratedTestSpec, validateTestSpec } from "../lib/test-spec.js";
@@ -40,7 +40,7 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
     const builderMessages = [...request.builderBody.messages];
     const builderSessionId = `builder-${jobId}`;
     const testerSessionId = `tester-${jobId}`;
-    const [initialBuilderText, testSpec] = await Promise.all([
+    const [initialBuilderText, independentTestSpec] = await Promise.all([
       requestAssistantText(request, request.builderBody, builderSessionId),
       generateTestSpec(request, packageDefinition, testerSessionId)
     ]);
@@ -49,10 +49,10 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
 
     for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
       let build;
-      let selfTests;
+      let publicTestSpec;
       try {
         build = parseGeneratedBuild(assistantText, packageDefinition.skill);
-        selfTests = parseGeneratedSelfTests(
+        publicTestSpec = parseGeneratedPublicTestSpec(
           assistantText,
           packageDefinition.skill,
           packageDefinition.criteria
@@ -64,9 +64,9 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
           {
             role: "user",
             content: [
-              "The candidate JSON or its public selfTests were rejected by the trusted schema validator.",
+              "The candidate JSON or its public TestSpec was rejected by the trusted schema validator.",
               `Validator category: ${builderErrorCategory(error.message)}`,
-              "Return the complete build and complete selfTests using only the original SKILL.md and shared MonkeyTest framework."
+              "Return the complete build and complete publicTestSpec using only the original SKILL.md and shared MonkeyTest framework."
             ].join("\n")
           }
         );
@@ -78,7 +78,7 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
       }
       build.validation = scanGeneratedBuild(build, packageDefinition.skill);
       const buildHash = await sha256(JSON.stringify(build.modes));
-      const candidateHash = await sha256(JSON.stringify({ modes: build.modes, selfTests }));
+      const candidateHash = await sha256(JSON.stringify({ modes: build.modes, publicTestSpec }));
       build.generation = {
         provider: new URL(request.endpoint).origin,
         model: request.model,
@@ -87,22 +87,22 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
         attempts: attempt,
         hash: buildHash
       };
-      const selfTestResponse = await runTestSpec({ testSpec: selfTests, build, publicDiagnostics: true });
-      const failedSelfTests = selfTestResponse.results.filter(result => !result.ok && !result.inconclusive);
-      if (failedSelfTests.length > 0) {
+      const publicTestResponse = await runTestSpec({ testSpec: publicTestSpec, build, publicDiagnostics: true });
+      const failedPublicTests = publicTestResponse.results.filter(result => !result.ok && !result.inconclusive);
+      if (failedPublicTests.length > 0) {
         const retryDecision = evaluateGenerationRetry(retryState, {
           attempt,
           hash: candidateHash,
-          failures: failedSelfTests
+          failures: failedPublicTests
         });
         retryState = retryDecision.state;
         if (!retryDecision.retry) {
-          const detail = failedSelfTests.map(formatLocalFailure).join("; ");
-          throw new Error(`Builder self-tests failed ${failedSelfTests.length}/${selfTestResponse.results.length} checks after ${attempt} attempts (${retryDecision.reason}): ${detail}`);
+          const detail = failedPublicTests.map(formatLocalFailure).join("; ");
+          throw new Error(`Builder TestSpec failed ${failedPublicTests.length}/${publicTestResponse.results.length} checks after ${attempt} attempts (${retryDecision.reason}): ${detail}`);
         }
         builderMessages.push(
           { role: "assistant", content: assistantText },
-          { role: "user", content: buildSelfTestRepairMessage(failedSelfTests) }
+          { role: "user", content: buildPublicTestSpecRepairMessage(failedPublicTests) }
         );
         assistantText = await requestAssistantText(request, {
           ...request.builderBody,
@@ -110,7 +110,7 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
         }, builderSessionId);
         continue;
       }
-      const behaviorResponse = await runTestSpec({ testSpec, build });
+      const behaviorResponse = await runTestSpec({ testSpec: independentTestSpec, build });
       const failed = behaviorResponse.results.filter(result => !result.ok && !result.inconclusive);
       if (failed.length === 0) {
         const generatedPackage = {
@@ -118,10 +118,10 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
           specification: packageDefinition.specification,
           build: {
             ...build,
-            selfTests,
-            selfTestResults: selfTestResponse.results,
-            testSpec,
-            behaviorTests: behaviorResponse.results,
+            publicTestSpec,
+            publicTestResults: publicTestResponse.results,
+            independentTestSpec,
+            independentTestResults: behaviorResponse.results,
             runnerCapabilities: behaviorResponse.capabilities
           },
           source: {
