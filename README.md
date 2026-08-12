@@ -2,6 +2,8 @@
 
 MonkeySkill is an experimental Manifest V3 Chrome extension that generates, validates, and installs small browser abilities from human-readable MSkill specifications. It ships with no functional MSkills; specifications are selected from the separate [MonkeySkill Store](https://github.com/allenyllee/monkeyskill-store).
 
+**Live Store:** [allenyllee.github.io/monkeyskill-store](https://allenyllee.github.io/monkeyskill-store/)
+
 ## Core properties
 
 - No bundled functional MSkills or generated Store builds.
