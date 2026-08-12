@@ -70,15 +70,15 @@ Developer mode is needed only because this repository is loaded unpacked. A Chro
 ```mermaid
 flowchart LR
     Demo["Minimal Demo"] --> Skill["Human-readable MSkill"]
-    Skill --> TesterA{"Tester A<br/>original security review"}
+    Skill --> TesterA{"Tester A — original security review"}
     TesterA -- "reject / unverifiable" --> Stop["Stop automatic generation"]
-    TesterA -- "allow + Independent TestSpec" --> Attacker["Attacker<br/>select allowlisted IDs"]
-    Attacker --> Composer["Trusted orchestrator<br/>renders known-reject canary"]
+    TesterA -- "allow + Independent TestSpec" --> Attacker["Attacker — select allowlisted IDs"]
+    Attacker --> Composer["Trusted orchestrator — render known-reject canary"]
     Skill -. "original content" .-> Composer
-    Composer --> TesterB{"Fresh Tester B<br/>poisoned security review"}
-    TesterB --> Gate{"Differential gate<br/>A = allow, B = ?"}
-    Gate -- "B = allow" --> Bypass["Fail closed:<br/>potential prompt injection"]
-    Gate -- "B = unverifiable" --> Unverifiable["Fail closed:<br/>cannot verify safety"]
+    Composer --> TesterB{"Fresh Tester B — poisoned security review"}
+    TesterB --> Gate{"Differential gate — A = allow, B = ?"}
+    Gate -- "B = allow" --> Bypass["Fail closed — potential prompt injection"]
+    Gate -- "B = unverifiable" --> Unverifiable["Fail closed — cannot verify safety"]
     Skill -. "only original MSkill" .-> Builder["Builder"]
     Gate -- "B = reject" --> Builder
     Builder --> Candidate["Build + Builder TestSpec"]
