@@ -89,7 +89,24 @@ async function initializeStore() {
   await chrome.storage.local.set({ [INSTALLED_SKILLS_KEY]: installed });
   if (stored[LEGACY_SETTINGS_KEY]) await chrome.storage.local.remove(LEGACY_SETTINGS_KEY);
   await queueRegistrationSync(installed);
+  await reconcileInterruptedGenerationJobs();
   await syncTrustedStoreBridges(stored[TRUSTED_STORES_KEY]);
+}
+
+async function reconcileInterruptedGenerationJobs() {
+  if (typeof chrome.offscreen?.hasDocument !== "function") return;
+  const stored = await chrome.storage.local.get(GENERATION_JOBS_KEY);
+  const jobs = stored[GENERATION_JOBS_KEY];
+  if (!jobs || typeof jobs !== "object" || !Object.values(jobs).some(job => job?.state === "running")) return;
+  if (await chrome.offscreen.hasDocument()) return;
+  const finishedAt = new Date().toISOString();
+  const reconciled = Object.fromEntries(Object.entries(jobs).map(([skillId, job]) => [
+    skillId,
+    job?.state === "running"
+      ? { ...job, state: "failed", updatedAt: finishedAt, finishedAt, error: "Generation was interrupted before completion. Please retry." }
+      : job
+  ]));
+  await chrome.storage.local.set({ [GENERATION_JOBS_KEY]: reconciled });
 }
 
 async function handleMessage(message, sender) {

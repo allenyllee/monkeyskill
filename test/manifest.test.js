@@ -103,6 +103,14 @@ test("generation state is durable outside Store page lifetime", async () => {
   assert.match(offscreen, /if \(!gate\.proceed\)/);
 });
 
+test("Extension reload fails orphaned generation jobs without waiting for the stale timeout", async () => {
+  const background = await readFile(join(root, "src", "background.js"), "utf8");
+  assert.match(background, /reconcileInterruptedGenerationJobs\(\)/);
+  assert.match(background, /chrome\.offscreen\?\.hasDocument/);
+  assert.match(background, /job\?\.state === "running"/);
+  assert.match(background, /Generation was interrupted before completion\. Please retry\./);
+});
+
 test("Tester policy documents the browser-variant paste workflow", async () => {
   const tester = await readFile(join(root, "skills", "mskill-tester", "SKILL.md"), "utf8");
   assert.match(tester, /`unselectable`/);
