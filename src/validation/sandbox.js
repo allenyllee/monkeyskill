@@ -1,6 +1,8 @@
 (() => {
   const nonce = crypto.randomUUID();
   const nativeEval = eval;
+  const nativeNow = performance.now.bind(performance);
+  const nativeSetTimeout = setTimeout.bind(globalThis);
   const nativeFocus = HTMLElement.prototype.focus;
   const nativeBlur = HTMLElement.prototype.blur;
   const nativeInputValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
@@ -71,6 +73,7 @@
         step: index,
         action: step.action,
         defaultPrevented: typeof stepResult?.defaultPrevented === "boolean" ? stepResult.defaultPrevented : null,
+        durationMs: Number.isFinite(stepResult?.durationMs) ? Math.round(stepResult.durationMs) : null,
         selectionCollapsed: Boolean(getSelection()?.isCollapsed),
         targetActive: Boolean(stepTarget && (document.activeElement === stepTarget || trackedActiveElement === stepTarget)),
         valueLength: stepTarget && "value" in stepTarget ? String(stepTarget.value).length : null,
@@ -212,6 +215,32 @@
       window.scrollTo(step.left, step.top);
       await settle();
       return null;
+    }
+    if (step.action === "mutation-burst") {
+      const target = state.nodes.get(step.target);
+      if (!target) throw new Error("Mutation-burst target missing.");
+      const container = document.createElement("div");
+      container.setAttribute("data-monkeyskill-mutation-burst", "");
+      target.append(container);
+      const started = nativeNow();
+      for (let offset = 0; offset < step.count; offset += step.batchSize) {
+        const fragment = document.createDocumentFragment();
+        for (let index = 0; index < step.batchSize; index += 1) {
+          const node = document.createElement("div");
+          node.id = `dynamic-${offset + index}`;
+          const text = document.createElement("span");
+          text.textContent = `row ${offset + index}`;
+          node.append(text);
+          fragment.append(node);
+        }
+        container.append(fragment);
+        await Promise.resolve();
+      }
+      await new Promise(resolve => nativeSetTimeout(resolve, 0));
+      const durationMs = nativeNow() - started;
+      container.remove();
+      await Promise.resolve();
+      return { durationMs };
     }
     const target = state.nodes.get(step.target);
     if (!target) throw new Error("Step target missing.");
@@ -509,6 +538,9 @@
     if (assertion.type === "event-default-prevented") {
       return state.stepResults[assertion.step]?.defaultPrevented === assertion.expected;
     }
+    if (assertion.type === "step-duration") {
+      return compareNumeric(state.stepResults[assertion.step]?.durationMs, assertion.operator, assertion.value, 0);
+    }
     if (assertion.type === "blocker-call-count") {
       return compare(state.blockerCalls.get(assertion.blocker) || 0, assertion.operator, assertion.value);
     }
@@ -577,6 +609,7 @@
 
   function assertionCategory(type) {
     if (type === "event-default-prevented") return "event-state";
+    if (type === "step-duration") return "performance-state";
     if (type === "blocker-call-count") return "blocker-state";
     if (type === "computed-style") return "computed-style";
     if (type === "active-element") return "focus-state";
@@ -596,6 +629,9 @@
     let actual;
     if (assertion.type === "event-default-prevented") {
       actual = state.stepResults[assertion.step]?.defaultPrevented;
+    } else if (assertion.type === "step-duration") {
+      property = "durationMs";
+      actual = state.stepResults[assertion.step]?.durationMs;
     } else if (assertion.type === "selection-collapsed") {
       actual = Boolean(getSelection()?.isCollapsed);
     } else if (assertion.type === "blocker-call-count") {

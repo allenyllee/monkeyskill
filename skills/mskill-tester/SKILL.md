@@ -135,6 +135,7 @@ Each blocker has `id`, `target`, `event`, `registration`, `effect`, and optional
 - `{"action":"set-style","target":"target","property":"pointerEvents","value":"none"}`
 - `{"action":"scroll","target":"target","left":0,"top":120}`
 - `{"action":"scroll-page","left":0,"top":700}`; move the trusted sandbox viewport without mutating fixture styles. Use this to test targets and later-appended overlays that begin below the initial viewport.
+- `{"action":"mutation-burst","target":"feed","count":200,"batchSize":10}`; append bounded batches of ID-bearing nodes with text descendants, yield to candidate observers after every batch, and measure how long the page takes to reach the next task. Use this only when the MSkill explicitly requires responsiveness under sustained dynamic DOM changes. `count` is 20–500, `batchSize` is 1–50, and `count` must be divisible by `batchSize`.
 - `{"action":"append-node","node":{...fixture node...}}`
 - `{"action":"add-blocker","blocker":{...simulated blocker...}}`
 - `{"action":"capture-node","id":"result","scope":"target","relation":"descendant","match":{"text":{"operator":"eq","value":"5 min"}},"index":0}`
@@ -152,6 +153,7 @@ Each blocker has `id`, `target`, `event`, `registration`, `effect`, and optional
 - `computed-style`: fields `target`, allowlisted `property`, optional `pseudo` (`::selection`, `::before`, `::after`), `operator` (`eq`, `neq`, `contains`), `value`.
 - `computed-style` cannot assert `pointerEvents`; pointer reachability is an outcome and must use `hit-test` on the intended target so removal, relocation, stacking, and non-hit-testable overlay repairs remain valid.
 - `selection-collapsed`: field `expected`.
+- `step-duration`: fields `step`, `operator` (`lt` or `lte`), and integer `value` in milliseconds from 50 through 4000. Use only with an explicitly required responsiveness criterion and a `mutation-burst` step; keep thresholds generous enough to avoid treating ordinary runner variance as a product failure.
 - `value`: fields `target`, `operator` (`eq`, `neq`, `contains`), `value`.
 - `attribute`: fields `target`, `name`, `operator` (`exists`, `absent`, `eq`), optional `value`.
 - `dom-present`: fields `target`, `expected`.

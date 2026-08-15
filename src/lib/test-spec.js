@@ -34,16 +34,16 @@ const ALLOWED_EFFECTS = new Set([
 ]);
 const ALLOWED_ACTIONS = new Set([
   "add-blocker", "append-node", "blur", "capture-node", "click", "click-control", "click-page", "copy-shortcut", "dispatch-event", "focus", "remove-attribute", "remove-node",
-  "drag-select-text", "paste-text", "scroll", "scroll-page", "select-contents", "set-attribute", "set-checked", "set-style", "set-text", "set-value", "wait"
+  "drag-select-text", "mutation-burst", "paste-text", "scroll", "scroll-page", "select-contents", "set-attribute", "set-checked", "set-style", "set-text", "set-value", "wait"
 ]);
 const ALLOWED_ASSERTIONS = new Set([
   "active-element", "attribute", "attribute-refers-to", "blocker-call-count", "bounding-rect", "computed-style", "contrast-ratio",
   "dom-present", "event-default-prevented", "hit-test", "node-count", "property", "relative-position",
-  "scroll-offset", "selection-collapsed", "text-content", "value", "visible"
+  "scroll-offset", "selection-collapsed", "step-duration", "text-content", "value", "visible"
 ]);
 export const FAILURE_CATEGORIES = Object.freeze([
   "accessibility-state", "attribute-state", "blocker-state", "computed-style", "dom-state", "event-state",
-  "focus-state", "layout-state", "policy-state", "property-state", "selection-state", "value-state", "visibility-state"
+  "focus-state", "layout-state", "performance-state", "policy-state", "property-state", "selection-state", "value-state", "visibility-state"
 ]);
 
 export const SECURITY_VERDICTS = Object.freeze(["allow", "reject", "unverifiable"]);
@@ -187,7 +187,7 @@ function validateBehaviorTest(source, skill) {
     }
   }
   const assertions = boundedArray(source.assertions, "assertions", false).map(assertion => (
-    validateAssertion(assertion, nodeIds, blockerMetadata, steps.length)
+    validateAssertion(assertion, nodeIds, blockerMetadata, steps)
   ));
   return { id: source.id, kind: "behavior", criterion: source.criterion, mode: source.mode, fixture, blockers, steps, assertions };
 }
@@ -301,6 +301,16 @@ function validateStep(source, nodeIds, blockerIds) {
       top: safeFiniteNumber(source.top, -10000, 10000, "Page scroll offset")
     };
   }
+  if (source.action === "mutation-burst") {
+    assertOnlyKeys(source, ["action", "target", "count", "batchSize"], "mutation-burst step");
+    if (!nodeIds.has(source.target)
+      || !Number.isInteger(source.count) || source.count < 20 || source.count > 500
+      || !Number.isInteger(source.batchSize) || source.batchSize < 1 || source.batchSize > 50
+      || source.count % source.batchSize !== 0) {
+      throw new Error("Mutation burst is invalid.");
+    }
+    return { action: source.action, target: source.target, count: source.count, batchSize: source.batchSize };
+  }
   if (!nodeIds.has(source.target)) throw new Error("TestSpec step target is invalid.");
   if (source.action === "dispatch-event") {
     assertOnlyKeys(source, ["action", "target", "event", "init"], "dispatch-event step");
@@ -392,7 +402,8 @@ function validateWorkflowCoverage(blockers, steps) {
   }
 }
 
-function validateAssertion(source, nodeIds, blockerMetadata, stepCount) {
+function validateAssertion(source, nodeIds, blockerMetadata, steps) {
+  const stepCount = steps.length;
   assertRecord(source, "assertion");
   if (!ALLOWED_ASSERTIONS.has(source.type)) throw new Error("TestSpec assertion is not allowed.");
   const common = { type: source.type };
@@ -421,6 +432,16 @@ function validateAssertion(source, nodeIds, blockerMetadata, stepCount) {
     assertOnlyKeys(source, ["type", "expected"], "selection assertion");
     if (typeof source.expected !== "boolean") throw new Error("Selection assertion is invalid.");
     return { ...common, expected: source.expected };
+  }
+  if (source.type === "step-duration") {
+    assertOnlyKeys(source, ["type", "step", "operator", "value"], "step-duration assertion");
+    if (!Number.isInteger(source.step) || source.step < 0 || source.step >= stepCount
+      || steps[source.step]?.action !== "mutation-burst"
+      || !["lt", "lte"].includes(source.operator)
+      || !Number.isInteger(source.value) || source.value < 50 || source.value > 4000) {
+      throw new Error("Step-duration assertion is invalid.");
+    }
+    return { ...common, step: source.step, operator: source.operator, value: source.value };
   }
   if (source.type === "node-count") {
     assertOnlyKeys(source, ["type", "scope", "relation", "match", "operator", "value"], "node-count assertion");

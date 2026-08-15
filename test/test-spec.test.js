@@ -375,3 +375,20 @@ test("expanded visual DSL still rejects executable and network-bearing primitive
   escapedStyle.tests.find(candidate => candidate.kind === "behavior").fixture.nodes[0].styles.color = "red;} * {display:none";
   assert.throws(() => validateTestSpec(escapedStyle, skill, criteria), /escape, load, or execute/);
 });
+
+test("TestSpec models bounded dynamic-DOM responsiveness without executable probes", () => {
+  const spec = JSON.parse(fixtureText);
+  const behavior = spec.tests.find(candidate => candidate.kind === "behavior");
+  const step = behavior.steps.length;
+  behavior.steps.push({ action: "mutation-burst", target: "target", count: 200, batchSize: 10 });
+  behavior.assertions.push({ type: "step-duration", step, operator: "lte", value: 1000 });
+  assert.doesNotThrow(() => validateTestSpec(spec, skill, criteria));
+
+  const invalidCount = structuredClone(spec);
+  invalidCount.tests.find(candidate => candidate.kind === "behavior").steps[step].count = 501;
+  assert.throws(() => validateTestSpec(invalidCount, skill, criteria), /Mutation burst is invalid/);
+
+  const wrongStep = structuredClone(spec);
+  wrongStep.tests.find(candidate => candidate.kind === "behavior").assertions.at(-1).step = 0;
+  assert.throws(() => validateTestSpec(wrongStep, skill, criteria), /Step-duration assertion is invalid/);
+});

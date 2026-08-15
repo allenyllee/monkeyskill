@@ -337,6 +337,10 @@ Use a unique sentinel such as `CLOSED_LOOP_PASTE`.
    - The visible input must receive the edit.
 5. Exercise overlay/media context-menu cases (Methods 7, 8, and 15) when the browser-control API can reliably issue and dismiss native context menus.
 6. Exercise selection persistence and visible selection with a real drag and a reliable screenshot, following the visual protocol below.
+7. **Method 17 — dynamic DOM responsiveness**
+   - Run the responsiveness check once in Standard and once in Absolute after reloading between modes.
+   - Each run must append 200 ID-bearing rows in 20 batches and report completion within 1000 ms.
+   - Wait at least two seconds afterward and confirm the page remains responsive and the cursor is not persistently busy. A generated implementation that loops on its own style mutations or repeatedly scans the full document fails even if the other functional methods pass.
 
 The input value is authoritative for Method 14. A page status message can report that a rollback
 assignment was attempted even when the Skill correctly blocked its effect.
