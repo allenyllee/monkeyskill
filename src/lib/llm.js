@@ -118,7 +118,7 @@ export function buildRepairMessage(failures) {
   const allowedAssertions = new Set([
     "active-element", "attribute", "attribute-refers-to", "blocker-call-count", "bounding-rect", "computed-style",
     "contrast-ratio", "dom-present", "event-default-prevented", "hit-test", "node-count", "property",
-    "relative-position", "scroll-offset", "selection-collapsed", "text-content", "value", "visible"
+    "relative-position", "scroll-offset", "selection-collapsed", "step-duration", "text-content", "value", "visible"
   ]);
   const safeComputedProperties = new Set(["backgroundColor", "color", "pointerEvents", "userSelect", "visibility"]);
   const diagnostics = [];
@@ -171,6 +171,7 @@ export function buildPublicTestSpecRepairMessage(failures) {
         step: Number.isInteger(entry?.step) ? entry.step : null,
         action: safeIdentifier(entry?.action),
         defaultPrevented: typeof entry?.defaultPrevented === "boolean" ? entry.defaultPrevented : null,
+        durationMs: Number.isFinite(entry?.durationMs) ? Math.max(0, Math.round(entry.durationMs)) : null,
         selectionCollapsed: typeof entry?.selectionCollapsed === "boolean" ? entry.selectionCollapsed : null,
         targetActive: typeof entry?.targetActive === "boolean" ? entry.targetActive : null,
         valueLength: Number.isInteger(entry?.valueLength) ? entry.valueLength : null,

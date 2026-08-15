@@ -87,12 +87,13 @@ test("Builder TestSpec failures return detailed traces without exposing the Inde
     category: "selection-state",
     assertion: "selection-collapsed",
     diagnostic: { property: "selection-collapsed", operator: "eq", actual: "true", expected: "false" },
-    trace: [{ step: 0, action: "drag-select-text", defaultPrevented: false, selectionCollapsed: true, targetActive: false, valueLength: null, textLength: 12 }]
+    trace: [{ step: 0, action: "drag-select-text", defaultPrevented: false, durationMs: 612.4, selectionCollapsed: true, targetActive: false, valueLength: null, textLength: 12 }]
   }]);
   assert.match(repair, /public-selection-test/);
   assert.match(repair, /drag-select-text/);
   assert.match(repair, /"actual":"true"/);
   assert.match(repair, /"selectionCollapsed":true/);
+  assert.match(repair, /"durationMs":612/);
   assert.match(repair, /not Independent TestSpec content/);
 });
 

@@ -392,3 +392,20 @@ test("TestSpec models bounded dynamic-DOM responsiveness without executable prob
   wrongStep.tests.find(candidate => candidate.kind === "behavior").assertions.at(-1).step = 0;
   assert.throws(() => validateTestSpec(wrongStep, skill, criteria), /Step-duration assertion is invalid/);
 });
+
+test("TestSpec models bounded large-page scroll responsiveness", () => {
+  const spec = JSON.parse(fixtureText);
+  const behavior = spec.tests.find(candidate => candidate.kind === "behavior");
+  const step = behavior.steps.length;
+  behavior.steps.push({ action: "scroll-stress", target: "target", count: 300, iterations: 10 });
+  behavior.assertions.push({ type: "step-duration", step, operator: "lte", value: 1000 });
+  assert.doesNotThrow(() => validateTestSpec(spec, skill, criteria));
+
+  const invalidCount = structuredClone(spec);
+  invalidCount.tests.find(candidate => candidate.kind === "behavior").steps[step].count = 501;
+  assert.throws(() => validateTestSpec(invalidCount, skill, criteria), /Scroll stress is invalid/);
+
+  const invalidIterations = structuredClone(spec);
+  invalidIterations.tests.find(candidate => candidate.kind === "behavior").steps[step].iterations = 21;
+  assert.throws(() => validateTestSpec(invalidIterations, skill, criteria), /Scroll stress is invalid/);
+});

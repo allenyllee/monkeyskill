@@ -3,6 +3,7 @@
   const nativeEval = eval;
   const nativeNow = performance.now.bind(performance);
   const nativeSetTimeout = setTimeout.bind(globalThis);
+  const nativeRequestAnimationFrame = requestAnimationFrame.bind(globalThis);
   const nativeFocus = HTMLElement.prototype.focus;
   const nativeBlur = HTMLElement.prototype.blur;
   const nativeInputValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
@@ -237,6 +238,38 @@
         await Promise.resolve();
       }
       await new Promise(resolve => nativeSetTimeout(resolve, 0));
+      const durationMs = nativeNow() - started;
+      container.remove();
+      await Promise.resolve();
+      return { durationMs };
+    }
+    if (step.action === "scroll-stress") {
+      const target = state.nodes.get(step.target);
+      if (!target) throw new Error("Scroll-stress target missing.");
+      const container = document.createElement("div");
+      container.setAttribute("data-monkeyskill-scroll-stress", "");
+      const fragment = document.createDocumentFragment();
+      for (let index = 0; index < step.count; index += 1) {
+        const row = document.createElement("div");
+        const input = document.createElement("input");
+        const overlay = document.createElement("div");
+        const y = index * 4;
+        const rect = Object.freeze({ x: 0, y, left: 0, top: y, right: 120, bottom: y + 3, width: 120, height: 3 });
+        input.id = `scroll-target-${index}`;
+        overlay.id = `scroll-overlay-${index}`;
+        input.getBoundingClientRect = () => rect;
+        overlay.getBoundingClientRect = () => rect;
+        row.append(input, overlay);
+        fragment.append(row);
+      }
+      container.append(fragment);
+      target.append(container);
+      await settle();
+      const started = nativeNow();
+      for (let index = 0; index < step.iterations; index += 1) {
+        window.dispatchEvent(new Event("scroll"));
+        await new Promise(resolve => nativeRequestAnimationFrame(() => nativeSetTimeout(resolve, 0)));
+      }
       const durationMs = nativeNow() - started;
       container.remove();
       await Promise.resolve();
