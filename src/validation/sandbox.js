@@ -3,13 +3,20 @@
   const nativeEval = eval;
   const nativeNow = performance.now.bind(performance);
   const nativeSetTimeout = setTimeout.bind(globalThis);
-  const nativeRequestAnimationFrame = requestAnimationFrame.bind(globalThis);
+  const nativeClearTimeout = clearTimeout.bind(globalThis);
   const nativeFocus = HTMLElement.prototype.focus;
   const nativeBlur = HTMLElement.prototype.blur;
   const nativeInputValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
   const nativeTextareaValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value");
   const releaseClearEvents = new Set(["mouseup", "pointerup", "keyup", "touchend", "contextmenu"]);
   let trackedActiveElement = null;
+
+  // Chrome may throttle or suspend animation frames in the hidden offscreen
+  // validation document. Model a browser frame with a trusted task checkpoint
+  // so candidates that schedule bounded rAF work can still be tested
+  // deterministically without requiring a foreground renderer.
+  globalThis.requestAnimationFrame = callback => nativeSetTimeout(() => callback(nativeNow()), 0);
+  globalThis.cancelAnimationFrame = handle => nativeClearTimeout(handle);
 
   HTMLElement.prototype.focus = function trackedFocus(...args) {
     const result = nativeFocus.apply(this, args);
@@ -268,7 +275,7 @@
       const started = nativeNow();
       for (let index = 0; index < step.iterations; index += 1) {
         window.dispatchEvent(new Event("scroll"));
-        await new Promise(resolve => nativeRequestAnimationFrame(() => nativeSetTimeout(resolve, 0)));
+        await new Promise(resolve => requestAnimationFrame(resolve));
       }
       const durationMs = nativeNow() - started;
       container.remove();

@@ -409,3 +409,10 @@ test("TestSpec models bounded large-page scroll responsiveness", () => {
   invalidIterations.tests.find(candidate => candidate.kind === "behavior").steps[step].iterations = 21;
   assert.throws(() => validateTestSpec(invalidIterations, skill, criteria), /Scroll stress is invalid/);
 });
+
+test("trusted scroll frames do not depend on foreground animation rendering", async () => {
+  const sandbox = await readFile(new URL("../src/validation/sandbox.js", import.meta.url), "utf8");
+  assert.match(sandbox, /requestAnimationFrame = callback => nativeSetTimeout/);
+  assert.match(sandbox, /cancelAnimationFrame = handle => nativeClearTimeout/);
+  assert.doesNotMatch(sandbox, /nativeRequestAnimationFrame/);
+});
