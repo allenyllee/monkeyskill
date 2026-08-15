@@ -317,6 +317,35 @@ If injection is in doubt, inspect the registered User Script. The Restore right 
 Build must run in `world: "MAIN"`, at `document_start`, with a match pattern covering the
 published demo. Remove any temporary inspection hooks after the check.
 
+### Switch modes for local real-browser checks
+
+Use the browser-control integration and the local development Store bridge when a check must
+compare an installed MSkill in Standard, Absolute, and Off modes. Do not depend on navigating to
+`chrome-extension://` pages or on coordinate-based Windows automation merely to change a mode.
+
+Before changing anything, record the current mode through an authorized UI or the user's stated
+configuration so it can be restored exactly. If the original mode is unknown, obtain a reliable
+restoration target before running a mutating A/B check.
+
+Navigate the local Store tab to one of these URLs, replacing the skill ID when necessary:
+
+```text
+http://127.0.0.1:4174/?set-test-mode=standard&skill-id=restore-right-click
+http://127.0.0.1:4174/?set-test-mode=absolute&skill-id=restore-right-click
+http://127.0.0.1:4174/?set-test-mode=off&skill-id=restore-right-click
+```
+
+This bridge is intentionally available only from the local development Store. After each switch:
+
+1. Wait for the Store/Extension bridge request to complete and confirm that the Extension is connected.
+2. Reload the target tab so the selected mode is injected from a fresh document start.
+3. Run the same interaction, wait interval, and measurement used for the comparison mode.
+4. Verify the mode through an observable behavior or controlled A/B result. A notice or toast alone is insufficient evidence because it may disappear or the navigation may complete before it is observed.
+
+When the check finishes, switch back to the recorded pre-test mode, reload every affected target
+tab, and close any temporary Store tab. If restoration cannot be verified, report that explicitly
+instead of claiming the browser was returned to its prior state.
+
 ### Minimum real-browser checks
 
 Use a unique sentinel such as `CLOSED_LOOP_PASTE`.

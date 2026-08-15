@@ -31,6 +31,7 @@ Additional non-negotiable rules:
 - Attacker, Builder, and each Tester must remain pinned to their first routing key. Repairs may not be handled by a worker from another generation.
 - Do not call a run stable solely because schema checks, the public Builder TestSpec, or the Independent TestSpec passed. Perform the real-browser checks in the closed-loop runbook and report inconclusive visual checks honestly.
 - Any acceptance criterion about rendered pixels, selection highlighting, overlays, visibility, contrast, or native browser UI requires a screenshot after the real interaction on the registered origin. A DOM assertion alone cannot promote that criterion from inconclusive to passed.
+- For local real-browser A/B checks, switch an installed MSkill mode through the local Store bridge described in the runbook, reload the target page after each switch, verify the active behavior instead of trusting a transient notice alone, and restore the recorded pre-test mode when finished.
 
 ## Commit policy
 
