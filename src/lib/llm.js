@@ -268,7 +268,8 @@ export function scanGeneratedBuild(build, skill) {
   ];
   const alwaysForbidden = [
     ["dynamic evaluation", /\beval\s*\(|\bFunction\s*\(|import\s*\(/],
-    ["extension APIs", /\b(?:chrome|browser)\s*\./]
+    ["extension APIs", /\b(?:chrome|browser)\s*\./],
+    ["global event cancellation override", /(?:\bEvent\s*\.\s*prototype(?:\s*\.\s*preventDefault|\s*\[\s*["']preventDefault["']\s*\])\s*=|Object\s*\.\s*defineProperty\s*\(\s*Event\s*\.\s*prototype\s*,\s*["']preventDefault["'])/]
   ];
 
   for (const [mode, artifact] of Object.entries(build.modes)) {
