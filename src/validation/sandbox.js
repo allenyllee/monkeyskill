@@ -38,10 +38,7 @@
     let result;
     try {
       if (message.capability) result = await executeCapabilitySelfTest(message.capability);
-      else {
-        installArtifact(message.artifact);
-        result = await executeTest(message.test);
-      }
+      else result = await executeTest(message.test, message.artifact);
     } catch {
       result = { ok: false, category: "dom-state" };
     }
@@ -61,7 +58,7 @@
     (0, nativeEval)(`${artifact.js}\n//# sourceURL=monkeyskill-generated-build.js`);
   }
 
-  async function executeTest(test) {
+  async function executeTest(test, artifact) {
     const state = {
       nodes: new Map(),
       blockerCalls: new Map(),
@@ -73,21 +70,21 @@
     installBlockers(test.blockers, state);
     await settle();
     const trace = [];
-    for (let index = 0; index < test.steps.length; index += 1) {
+    let firstRuntimeStep = 0;
+    if (test.steps[0]?.action === "startup-stress") {
+      const stepResult = await executeStartupStress(test.steps[0], state, artifact);
+      state.stepResults.push(stepResult);
+      trace.push(traceStep(0, test.steps[0], stepResult, state));
+      firstRuntimeStep = 1;
+    } else {
+      installArtifact(artifact);
+      await settle();
+    }
+    for (let index = firstRuntimeStep; index < test.steps.length; index += 1) {
       const step = test.steps[index];
       const stepResult = await executeStep(step, state);
       state.stepResults.push(stepResult);
-      const stepTarget = step.target ? state.nodes.get(step.target) : null;
-      trace.push({
-        step: index,
-        action: step.action,
-        defaultPrevented: typeof stepResult?.defaultPrevented === "boolean" ? stepResult.defaultPrevented : null,
-        durationMs: Number.isFinite(stepResult?.durationMs) ? Math.round(stepResult.durationMs) : null,
-        selectionCollapsed: Boolean(getSelection()?.isCollapsed),
-        targetActive: Boolean(stepTarget && (document.activeElement === stepTarget || trackedActiveElement === stepTarget)),
-        valueLength: stepTarget && "value" in stepTarget ? String(stepTarget.value).length : null,
-        textLength: stepTarget ? String(stepTarget.textContent || "").length : null
-      });
+      trace.push(traceStep(index, step, stepResult, state));
     }
     for (const assertion of test.assertions) {
       if (!evaluateAssertion(assertion, state)) {
@@ -101,6 +98,54 @@
       }
     }
     return { ok: true, category: "dom-state", trace };
+  }
+
+  function traceStep(index, step, stepResult, state) {
+    const stepTarget = step.target ? state.nodes.get(step.target) : null;
+    return {
+      step: index,
+      action: step.action,
+      defaultPrevented: typeof stepResult?.defaultPrevented === "boolean" ? stepResult.defaultPrevented : null,
+      durationMs: Number.isFinite(stepResult?.durationMs) ? Math.round(stepResult.durationMs) : null,
+      selectionCollapsed: Boolean(getSelection()?.isCollapsed),
+      targetActive: Boolean(stepTarget && (document.activeElement === stepTarget || trackedActiveElement === stepTarget)),
+      valueLength: stepTarget && "value" in stepTarget ? String(stepTarget.value).length : null,
+      textLength: stepTarget ? String(stepTarget.textContent || "").length : null
+    };
+  }
+
+  async function executeStartupStress(step, state, artifact) {
+    const target = state.nodes.get(step.target);
+    if (!target) throw new Error("Startup-stress target missing.");
+    const container = createLargePageFixture(step.count, "startup");
+    target.append(container);
+    await Promise.resolve();
+    const quiet = waitForMutationQuiet(target);
+    const started = nativeNow();
+    installArtifact(artifact);
+    await quiet;
+    return { durationMs: nativeNow() - started };
+  }
+
+  function createLargePageFixture(count, prefix) {
+    const container = document.createElement("div");
+    container.setAttribute(`data-monkeyskill-${prefix}-stress`, "");
+    const fragment = document.createDocumentFragment();
+    for (let index = 0; index < count; index += 1) {
+      const row = document.createElement("div");
+      const input = document.createElement("input");
+      const overlay = document.createElement("div");
+      const y = index * 4;
+      const rect = Object.freeze({ x: 0, y, left: 0, top: y, right: 120, bottom: y + 3, width: 120, height: 3 });
+      input.id = `${prefix}-target-${index}`;
+      overlay.id = `${prefix}-overlay-${index}`;
+      input.getBoundingClientRect = () => rect;
+      overlay.getBoundingClientRect = () => rect;
+      row.append(input, overlay);
+      fragment.append(row);
+    }
+    container.append(fragment);
+    return container;
   }
 
   function createFixture(fixture, state) {
@@ -257,23 +302,7 @@
       if (!target) throw new Error("Scroll-stress target missing.");
       const started = nativeNow();
       const setupQuiet = waitForMutationQuiet(target);
-      const container = document.createElement("div");
-      container.setAttribute("data-monkeyskill-scroll-stress", "");
-      const fragment = document.createDocumentFragment();
-      for (let index = 0; index < step.count; index += 1) {
-        const row = document.createElement("div");
-        const input = document.createElement("input");
-        const overlay = document.createElement("div");
-        const y = index * 4;
-        const rect = Object.freeze({ x: 0, y, left: 0, top: y, right: 120, bottom: y + 3, width: 120, height: 3 });
-        input.id = `scroll-target-${index}`;
-        overlay.id = `scroll-overlay-${index}`;
-        input.getBoundingClientRect = () => rect;
-        overlay.getBoundingClientRect = () => rect;
-        row.append(input, overlay);
-        fragment.append(row);
-      }
-      container.append(fragment);
+      const container = createLargePageFixture(step.count, "scroll");
       target.append(container);
       await setupQuiet;
       const scrollQuiet = waitForMutationQuiet(target);

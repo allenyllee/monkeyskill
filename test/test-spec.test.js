@@ -410,6 +410,36 @@ test("TestSpec models bounded large-page scroll responsiveness", () => {
   assert.throws(() => validateTestSpec(invalidIterations, skill, criteria), /Scroll stress is invalid/);
 });
 
+test("TestSpec models bounded pre-existing large-page startup responsiveness", () => {
+  const spec = JSON.parse(fixtureText);
+  const behavior = spec.tests.find(candidate => candidate.kind === "behavior");
+  behavior.steps.unshift({ action: "startup-stress", target: "target", count: 1200 });
+  behavior.assertions.push({ type: "step-duration", step: 0, operator: "lte", value: 1000 });
+  assert.doesNotThrow(() => validateTestSpec(spec, skill, criteria));
+
+  const invalidCount = structuredClone(spec);
+  invalidCount.tests.find(candidate => candidate.kind === "behavior").steps[0].count = 2001;
+  assert.throws(() => validateTestSpec(invalidCount, skill, criteria), /Startup stress is invalid/);
+
+  const misplaced = structuredClone(spec);
+  const startup = misplaced.tests.find(candidate => candidate.kind === "behavior").steps.shift();
+  misplaced.tests.find(candidate => candidate.kind === "behavior").steps.push(startup);
+  assert.throws(() => validateTestSpec(misplaced, skill, criteria), /Startup stress must be the first/);
+});
+
+test("Runner creates fixtures and existing blockers before installing candidates", async () => {
+  const sandbox = await readFile(new URL("../src/validation/sandbox.js", import.meta.url), "utf8");
+  const executeStart = sandbox.indexOf("async function executeTest(test, artifact)");
+  const fixtureIndex = sandbox.indexOf("createFixture(test.fixture, state);", executeStart);
+  const blockerIndex = sandbox.indexOf("installBlockers(test.blockers, state);", executeStart);
+  const installIndex = sandbox.indexOf("installArtifact(artifact);", executeStart);
+  assert.ok(executeStart >= 0 && fixtureIndex > executeStart);
+  assert.ok(blockerIndex > fixtureIndex);
+  assert.ok(installIndex > blockerIndex);
+  assert.match(sandbox, /executeStartupStress\(test\.steps\[0\], state, artifact\)/);
+  assert.match(sandbox, /const quiet = waitForMutationQuiet\(target\);[\s\S]*installArtifact\(artifact\);[\s\S]*await quiet/);
+});
+
 test("trusted scroll frames do not depend on foreground animation rendering", async () => {
   const sandbox = await readFile(new URL("../src/validation/sandbox.js", import.meta.url), "utf8");
   assert.match(sandbox, /requestAnimationFrame = callback => nativeSetTimeout/);
@@ -423,6 +453,7 @@ test("performance workflows include queued observer work through a DOM-quiet che
   assert.match(sandbox, /const quiet = waitForMutationQuiet\(target\)/);
   assert.match(sandbox, /const setupQuiet = waitForMutationQuiet\(target\)/);
   assert.match(sandbox, /const scrollQuiet = waitForMutationQuiet\(target\)/);
+  assert.match(sandbox, /async function executeStartupStress/);
   assert.match(sandbox, /function waitForMutationQuiet\(root, quietMs = 50, maxMs = 1200\)/);
   assert.match(sandbox, /observer\.observe\(document\.documentElement \|\| root/);
   assert.match(sandbox, /characterData: true/);

@@ -113,6 +113,14 @@ The DSL guarantees only what the Runner can enforce or observe. A sensitive beha
 that boundary is `unverifiable`, not implicitly safe. Extending the boundary requires a generic
 Runner capability and regression tests, not an MSkill instruction asking Tester to trust code.
 
+The Runner must also preserve browser lifecycle order. It constructs the page fixture and installs
+declared pre-existing page blockers before injecting the candidate. Dynamic additions and late
+handlers remain explicit later DSL steps. When startup responsiveness is part of an MSkill contract,
+the bounded `startup-stress` primitive creates a large pre-existing page before injection and measures
+candidate installation plus queued initialization work through a trusted DOM-quiet checkpoint. A
+Runner that injects first and creates the page afterward cannot validate startup cost or correctly
+distinguish existing handlers from handlers registered after the Skill starts.
+
 ### Adversarial MSkill regression samples
 
 Security regressions should include plausible, human-readable MSkills whose primary feature looks

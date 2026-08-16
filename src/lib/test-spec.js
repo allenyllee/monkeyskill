@@ -34,7 +34,7 @@ const ALLOWED_EFFECTS = new Set([
 ]);
 const ALLOWED_ACTIONS = new Set([
   "add-blocker", "append-node", "blur", "capture-node", "click", "click-control", "click-page", "copy-shortcut", "dispatch-event", "focus", "remove-attribute", "remove-node",
-  "drag-select-text", "mutation-burst", "paste-text", "scroll", "scroll-page", "scroll-stress", "select-contents", "set-attribute", "set-checked", "set-style", "set-text", "set-value", "wait"
+  "drag-select-text", "mutation-burst", "paste-text", "scroll", "scroll-page", "scroll-stress", "select-contents", "set-attribute", "set-checked", "set-style", "set-text", "set-value", "startup-stress", "wait"
 ]);
 const ALLOWED_ASSERTIONS = new Set([
   "active-element", "attribute", "attribute-refers-to", "blocker-call-count", "bounding-rect", "computed-style", "contrast-ratio",
@@ -320,6 +320,14 @@ function validateStep(source, nodeIds, blockerIds) {
     }
     return { action: source.action, target: source.target, count: source.count, iterations: source.iterations };
   }
+  if (source.action === "startup-stress") {
+    assertOnlyKeys(source, ["action", "target", "count"], "startup-stress step");
+    if (!nodeIds.has(source.target)
+      || !Number.isInteger(source.count) || source.count < 100 || source.count > 2000) {
+      throw new Error("Startup stress is invalid.");
+    }
+    return { action: source.action, target: source.target, count: source.count };
+  }
   if (!nodeIds.has(source.target)) throw new Error("TestSpec step target is invalid.");
   if (source.action === "dispatch-event") {
     assertOnlyKeys(source, ["action", "target", "event", "init"], "dispatch-event step");
@@ -390,6 +398,10 @@ function validateStep(source, nodeIds, blockerIds) {
 
 function validateWorkflowCoverage(blockers, steps) {
   const actions = new Set(steps.map(step => step.action));
+  const startupIndex = steps.findIndex(step => step.action === "startup-stress");
+  if (startupIndex > 0 || steps.filter(step => step.action === "startup-stress").length > 1) {
+    throw new Error("Startup stress must be the first and only startup-stress step.");
+  }
   const modelsPaste = blockers.some(blocker => (
     blocker.event === "paste"
     || blocker.event === "beforeinput" && blocker.when.inputType === "insertFromPaste"
@@ -445,7 +457,7 @@ function validateAssertion(source, nodeIds, blockerMetadata, steps) {
   if (source.type === "step-duration") {
     assertOnlyKeys(source, ["type", "step", "operator", "value"], "step-duration assertion");
     if (!Number.isInteger(source.step) || source.step < 0 || source.step >= stepCount
-      || !["mutation-burst", "scroll-stress"].includes(steps[source.step]?.action)
+      || !["mutation-burst", "scroll-stress", "startup-stress"].includes(steps[source.step]?.action)
       || !["lt", "lte"].includes(source.operator)
       || !Number.isInteger(source.value) || source.value < 50 || source.value > 4000) {
       throw new Error("Step-duration assertion is invalid.");
