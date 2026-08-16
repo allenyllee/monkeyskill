@@ -189,7 +189,29 @@ function validateBehaviorTest(source, skill) {
   const assertions = boundedArray(source.assertions, "assertions", false).map(assertion => (
     validateAssertion(assertion, nodeIds, blockerMetadata, steps)
   ));
+  validateCriterionWorkflow(source.criterion, steps, assertions);
   return { id: source.id, kind: "behavior", criterion: source.criterion, mode: source.mode, fixture, blockers, steps, assertions };
+}
+
+function validateCriterionWorkflow(criterion, steps, assertions) {
+  if (criterion !== "selection-dismissal") return;
+  const actions = steps.map(step => step.action);
+  const firstDrag = actions.indexOf("drag-select-text");
+  const click = actions.indexOf("click-page", firstDrag + 1);
+  const secondDrag = actions.indexOf("drag-select-text", click + 1);
+  if (firstDrag < 0 || click < 0 || secondDrag < 0
+    || steps[firstDrag].target === steps[secondDrag].target) {
+    throw new Error("Selection dismissal must select text, click another page area, then select a different target.");
+  }
+  const observesCollapsedClick = assertions.some(assertion => (
+    assertion.type === "selection-collapsed" && assertion.step === click && assertion.expected === true
+  ));
+  const observesResumedSelection = assertions.some(assertion => (
+    assertion.type === "selection-collapsed" && assertion.step === secondDrag && assertion.expected === false
+  ));
+  if (!observesCollapsedClick || !observesResumedSelection) {
+    throw new Error("Selection dismissal must observe collapse after the click and a new selection after the following drag.");
+  }
 }
 
 function validateFixture(source) {
@@ -450,9 +472,14 @@ function validateAssertion(source, nodeIds, blockerMetadata, steps) {
     return { ...common, blocker: source.blocker, operator: source.operator, value: source.value };
   }
   if (source.type === "selection-collapsed") {
-    assertOnlyKeys(source, ["type", "expected"], "selection assertion");
+    assertOnlyKeys(source, ["type", "step", "expected"], "selection assertion");
     if (typeof source.expected !== "boolean") throw new Error("Selection assertion is invalid.");
-    return { ...common, expected: source.expected };
+    if (source.step != null && (!Number.isInteger(source.step) || source.step < 0 || source.step >= stepCount)) {
+      throw new Error("Selection assertion step is invalid.");
+    }
+    return source.step == null
+      ? { ...common, expected: source.expected }
+      : { ...common, step: source.step, expected: source.expected };
   }
   if (source.type === "selection-write-count") {
     assertOnlyKeys(source, ["type", "step", "operator", "value"], "selection write assertion");

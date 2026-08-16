@@ -117,18 +117,22 @@
       "fixture": {
         "nodes": [
           { "id": "selected-text", "tag": "p", "parent": null, "text": "selected page text", "attributes": {}, "styles": {} },
-          { "id": "page-area", "tag": "div", "parent": null, "text": "ordinary page area", "attributes": {}, "styles": { "minHeight": "40px" } }
+          { "id": "page-area", "tag": "div", "parent": null, "text": "ordinary page area", "attributes": {}, "styles": { "minHeight": "40px" } },
+          { "id": "next-text", "tag": "p", "parent": null, "text": "a different selectable passage", "attributes": {}, "styles": {} }
         ],
         "rules": []
       },
       "blockers": [],
       "steps": [
         { "action": "drag-select-text", "target": "selected-text" },
-        { "action": "click-page", "target": "page-area" }
+        { "action": "click-page", "target": "page-area" },
+        { "action": "drag-select-text", "target": "next-text" }
       ],
       "assertions": [
         { "type": "event-default-prevented", "step": 1, "expected": false },
-        { "type": "selection-collapsed", "expected": true }
+        { "type": "selection-collapsed", "step": 1, "expected": true },
+        { "type": "selection-collapsed", "step": 2, "expected": false },
+        { "type": "selection-write-count", "step": 2, "operator": "lte", "value": 5 }
       ]
     },
     {

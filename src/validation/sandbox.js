@@ -86,6 +86,7 @@
     let firstRuntimeStep = 0;
     if (test.steps[0]?.action === "startup-stress") {
       const stepResult = await executeStartupStress(test.steps[0], state, artifact);
+      stepResult.selectionCollapsed = Boolean(getSelection()?.isCollapsed);
       state.stepResults.push(stepResult);
       trace.push(traceStep(0, test.steps[0], stepResult, state));
       firstRuntimeStep = 1;
@@ -95,7 +96,8 @@
     }
     for (let index = firstRuntimeStep; index < test.steps.length; index += 1) {
       const step = test.steps[index];
-      const stepResult = await executeStep(step, state);
+      const stepResult = await executeStep(step, state) || {};
+      stepResult.selectionCollapsed = Boolean(getSelection()?.isCollapsed);
       state.stepResults.push(stepResult);
       trace.push(traceStep(index, step, stepResult, state));
     }
@@ -663,7 +665,12 @@
     if (assertion.type === "blocker-call-count") {
       return compare(state.blockerCalls.get(assertion.blocker) || 0, assertion.operator, assertion.value);
     }
-    if (assertion.type === "selection-collapsed") return Boolean(getSelection()?.isCollapsed) === assertion.expected;
+    if (assertion.type === "selection-collapsed") {
+      const actual = assertion.step == null
+        ? Boolean(getSelection()?.isCollapsed)
+        : state.stepResults[assertion.step]?.selectionCollapsed;
+      return actual === assertion.expected;
+    }
     if (assertion.type === "node-count") {
       const scope = state.nodes.get(assertion.scope);
       return compare(queryNodes(scope, assertion.relation, assertion.match).length, assertion.operator, assertion.value);
@@ -752,7 +759,9 @@
       property = "durationMs";
       actual = state.stepResults[assertion.step]?.durationMs;
     } else if (assertion.type === "selection-collapsed") {
-      actual = Boolean(getSelection()?.isCollapsed);
+      actual = assertion.step == null
+        ? Boolean(getSelection()?.isCollapsed)
+        : state.stepResults[assertion.step]?.selectionCollapsed;
     } else if (assertion.type === "selection-write-count") {
       property = "selectionWrites";
       actual = state.stepResults[assertion.step]?.selectionWrites;

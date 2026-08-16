@@ -289,14 +289,24 @@ test("preserve-controls fixture models a real click after page selection", () =>
   assert.ok(preserve.assertions.some(assertion => assertion.type === "active-element" && assertion.expected));
 });
 
-test("selection-dismissal fixture models a real page click after selection", () => {
+test("selection-dismissal fixture models dismissal and a subsequent fresh selection", () => {
   const spec = parseGeneratedTestSpec(fixtureText, skill, criteria);
   const dismissal = spec.tests.find(candidate => candidate.criterion === "selection-dismissal");
   assert.deepEqual(dismissal.steps.map(step => step.action), [
     "drag-select-text",
-    "click-page"
+    "click-page",
+    "drag-select-text"
   ]);
-  assert.ok(dismissal.assertions.some(assertion => assertion.type === "selection-collapsed" && assertion.expected));
+  assert.ok(dismissal.assertions.some(assertion => assertion.type === "selection-collapsed" && assertion.step === 1 && assertion.expected));
+  assert.ok(dismissal.assertions.some(assertion => assertion.type === "selection-collapsed" && assertion.step === 2 && !assertion.expected));
+});
+
+test("selection-dismissal rejects a workflow that cannot prove interaction resumes", () => {
+  const spec = JSON.parse(fixtureText);
+  const dismissal = spec.tests.find(candidate => candidate.criterion === "selection-dismissal");
+  dismissal.steps.pop();
+  dismissal.assertions = dismissal.assertions.filter(assertion => assertion.step !== 2);
+  assert.throws(() => parseGeneratedTestSpec(JSON.stringify(spec), skill, criteria), /select text, click another page area/);
 });
 
 test("TestSpec can observe data-driven generated UI without implementation-specific selectors", () => {
