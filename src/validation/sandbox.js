@@ -142,6 +142,12 @@
     // the browser is asked to lay out the large page.
     void container.offsetHeight;
     await quiet;
+    // DOM quiet only observes writes. A candidate can still keep the main
+    // thread busy with a recursively scheduled traversal that performs no DOM
+    // mutations, which previously escaped the startup duration measurement.
+    // Give queued zero-delay work a bounded number of native task turns to
+    // drain before recording the result.
+    await waitForTaskTurns(32);
     return { durationMs: nativeNow() - started };
   }
 
@@ -973,6 +979,12 @@
 
   function settle() {
     return new Promise(resolve => setTimeout(resolve, 50));
+  }
+
+  async function waitForTaskTurns(count) {
+    for (let index = 0; index < count; index += 1) {
+      await new Promise(resolve => nativeSetTimeout(resolve, 0));
+    }
   }
 
   function waitForMutationQuiet(root, quietMs = 50, maxMs = 1200) {

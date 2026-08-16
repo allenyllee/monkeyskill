@@ -450,7 +450,8 @@ test("Runner creates fixtures and existing blockers before installing candidates
   assert.ok(blockerIndex > fixtureIndex);
   assert.ok(installIndex > blockerIndex);
   assert.match(sandbox, /executeStartupStress\(test\.steps\[0\], state, artifact\)/);
-  assert.match(sandbox, /const quiet = waitForMutationQuiet\(target\);[\s\S]*installArtifact\(artifact\);[\s\S]*await quiet/);
+  assert.match(sandbox, /const quiet = waitForMutationQuiet\(target\);[\s\S]*installArtifact\(artifact\);[\s\S]*await quiet[\s\S]*waitForTaskTurns\(32\)/);
+  assert.match(sandbox, /async function waitForTaskTurns\(count\)[\s\S]*nativeSetTimeout\(resolve, 0\)/);
 });
 
 test("trusted scroll frames do not depend on foreground animation rendering", async () => {
