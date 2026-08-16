@@ -242,13 +242,18 @@ function validateFixture(source) {
   const rules = boundedArray(source.rules || [], "fixture rules").map(rule => {
     assertRecord(rule, "fixture rule");
     assertOnlyKeys(rule, ["target", "pseudo", "styles", "specificity"], "fixture rule");
-    if (!ids.has(rule.target) || rule.pseudo !== "::selection") throw new Error("Fixture rule target or pseudo-element is invalid.");
+    if (!ids.has(rule.target) || ![null, undefined, "::selection"].includes(rule.pseudo)) {
+      throw new Error("Fixture rule target or pseudo-element is invalid.");
+    }
     if (rule.specificity != null && !["normal", "id-ancestor"].includes(rule.specificity)) {
       throw new Error("Fixture rule specificity is invalid.");
     }
+    if (rule.pseudo !== "::selection" && rule.specificity === "id-ancestor") {
+      throw new Error("ID-ancestor specificity is only valid for selection fixture rules.");
+    }
     return {
       target: rule.target,
-      pseudo: rule.pseudo,
+      pseudo: rule.pseudo || null,
       styles: validateStringMap(rule.styles, ALLOWED_STYLES, "style"),
       specificity: rule.specificity || "normal"
     };

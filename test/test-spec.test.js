@@ -68,7 +68,7 @@ test("independently generated TestSpec covers every visible criterion", () => {
   );
 });
 
-test("pointer overlay fixture has stable geometry without loading media", () => {
+test("pointer overlay fixture has stable author-styled geometry without loading media", () => {
   const spec = parseGeneratedTestSpec(fixtureText, skill, criteria);
   const pointerTest = spec.tests.find(candidate => candidate.criterion === "pointer-overlays");
   const target = pointerTest.fixture.nodes.find(node => node.id === "target");
@@ -76,11 +76,15 @@ test("pointer overlay fixture has stable geometry without loading media", () => 
   assert.deepEqual(target.attributes, {});
   assert.equal(target.styles.width, "240px");
   assert.equal(target.styles.height, "120px");
-  assert.deepEqual(target.rect, { x: 8, y: 8, width: 240, height: 120 });
-  assert.deepEqual(
-    pointerTest.fixture.nodes.find(node => node.id === "overlay").rect,
-    target.rect
-  );
+  const overlay = pointerTest.fixture.nodes.find(node => node.id === "overlay");
+  assert.deepEqual(overlay.attributes, { class: "blocking-overlay" });
+  assert.deepEqual(overlay.styles, {});
+  assert.deepEqual(pointerTest.fixture.rules[0], {
+    target: "overlay",
+    pseudo: null,
+    styles: { position: "absolute", inset: "0" },
+    specificity: "normal"
+  });
 });
 
 test("pointer reachability rejects implementation-specific pointerEvents assertions", () => {
@@ -275,6 +279,21 @@ test("id-ancestor selection rules target descendants rather than the ancestor ps
   const source = await readFile(new URL("../src/validation/sandbox.js", import.meta.url), "utf8");
   assert.match(source, /`#fixture \*\$\{rule\.pseudo\}`/);
   assert.doesNotMatch(source, /`#fixture \$\{target\}\$\{rule\.pseudo\}`/);
+});
+
+test("fixture author styles can position an overlay without exposing inline style attributes", async () => {
+  const spec = parseGeneratedTestSpec(fixtureText, skill, criteria);
+  const overlay = spec.tests.find(candidate => candidate.id === "pointer-overlays");
+  assert.equal(overlay.fixture.nodes.find(node => node.id === "overlay").styles.position, undefined);
+  assert.deepEqual(overlay.fixture.rules[0], {
+    target: "overlay",
+    pseudo: null,
+    styles: { position: "absolute", inset: "0" },
+    specificity: "normal"
+  });
+  assert.doesNotThrow(() => validateTestSpec(spec, skill, criteria));
+  const sandbox = await readFile(new URL("../src/validation/sandbox.js", import.meta.url), "utf8");
+  assert.match(sandbox, /`\$\{target\}\$\{rule\.pseudo \|\| ""\}`/);
 });
 
 test("preserve-controls fixture models a real click after page selection", () => {

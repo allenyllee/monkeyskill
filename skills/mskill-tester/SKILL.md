@@ -107,7 +107,7 @@ Policy test:
 - Do not use `!important`, `url()`, `data:`, `javascript:`, `expression()`, or `@import` in values. Fixture rules are already emitted as `!important` by the trusted runner.
 - Each node's `parent`, when present, must refer to an earlier node ID.
 - For a `textarea`, prefer `text` for its initial editable value, matching native HTML. The runner also normalizes an attributes `value` fallback into the live DOM property so fixtures remain deterministic.
-- `fixture.rules` may contain `{ "target": "node-id", "pseudo": "::selection", "styles": {...}, "specificity": "id-ancestor" }`; no other pseudo-element is allowed. Omit `specificity` normally, and use `id-ancestor` when the human specification names an ID-specific or unusually high-specificity rule.
+- `fixture.rules` may contain ordinary author rules such as `{ "target": "node-id", "pseudo": null, "styles": {...} }`, or selection rules such as `{ "target": "node-id", "pseudo": "::selection", "styles": {...}, "specificity": "id-ancestor" }`; no other pseudo-element is allowed. Use an ordinary author rule when a behavior must be tested against computed CSS without exposing the same declaration in the node's inline `style` attribute (for example, a class-positioned overlay). Omit `specificity` normally, and use `id-ancestor` only when the human specification names an ID-specific or unusually high-specificity selection rule.
 
 ## Simulated blockers
 

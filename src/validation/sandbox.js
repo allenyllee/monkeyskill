@@ -196,7 +196,9 @@
       // while the selected descendant itself may have no useful ID. Do not
       // include the target ID in that selector: candidates must override the
       // descendant pseudo-element, not merely the ancestor's own ::selection.
-      const selector = rule.specificity === "id-ancestor" ? `#fixture *${rule.pseudo}` : `${target}${rule.pseudo}`;
+      const selector = rule.specificity === "id-ancestor"
+        ? `#fixture *${rule.pseudo}`
+        : `${target}${rule.pseudo || ""}`;
       style.textContent = `${selector}{${declarations}}`;
       document.head.append(style);
     }
