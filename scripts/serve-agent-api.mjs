@@ -1,4 +1,4 @@
-import { createAgentApiServer } from "./agent-api.mjs";
+import { createAgentApiServer, DEFAULT_SUBAGENT_TIMEOUT_MS } from "./agent-api.mjs";
 import { readFileSync } from "node:fs";
 
 const argv = process.argv.slice(2);
@@ -16,7 +16,7 @@ const bootstrap = bootstrapPath
 const { server, token } = createAgentApiServer({
   mode,
   token: process.env.MONKEYSKILL_LOCAL_TOKEN || bootstrap?.token,
-  agentTimeoutMs: Number(process.env.MONKEYSKILL_AGENT_TIMEOUT_MS || bootstrap?.agentTimeoutMs || 900_000)
+  agentTimeoutMs: Number(process.env.MONKEYSKILL_AGENT_TIMEOUT_MS || bootstrap?.agentTimeoutMs || DEFAULT_SUBAGENT_TIMEOUT_MS)
 });
 
 server.listen(port, host, () => {

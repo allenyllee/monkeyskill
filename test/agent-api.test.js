@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
-import { createAgentApiServer, runFixtureAgent } from "../scripts/agent-api.mjs";
+import { createAgentApiServer, DEFAULT_SUBAGENT_TIMEOUT_MS, runFixtureAgent } from "../scripts/agent-api.mjs";
 import { buildGenerationMessages, buildTesterMessages, extractAssistantText, extractCriterionIds, extractSharedTestFramework, parseGeneratedBuild, parseGeneratedPublicTestSpec, scanGeneratedBuild } from "../src/lib/llm.js";
 import { parseTesterSecurityReview } from "../src/lib/test-spec.js";
 import { readFile } from "node:fs/promises";
@@ -12,6 +12,10 @@ const installerInstructions = await readFile(new URL("../skills/mskill-installer
 const testerInstructions = await readFile(new URL("../skills/mskill-tester/SKILL.md", import.meta.url), "utf8");
 const attackerInstructions = await readFile(new URL("../skills/mskill-attacker/SKILL.md", import.meta.url), "utf8");
 import { buildAttackerMessages } from "../src/lib/security-regression.js";
+
+test("clean-room subagent leases allow complete locally validated builds", () => {
+  assert.equal(DEFAULT_SUBAGENT_TIMEOUT_MS, 7_200_000);
+});
 
 test("local fixture agent completes the generation and validation flow", async t => {
   const local = createAgentApiServer({ token: "test-token" });

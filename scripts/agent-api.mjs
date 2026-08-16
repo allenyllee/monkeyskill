@@ -2,13 +2,14 @@ import { randomBytes, randomUUID } from "node:crypto";
 import http from "node:http";
 
 const MAX_REQUEST_BYTES = 1_000_000;
+export const DEFAULT_SUBAGENT_TIMEOUT_MS = 7_200_000;
 
 export function createAgentApiServer(options = {}) {
   const sessions = new Map();
   const token = options.token || randomBytes(18).toString("base64url");
   const mode = options.mode || "fixture";
   const upstreamFetch = options.fetch || globalThis.fetch;
-  const broker = createSubagentBroker(options.agentTimeoutMs || 900_000);
+  const broker = createSubagentBroker(options.agentTimeoutMs || DEFAULT_SUBAGENT_TIMEOUT_MS);
 
   const server = http.createServer(async (request, response) => {
     setCorsHeaders(response);

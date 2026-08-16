@@ -279,6 +279,11 @@ Builder repairs follow two distinct loops:
 An empty repair queue after a submission means only that no repair is currently queued. Use the
 Store state and final validation/approval dialog as the authoritative user-facing outcome.
 
+The local clean-room broker defaults to a two-hour subagent lease because complete dual-mode
+Builds and TestSpecs can be large and may require extensive local validation before submission.
+Keep the lease bounded, but do not use a short transport timeout as a proxy for model or candidate
+quality. A lease that actually expires still invalidates the generation and requires a fresh run.
+
 ## 4. Review and approve installation
 
 Inspect the approval dialog instead of clicking blindly. Record at least:
