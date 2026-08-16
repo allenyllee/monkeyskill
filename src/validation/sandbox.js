@@ -911,7 +911,15 @@
       const observer = new NativeMutationObserver(() => {
         lastMutation = nativeNow();
       });
-      observer.observe(root, { subtree: true, childList: true, attributes: true });
+      // Candidate work may be triggered below the fixture but write elsewhere,
+      // such as repeatedly rebuilding a generated stylesheet in <head>. Keep
+      // those queued writes inside the measured performance checkpoint.
+      observer.observe(document.documentElement || root, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        characterData: true
+      });
       const check = () => {
         const now = nativeNow();
         if (now - lastMutation >= quietMs || now - started >= maxMs) {

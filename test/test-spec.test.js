@@ -424,4 +424,6 @@ test("performance workflows include queued observer work through a DOM-quiet che
   assert.match(sandbox, /const setupQuiet = waitForMutationQuiet\(target\)/);
   assert.match(sandbox, /const scrollQuiet = waitForMutationQuiet\(target\)/);
   assert.match(sandbox, /function waitForMutationQuiet\(root, quietMs = 50, maxMs = 1200\)/);
+  assert.match(sandbox, /observer\.observe\(document\.documentElement \|\| root/);
+  assert.match(sandbox, /characterData: true/);
 });
