@@ -4,6 +4,7 @@
   const nativeNow = performance.now.bind(performance);
   const nativeSetTimeout = setTimeout.bind(globalThis);
   const nativeClearTimeout = clearTimeout.bind(globalThis);
+  const NativeMessageChannel = MessageChannel;
   const NativeMutationObserver = MutationObserver;
   const nativeFocus = HTMLElement.prototype.focus;
   const nativeBlur = HTMLElement.prototype.blur;
@@ -994,8 +995,20 @@
 
   async function waitForTaskTurns(count) {
     for (let index = 0; index < count; index += 1) {
-      await new Promise(resolve => nativeSetTimeout(resolve, 0));
+      await new Promise(resolve => {
+        const channel = new NativeMessageChannel();
+        channel.port1.onmessage = () => {
+          channel.port1.close();
+          channel.port2.close();
+          resolve();
+        };
+        channel.port2.postMessage(null);
+      });
     }
+    // Preserve one real timer checkpoint so zero-delay work scheduled by the
+    // candidate can run, without charging the candidate for dozens of timer
+    // turns that hidden extension documents may clamp to a full frame each.
+    await new Promise(resolve => nativeSetTimeout(resolve, 0));
   }
 
   function waitForMutationQuiet(root, quietMs = 50, maxMs = 1200) {
