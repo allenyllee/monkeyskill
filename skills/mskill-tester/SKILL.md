@@ -155,6 +155,7 @@ Each blocker has `id`, `target`, `event`, `registration`, `effect`, and optional
 - `computed-style`: fields `target`, allowlisted `property`, optional `pseudo` (`::selection`, `::before`, `::after`), `operator` (`eq`, `neq`, `contains`), `value`.
 - `computed-style` cannot assert `pointerEvents`; pointer reachability is an outcome and must use `hit-test` on the intended target so removal, relocation, stacking, and non-hit-testable overlay repairs remain valid.
 - `selection-collapsed`: field `expected`.
+- `selection-write-count`: fields `step`, `operator` (`eq` or `lte`), and integer `value` from 0 through 20. Use only with `drag-select-text` to bound observable Selection API rewrites after a gesture; count both the trusted initial selection and page/Skill clear-and-restore calls.
 - `step-duration`: fields `step`, `operator` (`lt` or `lte`), and integer `value` in milliseconds from 50 through 4000. Use only with an explicitly required responsiveness criterion and a `startup-stress`, `mutation-burst`, or `scroll-stress` step; keep thresholds generous enough to avoid treating ordinary runner variance as a product failure.
 - `value`: fields `target`, `operator` (`eq`, `neq`, `contains`), `value`.
 - `attribute`: fields `target`, `name`, `operator` (`exists`, `absent`, `eq`), optional `value`.

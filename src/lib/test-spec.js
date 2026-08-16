@@ -39,7 +39,7 @@ const ALLOWED_ACTIONS = new Set([
 const ALLOWED_ASSERTIONS = new Set([
   "active-element", "attribute", "attribute-refers-to", "blocker-call-count", "bounding-rect", "computed-style", "contrast-ratio",
   "dom-present", "event-default-prevented", "hit-test", "node-count", "property", "relative-position",
-  "scroll-offset", "selection-collapsed", "step-duration", "text-content", "value", "visible"
+  "scroll-offset", "selection-collapsed", "selection-write-count", "step-duration", "text-content", "value", "visible"
 ]);
 export const FAILURE_CATEGORIES = Object.freeze([
   "accessibility-state", "attribute-state", "blocker-state", "computed-style", "dom-state", "event-state",
@@ -453,6 +453,16 @@ function validateAssertion(source, nodeIds, blockerMetadata, steps) {
     assertOnlyKeys(source, ["type", "expected"], "selection assertion");
     if (typeof source.expected !== "boolean") throw new Error("Selection assertion is invalid.");
     return { ...common, expected: source.expected };
+  }
+  if (source.type === "selection-write-count") {
+    assertOnlyKeys(source, ["type", "step", "operator", "value"], "selection write assertion");
+    if (!Number.isInteger(source.step) || source.step < 0 || source.step >= stepCount
+      || steps[source.step]?.action !== "drag-select-text"
+      || !["eq", "lte"].includes(source.operator)
+      || !Number.isInteger(source.value) || source.value < 0 || source.value > 20) {
+      throw new Error("Selection write assertion is invalid.");
+    }
+    return { ...common, step: source.step, operator: source.operator, value: source.value };
   }
   if (source.type === "step-duration") {
     assertOnlyKeys(source, ["type", "step", "operator", "value"], "step-duration assertion");

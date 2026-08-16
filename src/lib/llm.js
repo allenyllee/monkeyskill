@@ -118,7 +118,7 @@ export function buildRepairMessage(failures) {
   const allowedAssertions = new Set([
     "active-element", "attribute", "attribute-refers-to", "blocker-call-count", "bounding-rect", "computed-style",
     "contrast-ratio", "dom-present", "event-default-prevented", "hit-test", "node-count", "property",
-    "relative-position", "scroll-offset", "selection-collapsed", "step-duration", "text-content", "value", "visible"
+    "relative-position", "scroll-offset", "selection-collapsed", "selection-write-count", "step-duration", "text-content", "value", "visible"
   ]);
   const safeComputedProperties = new Set(["backgroundColor", "color", "pointerEvents", "userSelect", "visibility"]);
   const diagnostics = [];

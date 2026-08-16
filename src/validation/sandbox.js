@@ -9,8 +9,21 @@
   const nativeBlur = HTMLElement.prototype.blur;
   const nativeInputValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
   const nativeTextareaValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value");
+  const nativeSelectionRemoveAllRanges = Selection.prototype.removeAllRanges;
+  const nativeSelectionAddRange = Selection.prototype.addRange;
   const releaseClearEvents = new Set(["mouseup", "pointerup", "keyup", "touchend", "contextmenu"]);
   let trackedActiveElement = null;
+  let activeSelectionWriteCounter = null;
+
+  Selection.prototype.removeAllRanges = function trackedRemoveAllRanges(...args) {
+    if (activeSelectionWriteCounter) activeSelectionWriteCounter.count += 1;
+    return nativeSelectionRemoveAllRanges.apply(this, args);
+  };
+
+  Selection.prototype.addRange = function trackedAddRange(...args) {
+    if (activeSelectionWriteCounter) activeSelectionWriteCounter.count += 1;
+    return nativeSelectionAddRange.apply(this, args);
+  };
 
   // Chrome may throttle or suspend animation frames in the hidden offscreen
   // validation document. Model a browser frame with a trusted task checkpoint
@@ -107,6 +120,7 @@
       action: step.action,
       defaultPrevented: typeof stepResult?.defaultPrevented === "boolean" ? stepResult.defaultPrevented : null,
       durationMs: Number.isFinite(stepResult?.durationMs) ? Math.round(stepResult.durationMs) : null,
+      selectionWrites: Number.isInteger(stepResult?.selectionWrites) ? stepResult.selectionWrites : null,
       selectionCollapsed: Boolean(getSelection()?.isCollapsed),
       targetActive: Boolean(stepTarget && (document.activeElement === stepTarget || trackedActiveElement === stepTarget)),
       valueLength: stepTarget && "value" in stepTarget ? String(stepTarget.value).length : null,
@@ -411,6 +425,8 @@
   }
 
   async function dragSelectText(target) {
+    const selectionWrites = { count: 0 };
+    activeSelectionWriteCounter = selectionWrites;
     const down = { button: 0, buttons: 1, clientX: 10, clientY: 10 };
     const pointerDown = createEvent("pointerdown", down);
     target.dispatchEvent(pointerDown);
@@ -432,7 +448,8 @@
     target.dispatchEvent(createEvent("pointerup", { button: 0, buttons: 0 }));
     target.dispatchEvent(createEvent("mouseup", { button: 0, buttons: 0 }));
     await settle();
-    return { defaultPrevented: blocked };
+    activeSelectionWriteCounter = null;
+    return { defaultPrevented: blocked, selectionWrites: selectionWrites.count };
   }
 
   async function pasteText(target, value, state) {
@@ -634,6 +651,9 @@
     if (assertion.type === "step-duration") {
       return compareNumeric(state.stepResults[assertion.step]?.durationMs, assertion.operator, assertion.value, 0);
     }
+    if (assertion.type === "selection-write-count") {
+      return compareNumeric(state.stepResults[assertion.step]?.selectionWrites, assertion.operator, assertion.value, 0);
+    }
     if (assertion.type === "blocker-call-count") {
       return compare(state.blockerCalls.get(assertion.blocker) || 0, assertion.operator, assertion.value);
     }
@@ -710,7 +730,7 @@
     if (["contrast-ratio", "hit-test", "visible"].includes(type)) return "visibility-state";
     if (type === "property") return "property-state";
     if (type === "attribute-refers-to") return "accessibility-state";
-    if (type === "selection-collapsed") return "selection-state";
+    if (["selection-collapsed", "selection-write-count"].includes(type)) return "selection-state";
     if (type === "value") return "value-state";
     if (type === "text-content") return "value-state";
     if (type === "attribute") return "attribute-state";
@@ -727,6 +747,9 @@
       actual = state.stepResults[assertion.step]?.durationMs;
     } else if (assertion.type === "selection-collapsed") {
       actual = Boolean(getSelection()?.isCollapsed);
+    } else if (assertion.type === "selection-write-count") {
+      property = "selectionWrites";
+      actual = state.stepResults[assertion.step]?.selectionWrites;
     } else if (assertion.type === "blocker-call-count") {
       actual = state.blockerCalls.get(assertion.blocker) || 0;
     } else {

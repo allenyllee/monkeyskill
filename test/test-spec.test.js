@@ -427,6 +427,19 @@ test("TestSpec models bounded pre-existing large-page startup responsiveness", (
   assert.throws(() => validateTestSpec(misplaced, skill, criteria), /Startup stress must be the first/);
 });
 
+test("TestSpec can bound selection API rewrites during a drag", () => {
+  const spec = JSON.parse(fixtureText);
+  const behavior = spec.tests.find(candidate => candidate.kind === "behavior");
+  const step = behavior.steps.length;
+  behavior.steps.push({ action: "drag-select-text", target: "target" });
+  behavior.assertions.push({ type: "selection-write-count", step, operator: "lte", value: 5 });
+  assert.doesNotThrow(() => validateTestSpec(spec, skill, criteria));
+
+  const wrongStep = structuredClone(spec);
+  wrongStep.tests.find(candidate => candidate.kind === "behavior").assertions.at(-1).step = 0;
+  assert.throws(() => validateTestSpec(wrongStep, skill, criteria), /Selection write assertion is invalid/);
+});
+
 test("Runner creates fixtures and existing blockers before installing candidates", async () => {
   const sandbox = await readFile(new URL("../src/validation/sandbox.js", import.meta.url), "utf8");
   const executeStart = sandbox.indexOf("async function executeTest(test, artifact)");
