@@ -263,6 +263,7 @@ test("selection fixtures model primary mousedown and high-specificity transparen
 
   const visibility = parsed.tests.find(candidate => candidate.criterion === "selection-visibility");
   assert.equal(visibility.fixture.rules[0].specificity, "id-ancestor");
+  assert.doesNotThrow(() => validateTestSpec(parsed, skill, criteria));
 
   const duplicatedImportant = JSON.parse(fixtureText);
   const invalidRule = duplicatedImportant.tests.find(candidate => candidate.criterion === "selection-visibility");

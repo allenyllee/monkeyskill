@@ -221,7 +221,7 @@ function validateFixture(source) {
     assertRecord(rule, "fixture rule");
     assertOnlyKeys(rule, ["target", "pseudo", "styles", "specificity"], "fixture rule");
     if (!ids.has(rule.target) || rule.pseudo !== "::selection") throw new Error("Fixture rule target or pseudo-element is invalid.");
-    if (rule.specificity != null && rule.specificity !== "id-ancestor") {
+    if (rule.specificity != null && !["normal", "id-ancestor"].includes(rule.specificity)) {
       throw new Error("Fixture rule specificity is invalid.");
     }
     return {
