@@ -397,12 +397,12 @@ test("TestSpec models bounded large-page scroll responsiveness", () => {
   const spec = JSON.parse(fixtureText);
   const behavior = spec.tests.find(candidate => candidate.kind === "behavior");
   const step = behavior.steps.length;
-  behavior.steps.push({ action: "scroll-stress", target: "target", count: 300, iterations: 10 });
+  behavior.steps.push({ action: "scroll-stress", target: "target", count: 1200, iterations: 10 });
   behavior.assertions.push({ type: "step-duration", step, operator: "lte", value: 1000 });
   assert.doesNotThrow(() => validateTestSpec(spec, skill, criteria));
 
   const invalidCount = structuredClone(spec);
-  invalidCount.tests.find(candidate => candidate.kind === "behavior").steps[step].count = 501;
+  invalidCount.tests.find(candidate => candidate.kind === "behavior").steps[step].count = 2001;
   assert.throws(() => validateTestSpec(invalidCount, skill, criteria), /Scroll stress is invalid/);
 
   const invalidIterations = structuredClone(spec);

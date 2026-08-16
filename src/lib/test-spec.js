@@ -314,7 +314,7 @@ function validateStep(source, nodeIds, blockerIds) {
   if (source.action === "scroll-stress") {
     assertOnlyKeys(source, ["action", "target", "count", "iterations"], "scroll-stress step");
     if (!nodeIds.has(source.target)
-      || !Number.isInteger(source.count) || source.count < 100 || source.count > 500
+      || !Number.isInteger(source.count) || source.count < 100 || source.count > 2000
       || !Number.isInteger(source.iterations) || source.iterations < 2 || source.iterations > 20) {
       throw new Error("Scroll stress is invalid.");
     }
