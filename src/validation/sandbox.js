@@ -185,9 +185,11 @@
   function createFixture(fixture, state) {
     const root = document.querySelector("#fixture");
     root.replaceChildren();
+    for (const style of document.querySelectorAll("style[data-monkeyskill-fixture-style]")) style.remove();
     for (const node of fixture.nodes) createNode(node, state, root);
     for (const rule of fixture.rules) {
       const style = document.createElement("style");
+      style.dataset.monkeyskillFixtureStyle = "";
       const declarations = Object.entries(rule.styles)
         .map(([property, value]) => `${toCssProperty(property)}:${value}!important`)
         .join(";");
@@ -218,12 +220,10 @@
     for (const [property, value] of Object.entries(node.styles)) element.style[property] = value;
     if (node.rect) {
       const { x, y, width, height } = node.rect;
-      element.style.setProperty("position", "absolute", "important");
-      element.style.setProperty("left", `${x}px`, "important");
-      element.style.setProperty("top", `${y}px`, "important");
-      element.style.setProperty("width", `${width}px`, "important");
-      element.style.setProperty("height", `${height}px`, "important");
-      element.style.setProperty("box-sizing", "border-box", "important");
+      const style = document.createElement("style");
+      style.dataset.monkeyskillFixtureStyle = "";
+      style.textContent = `#${CSS.escape(node.id)}{position:absolute!important;left:${x}px!important;top:${y}px!important;width:${width}px!important;height:${height}px!important;box-sizing:border-box!important}`;
+      document.head.append(style);
     }
     const parentNode = node.parent ? state.nodes.get(node.parent) : root;
     if (!parentNode) throw new Error("Fixture parent missing.");

@@ -79,6 +79,7 @@ test("pointer overlay fixture has stable author-styled geometry without loading 
   const overlay = pointerTest.fixture.nodes.find(node => node.id === "overlay");
   assert.deepEqual(overlay.attributes, { class: "blocking-overlay" });
   assert.deepEqual(overlay.styles, {});
+  assert.deepEqual(overlay.rect, { x: 8, y: 8, width: 240, height: 120 });
   assert.deepEqual(pointerTest.fixture.rules[0], {
     target: "overlay",
     pseudo: null,
@@ -294,6 +295,8 @@ test("fixture author styles can position an overlay without exposing inline styl
   assert.doesNotThrow(() => validateTestSpec(spec, skill, criteria));
   const sandbox = await readFile(new URL("../src/validation/sandbox.js", import.meta.url), "utf8");
   assert.match(sandbox, /`\$\{target\}\$\{rule\.pseudo \|\| ""\}`/);
+  assert.match(sandbox, /style\.dataset\.monkeyskillFixtureStyle = ""/);
+  assert.doesNotMatch(sandbox, /element\.style\.setProperty\("position", "absolute", "important"\)/);
 });
 
 test("preserve-controls fixture models a real click after page selection", () => {

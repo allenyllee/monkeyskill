@@ -82,8 +82,8 @@
       "fixture": {
         "nodes": [
           { "id": "wrap", "tag": "div", "parent": null, "text": "", "attributes": {}, "styles": { "position": "relative", "width": "240px", "height": "120px" } },
-          { "id": "target", "tag": "canvas", "parent": "wrap", "text": "", "attributes": {}, "styles": { "width": "240px", "height": "120px" } },
-          { "id": "overlay", "tag": "div", "parent": "wrap", "text": "", "attributes": { "class": "blocking-overlay" }, "styles": {} }
+          { "id": "target", "tag": "canvas", "parent": "wrap", "text": "", "attributes": {}, "styles": { "width": "240px", "height": "120px" }, "rect": { "x": 8, "y": 8, "width": 240, "height": 120 } },
+          { "id": "overlay", "tag": "div", "parent": "wrap", "text": "", "attributes": { "class": "blocking-overlay" }, "styles": {}, "rect": { "x": 8, "y": 8, "width": 240, "height": 120 } }
         ],
         "rules": [{ "target": "overlay", "pseudo": null, "styles": { "position": "absolute", "inset": "0" } }]
       },
