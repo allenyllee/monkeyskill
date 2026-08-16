@@ -135,6 +135,11 @@
     const container = document.createElement("div");
     container.setAttribute(`data-monkeyskill-${prefix}-stress`, "");
     container.style.cssText = "position:relative;max-height:180px;overflow:auto";
+    appendLargePageRows(container, count, prefix);
+    return container;
+  }
+
+  function appendLargePageRows(container, count, prefix) {
     const fragment = document.createDocumentFragment();
     for (let index = 0; index < count; index += 1) {
       const row = document.createElement("div");
@@ -153,7 +158,6 @@
       fragment.append(row);
     }
     container.append(fragment);
-    return container;
   }
 
   function createFixture(fixture, state) {
@@ -310,8 +314,12 @@
       if (!target) throw new Error("Scroll-stress target missing.");
       const started = nativeNow();
       const setupQuiet = waitForMutationQuiet(target);
-      const container = createLargePageFixture(step.count, "scroll");
+      // Keep the row insertion live, matching large application/demo updates.
+      // Appending a prebuilt wrapper would collapse 1200 sibling additions into
+      // one observed subtree and miss candidates that rescan each added root.
+      const container = createLargePageFixture(0, "scroll");
       target.append(container);
+      appendLargePageRows(container, step.count, "scroll");
       void container.offsetHeight;
       await setupQuiet;
       const scrollQuiet = waitForMutationQuiet(target);

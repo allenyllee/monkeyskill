@@ -457,6 +457,7 @@ test("performance workflows include queued observer work through a DOM-quiet che
   assert.match(sandbox, /void container\.offsetHeight/);
   assert.match(sandbox, /container\.scrollTop = index % 2 \? 0 : container\.scrollHeight/);
   assert.match(sandbox, /position:relative;max-height:180px;overflow:auto/);
+  assert.match(sandbox, /target\.append\(container\);\s*appendLargePageRows\(container, step\.count, "scroll"\)/);
   assert.match(sandbox, /function waitForMutationQuiet\(root, quietMs = 50, maxMs = 1200\)/);
   assert.match(sandbox, /observer\.observe\(document\.documentElement \|\| root/);
   assert.match(sandbox, /characterData: true/);
