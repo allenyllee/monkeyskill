@@ -123,6 +123,10 @@
     const quiet = waitForMutationQuiet(target);
     const started = nativeNow();
     installArtifact(artifact);
+    // Force injected CSS and startup mutations through a real style/layout
+    // checkpoint. DOM quiet alone misses expensive universal selectors until
+    // the browser is asked to lay out the large page.
+    void container.offsetHeight;
     await quiet;
     return { durationMs: nativeNow() - started };
   }
@@ -130,11 +134,15 @@
   function createLargePageFixture(count, prefix) {
     const container = document.createElement("div");
     container.setAttribute(`data-monkeyskill-${prefix}-stress`, "");
+    container.style.cssText = "position:relative;max-height:180px;overflow:auto";
     const fragment = document.createDocumentFragment();
     for (let index = 0; index < count; index += 1) {
       const row = document.createElement("div");
       const input = document.createElement("input");
       const overlay = document.createElement("div");
+      row.style.cssText = "position:relative;height:24px";
+      input.style.cssText = "position:absolute;inset:2px 8px;min-height:20px";
+      overlay.style.cssText = "position:absolute;inset:2px 8px;min-height:20px";
       const y = index * 4;
       const rect = Object.freeze({ x: 0, y, left: 0, top: y, right: 120, bottom: y + 3, width: 120, height: 3 });
       input.id = `${prefix}-target-${index}`;
@@ -304,11 +312,14 @@
       const setupQuiet = waitForMutationQuiet(target);
       const container = createLargePageFixture(step.count, "scroll");
       target.append(container);
+      void container.offsetHeight;
       await setupQuiet;
       const scrollQuiet = waitForMutationQuiet(target);
       for (let index = 0; index < step.iterations; index += 1) {
+        container.scrollTop = index % 2 ? 0 : container.scrollHeight;
         window.dispatchEvent(new Event("scroll"));
         await new Promise(resolve => requestAnimationFrame(resolve));
+        void container.offsetHeight;
       }
       await scrollQuiet;
       const durationMs = nativeNow() - started;
