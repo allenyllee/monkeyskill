@@ -64,6 +64,7 @@ The Extension runs this review before contacting Builder. A `reject` or `unverif
       "kind": "behavior",
       "criterion": "criterion-id-from-skill",
       "mode": "mode-from-manifest",
+      "installTiming": "after-fixture",
       "fixture": {
         "nodes": [
           {
@@ -99,6 +100,8 @@ Policy test:
 ```
 
 ## Allowed fixture values
+
+- `installTiming` is optional and defaults to `after-fixture`. Use `before-fixture` only when the human specification explicitly requires behavior for DOM parsed or inserted after a `document_start` installation. The trusted Runner installs the candidate first, assembles the complete fixture while detached, and publishes it as one DOM mutation. This is the appropriate way to expose implementations that skip a large newly parsed subtree. It cannot be combined with `startup-stress`, which controls installation timing itself.
 
 - Tags: `a`, `article`, `aside`, `button`, `canvas`, `details`, `dialog`, `div`, `footer`, `form`, headings, `header`, `img`, `input`, `label`, list tags, `main`, `nav`, `option`, `p`, `section`, `select`, `span`, `summary`, table tags, `textarea`, `ul`, and `video`. Never use custom, scriptable, or embed tags.
 - Attributes: `alt`, `checked`, `class`, `contenteditable`, `disabled`, `href`, `max`, `maxlength`, `min`, `minlength`, `multiple`, `name`, `placeholder`, `readonly`, `required`, `role`, `selected`, `tabindex`, `title`, `type`, `unselectable`, `value`, and lowercase hyphenated `aria-*` or `data-*`. An `href` must start with `#`.

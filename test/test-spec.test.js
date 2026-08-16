@@ -478,14 +478,46 @@ test("Runner creates fixtures and existing blockers before installing candidates
   const executeStart = sandbox.indexOf("async function executeTest(test, artifact)");
   const fixtureIndex = sandbox.indexOf("createFixture(test.fixture, state);", executeStart);
   const blockerIndex = sandbox.indexOf("installBlockers(test.blockers, state);", executeStart);
-  const installIndex = sandbox.indexOf("installArtifact(artifact);", executeStart);
+  const installIndex = sandbox.indexOf("installArtifact(artifact);", blockerIndex);
   assert.ok(executeStart >= 0 && fixtureIndex > executeStart);
   assert.ok(blockerIndex > fixtureIndex);
   assert.ok(installIndex > blockerIndex);
   assert.match(sandbox, /executeStartupStress\(test\.steps\[0\], state, artifact\)/);
+  assert.match(sandbox, /const installBeforeFixture = test\.installTiming === "before-fixture";[\s\S]*if \(installBeforeFixture\)[\s\S]*installArtifact\(artifact\)[\s\S]*createFixture\(test\.fixture, state\)/);
+  assert.match(sandbox, /const fragment = document\.createDocumentFragment\(\);[\s\S]*createNode\(node, state, fragment\)[\s\S]*root\.replaceChildren\(fragment\)/);
   assert.match(sandbox, /const quiet = waitForMutationQuiet\(target\);[\s\S]*installArtifact\(artifact\);[\s\S]*await quiet[\s\S]*waitForTaskTurns\(32\)/);
   assert.match(sandbox, /const NativeMessageChannel = MessageChannel/);
   assert.match(sandbox, /async function waitForTaskTurns\(count\)[\s\S]*new NativeMessageChannel\(\)[\s\S]*channel\.port2\.postMessage\(null\)[\s\S]*nativeSetTimeout\(resolve, 0\)/);
+});
+
+test("TestSpec can install a candidate before one large parsed subtree arrives", () => {
+  const spec = JSON.parse(fixtureText);
+  const behavior = spec.tests.find(candidate => candidate.kind === "behavior");
+  behavior.installTiming = "before-fixture";
+  behavior.fixture.nodes = [
+    { id: "page-root", tag: "div", parent: null, text: "", attributes: {}, styles: {} },
+    { id: "target", tag: "img", parent: "page-root", text: "", attributes: { alt: "target" }, styles: {}, rect: { x: 20, y: 20, width: 160, height: 80 } },
+    { id: "overlay", tag: "div", parent: "page-root", text: "", attributes: { class: "cover" }, styles: {}, rect: { x: 20, y: 20, width: 160, height: 80 } },
+    ...Array.from({ length: 27 }, (_, index) => ({
+      id: `filler-${index}`,
+      tag: "span",
+      parent: "page-root",
+      text: `filler ${index}`,
+      attributes: {},
+      styles: {}
+    }))
+  ];
+  behavior.fixture.rules = [{ target: "overlay", pseudo: null, styles: { position: "absolute", zIndex: "10" } }];
+  const normalized = validateTestSpec(spec, skill, criteria);
+  assert.equal(normalized.tests.find(candidate => candidate.id === behavior.id).fixture.nodes.length, 30);
+
+  const invalid = structuredClone(spec);
+  invalid.tests.find(candidate => candidate.kind === "behavior").installTiming = "during-fixture";
+  assert.throws(() => validateTestSpec(invalid, skill, criteria), /install timing is invalid/);
+
+  const startup = structuredClone(spec);
+  startup.tests.find(candidate => candidate.kind === "behavior").steps.unshift({ action: "startup-stress", target: "target", count: 1200 });
+  assert.throws(() => validateTestSpec(startup, skill, criteria), /cannot use before-fixture timing/);
 });
 
 test("trusted scroll frames do not depend on foreground animation rendering", async () => {

@@ -80,6 +80,11 @@
       crossWorldRollbacks: [],
       stepResults: []
     };
+    const installBeforeFixture = test.installTiming === "before-fixture";
+    if (installBeforeFixture) {
+      installArtifact(artifact);
+      await settle();
+    }
     createFixture(test.fixture, state);
     installBlockers(test.blockers, state);
     await settle();
@@ -91,7 +96,7 @@
       state.stepResults.push(stepResult);
       trace.push(traceStep(0, test.steps[0], stepResult, state));
       firstRuntimeStep = 1;
-    } else {
+    } else if (!installBeforeFixture) {
       installArtifact(artifact);
       await settle();
     }
@@ -187,7 +192,12 @@
     const root = document.querySelector("#fixture");
     root.replaceChildren();
     for (const style of document.querySelectorAll("style[data-monkeyskill-fixture-style]")) style.remove();
-    for (const node of fixture.nodes) createNode(node, state, root);
+    // Assemble the fixture while detached, then publish it as one DOM
+    // mutation. Besides matching HTML parser behavior more closely, this lets
+    // before-fixture tests expose candidates that silently skip a large root
+    // inserted after a document_start installation.
+    const fragment = document.createDocumentFragment();
+    for (const node of fixture.nodes) createNode(node, state, fragment);
     for (const rule of fixture.rules) {
       const style = document.createElement("style");
       style.dataset.monkeyskillFixtureStyle = "";
@@ -205,6 +215,7 @@
       style.textContent = `${selector}{${declarations}}`;
       document.head.append(style);
     }
+    root.replaceChildren(fragment);
   }
 
   function createNode(node, state, root) {

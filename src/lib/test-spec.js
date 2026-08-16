@@ -165,14 +165,21 @@ function validatePolicyTest(source, skill) {
 }
 
 function validateBehaviorTest(source, skill) {
-  assertOnlyKeys(source, ["id", "kind", "criterion", "mode", "fixture", "blockers", "steps", "assertions"], "behavior test");
+  assertOnlyKeys(source, ["id", "kind", "criterion", "mode", "installTiming", "fixture", "blockers", "steps", "assertions"], "behavior test");
   if (source.kind !== "behavior" || !skill.modes.includes(source.mode)) throw new Error("Behavior test uses an invalid kind or mode.");
+  const installTiming = source.installTiming || "after-fixture";
+  if (!["after-fixture", "before-fixture"].includes(installTiming)) {
+    throw new Error("Behavior test install timing is invalid.");
+  }
   const fixture = validateFixture(source.fixture);
   const nodeIds = new Set(fixture.nodes.map(node => node.id));
   const blockers = boundedArray(source.blockers, "blockers").map(blocker => validateBlocker(blocker, nodeIds));
   const blockerIds = new Set(blockers.map(blocker => blocker.id));
   if (blockerIds.size !== blockers.length) throw new Error("Blocker IDs must be unique.");
   const steps = boundedArray(source.steps, "steps").map(step => validateStep(step, nodeIds, blockerIds));
+  if (installTiming === "before-fixture" && steps.some(step => step.action === "startup-stress")) {
+    throw new Error("Startup stress controls candidate installation and cannot use before-fixture timing.");
+  }
   validateWorkflowCoverage(blockers, steps);
   const blockerMetadata = new Map(blockers.map(blocker => [blocker.id, {
     effect: blocker.effect,
@@ -190,7 +197,9 @@ function validateBehaviorTest(source, skill) {
     validateAssertion(assertion, nodeIds, blockerMetadata, steps)
   ));
   validateCriterionWorkflow(source.criterion, steps, assertions);
-  return { id: source.id, kind: "behavior", criterion: source.criterion, mode: source.mode, fixture, blockers, steps, assertions };
+  const normalized = { id: source.id, kind: "behavior", criterion: source.criterion, mode: source.mode, fixture, blockers, steps, assertions };
+  if (source.installTiming != null) normalized.installTiming = installTiming;
+  return normalized;
 }
 
 function validateCriterionWorkflow(criterion, steps, assertions) {
