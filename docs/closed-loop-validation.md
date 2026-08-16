@@ -369,11 +369,11 @@ Use a unique sentinel such as `CLOSED_LOOP_PASTE`.
 7. **Method 17 — dynamic DOM responsiveness**
    - Run the responsiveness check once in Standard and once in Absolute after reloading between modes.
    - Each run must append 200 ID-bearing rows in 20 batches and report completion within 1000 ms.
-   - Wait at least two seconds afterward and confirm the page remains responsive and the cursor is not persistently busy. A generated implementation that loops on its own style mutations or repeatedly scans the full document fails even if the other functional methods pass.
+   - Wait at least two seconds afterward and confirm the page remains responsive and the cursor is not persistently busy. The trusted duration includes queued observer work until a DOM-quiet checkpoint. A generated implementation that loops on its own style mutations or repeatedly scans the full document fails even if the append task itself returned quickly.
 8. **Method 18 — large-page scroll responsiveness**
    - Run the check once in Standard and once in Absolute after reloading between modes.
    - Each run must create 300 control/overlay pairs and complete 10 scroll frames within 1000 ms.
-   - Confirm with a real wheel gesture that scrolling begins immediately. A candidate that performs a whole-document query or an overlay-target geometry cross-product on each scroll frame fails even if it does not cancel the `wheel` event.
+   - Confirm with a real wheel gesture that scrolling begins immediately. Setup and scroll-triggered observer work must both reach a DOM-quiet checkpoint inside the limit. A candidate that performs a whole-document query or an overlay-target geometry cross-product on each scroll frame fails even if it does not cancel the `wheel` event.
 
 The input value is authoritative for Method 14. A page status message can report that a rollback
 assignment was attempted even when the Skill correctly blocked its effect.

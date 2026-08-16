@@ -416,3 +416,12 @@ test("trusted scroll frames do not depend on foreground animation rendering", as
   assert.match(sandbox, /cancelAnimationFrame = handle => nativeClearTimeout/);
   assert.doesNotMatch(sandbox, /nativeRequestAnimationFrame/);
 });
+
+test("performance workflows include queued observer work through a DOM-quiet checkpoint", async () => {
+  const sandbox = await readFile(new URL("../src/validation/sandbox.js", import.meta.url), "utf8");
+  assert.match(sandbox, /const NativeMutationObserver = MutationObserver/);
+  assert.match(sandbox, /const quiet = waitForMutationQuiet\(target\)/);
+  assert.match(sandbox, /const setupQuiet = waitForMutationQuiet\(target\)/);
+  assert.match(sandbox, /const scrollQuiet = waitForMutationQuiet\(target\)/);
+  assert.match(sandbox, /function waitForMutationQuiet\(root, quietMs = 50, maxMs = 1200\)/);
+});

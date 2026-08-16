@@ -4,6 +4,7 @@
   const nativeNow = performance.now.bind(performance);
   const nativeSetTimeout = setTimeout.bind(globalThis);
   const nativeClearTimeout = clearTimeout.bind(globalThis);
+  const NativeMutationObserver = MutationObserver;
   const nativeFocus = HTMLElement.prototype.focus;
   const nativeBlur = HTMLElement.prototype.blur;
   const nativeInputValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
@@ -227,6 +228,7 @@
     if (step.action === "mutation-burst") {
       const target = state.nodes.get(step.target);
       if (!target) throw new Error("Mutation-burst target missing.");
+      const quiet = waitForMutationQuiet(target);
       const container = document.createElement("div");
       container.setAttribute("data-monkeyskill-mutation-burst", "");
       target.append(container);
@@ -244,7 +246,7 @@
         container.append(fragment);
         await Promise.resolve();
       }
-      await new Promise(resolve => nativeSetTimeout(resolve, 0));
+      await quiet;
       const durationMs = nativeNow() - started;
       container.remove();
       await Promise.resolve();
@@ -253,6 +255,8 @@
     if (step.action === "scroll-stress") {
       const target = state.nodes.get(step.target);
       if (!target) throw new Error("Scroll-stress target missing.");
+      const started = nativeNow();
+      const setupQuiet = waitForMutationQuiet(target);
       const container = document.createElement("div");
       container.setAttribute("data-monkeyskill-scroll-stress", "");
       const fragment = document.createDocumentFragment();
@@ -271,12 +275,13 @@
       }
       container.append(fragment);
       target.append(container);
-      await settle();
-      const started = nativeNow();
+      await setupQuiet;
+      const scrollQuiet = waitForMutationQuiet(target);
       for (let index = 0; index < step.iterations; index += 1) {
         window.dispatchEvent(new Event("scroll"));
         await new Promise(resolve => requestAnimationFrame(resolve));
       }
+      await scrollQuiet;
       const durationMs = nativeNow() - started;
       container.remove();
       await Promise.resolve();
@@ -897,6 +902,27 @@
 
   function settle() {
     return new Promise(resolve => setTimeout(resolve, 50));
+  }
+
+  function waitForMutationQuiet(root, quietMs = 50, maxMs = 1200) {
+    return new Promise(resolve => {
+      const started = nativeNow();
+      let lastMutation = started;
+      const observer = new NativeMutationObserver(() => {
+        lastMutation = nativeNow();
+      });
+      observer.observe(root, { subtree: true, childList: true, attributes: true });
+      const check = () => {
+        const now = nativeNow();
+        if (now - lastMutation >= quietMs || now - started >= maxMs) {
+          observer.disconnect();
+          resolve();
+          return;
+        }
+        nativeSetTimeout(check, 10);
+      };
+      nativeSetTimeout(check, 10);
+    });
   }
 
   function toCssProperty(property) {
