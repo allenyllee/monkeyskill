@@ -515,10 +515,21 @@ of historical regressions. It cannot reference a criterion absent from `SKILL.md
 Run it after the Public TestSpec and before the Independent TestSpec. Its shared Runner executes
 inside a browser-backed validation tab rather than the offscreen host so layout and hit-testing
 capabilities have a rendered viewport. Treat both `fail` and
-`inconclusive` as blocking. On repair, disclose only `criterion`, `mode`, and the fixed failure
+`inconclusive` as blocking. An inconclusive capability result is infrastructure evidence, not a
+candidate failure: stop the generation with an infrastructure error and never spend Builder
+repair attempts on it. On repair, disclose only `criterion`, `mode`, and the fixed failure
 `category`; never disclose the developer test ID, fixture, expected value, trace, prose, or any
 untrusted failure message. Rerun Public, Developer Conformance, and Independent suites from the
 beginning after every candidate change.
+
+For a trusted local diagnosis, `node scripts/diagnose-overlay.mjs <builder-session-id> [port]`
+serves the final Builder candidate and a hand-authored generic geometry reference on separate
+HTTP pages. Run both in a clean foreground browser. This intentionally bypasses the normal
+diagnostic redaction, but it neither approves nor installs a build. Use it to distinguish three
+states: candidate failure, Runner capability failure, and a contradictory requirement. In the
+August 2026 regression investigation, the Extension Runner's hit-test self-check reported a
+hidden `0 x 0` viewport and returned `null` from `elementFromPoint`; the final candidate passed
+three of four equivalent foreground HTTP cases and the generic reference passed all four.
 
 For Restore Right Click, the fixed suite currently remembers the recurring text-selection,
 copy-shortcut, selection-dismissal, and image/background/input/canvas overlay regressions. This

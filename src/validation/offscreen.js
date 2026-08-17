@@ -158,6 +158,11 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
         // execution is not evidence of success and therefore blocks approval.
         const blockedDeveloperTests = developerResponse.results.filter(result => !result.ok);
         if (blockedDeveloperTests.length > 0) {
+          const inconclusiveDeveloperTests = blockedDeveloperTests.filter(result => result.inconclusive);
+          if (inconclusiveDeveloperTests.length > 0) {
+            const capabilities = [...new Set(inconclusiveDeveloperTests.map(result => result.capability).filter(Boolean))];
+            throw new Error(`Developer Conformance infrastructure unavailable: ${capabilities.join(", ") || "unknown capability"}. Inconclusive checks are not Builder failures and cannot trigger repair.`);
+          }
           const retryDecision = evaluateGenerationRetry(retryState, {
             attempt,
             hash: candidateHash,
@@ -336,10 +341,11 @@ function isLocalAgentEndpoint(endpoint) {
 }
 
 async function runValidatedTestSpec({ type, testSpec, criteria, skill, build }) {
-  const normalized = type === "run-developer-conformance"
+  const developerDiagnostics = type === "run-developer-conformance";
+  const normalized = developerDiagnostics
     ? validateDeveloperConformance(testSpec, skill, criteria)
     : validateTestSpec(testSpec, skill, criteria);
-  return runTestSpec({ testSpec: normalized, build });
+  return runTestSpec({ testSpec: normalized, build, publicDiagnostics: developerDiagnostics });
 }
 
 async function runTestSpec({ testSpec, build, publicDiagnostics = false }) {
@@ -352,15 +358,18 @@ async function runTestSpec({ testSpec, build, publicDiagnostics = false }) {
     }
     const unsupportedCapability = requiredCapabilities(test).find(capability => !capabilities[capability]?.ok);
     if (unsupportedCapability) {
-      results.push({
+      const unsupported = {
         criterion: test.criterion,
+        mode: test.mode,
         ok: false,
         inconclusive: true,
         category: unsupportedCapability === "focus"
           ? "focus-state"
           : unsupportedCapability === "hit-test" ? "visibility-state" : "dom-state",
         capability: unsupportedCapability
-      });
+      };
+      if (publicDiagnostics) unsupported.testId = test.id;
+      results.push(unsupported);
       continue;
     }
     const artifact = build.modes[test.mode];

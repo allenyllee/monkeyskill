@@ -814,11 +814,27 @@
       overlay.style.zIndex = "2";
       document.querySelector("#fixture").replaceChildren(target, overlay);
       await settle();
-      const before = document.elementFromPoint(60, 50) === overlay;
+      const beforeHit = document.elementFromPoint(60, 50);
+      const before = beforeHit === overlay;
       overlay.style.pointerEvents = "none";
       await settle();
-      const after = document.elementFromPoint(60, 50) === target;
-      return { ok: before && after, capability, nativeSupported: before && after };
+      const afterHit = document.elementFromPoint(60, 50);
+      const after = afterHit === target;
+      return {
+        ok: before && after,
+        capability,
+        nativeSupported: before && after,
+        diagnostic: {
+          before,
+          after,
+          beforeHit: beforeHit?.localName || null,
+          afterHit: afterHit?.localName || null,
+          innerWidth,
+          innerHeight,
+          visibilityState: document.visibilityState,
+          targetRect: [...Object.values(target.getBoundingClientRect())].slice(0, 8)
+        }
+      };
     }
     if (capability === "drag-select-text") {
       const target = document.createElement("p");
