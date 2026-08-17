@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createRetryState,
-  evaluateGenerationRetry
+  evaluateGenerationRetry,
+  MAX_GENERATION_ATTEMPTS
 } from "../src/lib/generation-policy.js";
 
 const focusFailure = [{ criterion: "preserve-controls", category: "focus-state" }];
@@ -11,47 +12,37 @@ function decide(state, attempt, hash, failures = focusFailure) {
   return evaluateGenerationRetry(state, { attempt, hash, failures });
 }
 
-test("changed builds get five attempts even when diagnostics repeat", () => {
+test("changed builds get the full attempt budget even when diagnostics repeat", () => {
   let state = createRetryState();
-  let decision = decide(state, 1, "hash-1");
-  assert.equal(decision.retry, true);
-  assert.equal(decision.limit, 5);
-  state = decision.state;
+  let decision;
+  for (let attempt = 1; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
+    decision = decide(state, attempt, `hash-${attempt}`);
+    assert.equal(decision.retry, true);
+    assert.equal(decision.limit, MAX_GENERATION_ATTEMPTS);
+    state = decision.state;
+  }
 
-  decision = decide(state, 2, "hash-2");
-  assert.equal(decision.retry, true);
-  state = decision.state;
-
-  decision = decide(state, 3, "hash-3");
-  assert.equal(decision.retry, true);
-  state = decision.state;
-
-  decision = decide(state, 4, "hash-4");
-  assert.equal(decision.retry, true);
-  state = decision.state;
-
-  decision = decide(state, 5, "hash-5");
+  decision = decide(state, MAX_GENERATION_ATTEMPTS, `hash-${MAX_GENERATION_ATTEMPTS}`);
   assert.equal(decision.retry, false);
   assert.equal(decision.reason, "attempt-limit");
 });
 
-test("changing diagnostics can extend generation to five attempts", () => {
+test("changing diagnostics can use the full attempt budget", () => {
   let state = createRetryState();
-  let decision = decide(state, 1, "hash-1");
-  state = decision.state;
-
-  decision = decide(state, 2, "hash-2", [{ criterion: "paste", category: "event-state" }]);
-  assert.equal(decision.retry, true);
-  assert.equal(decision.limit, 5);
-  state = decision.state;
-
-  decision = decide(state, 3, "hash-3", [{ criterion: "paste", category: "focus-state" }]);
-  assert.equal(decision.retry, true);
-  state = decision.state;
-  decision = decide(state, 4, "hash-4", [{ criterion: "context-menu", category: "event-state" }]);
-  assert.equal(decision.retry, true);
-  state = decision.state;
-  decision = decide(state, 5, "hash-5", [{ criterion: "selection-visibility", category: "computed-style" }]);
+  let decision;
+  const diagnostics = [
+    [{ criterion: "paste", category: "event-state" }],
+    [{ criterion: "paste", category: "focus-state" }],
+    [{ criterion: "context-menu", category: "event-state" }],
+    [{ criterion: "selection-visibility", category: "computed-style" }]
+  ];
+  for (let attempt = 1; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
+    decision = decide(state, attempt, `hash-${attempt}`, diagnostics[(attempt - 1) % diagnostics.length]);
+    assert.equal(decision.retry, true);
+    assert.equal(decision.limit, MAX_GENERATION_ATTEMPTS);
+    state = decision.state;
+  }
+  decision = decide(state, MAX_GENERATION_ATTEMPTS, `hash-${MAX_GENERATION_ATTEMPTS}`, diagnostics[0]);
   assert.equal(decision.retry, false);
   assert.equal(decision.reason, "attempt-limit");
 });
@@ -66,18 +57,16 @@ test("a narrowed diagnostic gets the full extended repair budget", () => {
 
   decision = decide(state, 2, "hash-2", [{ criterion: "paste", category: "value-state" }]);
   assert.equal(decision.retry, true);
-  assert.equal(decision.limit, 5);
+  assert.equal(decision.limit, MAX_GENERATION_ATTEMPTS);
   state = decision.state;
 
-  decision = decide(state, 3, "hash-3", [{ criterion: "paste", category: "value-state" }]);
-  assert.equal(decision.retry, true);
-  state = decision.state;
+  for (let attempt = 3; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
+    decision = decide(state, attempt, `hash-${attempt}`, [{ criterion: "paste", category: "value-state" }]);
+    assert.equal(decision.retry, true);
+    state = decision.state;
+  }
 
-  decision = decide(state, 4, "hash-4", [{ criterion: "paste", category: "value-state" }]);
-  assert.equal(decision.retry, true);
-  state = decision.state;
-
-  decision = decide(state, 5, "hash-5", [{ criterion: "paste", category: "value-state" }]);
+  decision = decide(state, MAX_GENERATION_ATTEMPTS, `hash-${MAX_GENERATION_ATTEMPTS}`, [{ criterion: "paste", category: "value-state" }]);
   assert.equal(decision.retry, false);
   assert.equal(decision.reason, "attempt-limit");
 });

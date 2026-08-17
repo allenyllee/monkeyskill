@@ -1,4 +1,4 @@
-export const MAX_GENERATION_ATTEMPTS = 5;
+export const MAX_GENERATION_ATTEMPTS = 8;
 
 export function createRetryState() {
   return {
