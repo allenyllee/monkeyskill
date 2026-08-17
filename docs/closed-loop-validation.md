@@ -512,7 +512,9 @@ When a Store package includes `conformance.json`, validate it with
 `validateDeveloperConformance`. It shares the normal TestSpec engine but may cover a focused set
 of historical regressions. It cannot reference a criterion absent from `SKILL.md`.
 
-Run it after the Public TestSpec and before the Independent TestSpec. Treat both `fail` and
+Run it after the Public TestSpec and before the Independent TestSpec. Its shared Runner executes
+inside a browser-backed validation tab rather than the offscreen host so layout and hit-testing
+capabilities have a rendered viewport. Treat both `fail` and
 `inconclusive` as blocking. On repair, disclose only `criterion`, `mode`, and the fixed failure
 `category`; never disclose the developer test ID, fixture, expected value, trace, prose, or any
 untrusted failure message. Rerun Public, Developer Conformance, and Independent suites from the

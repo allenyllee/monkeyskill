@@ -35,6 +35,7 @@ const GENERATION_STALE_MS = 20 * 60 * 1000;
 let initializationPromise;
 let registrationQueue = Promise.resolve();
 let offscreenCreationPromise;
+let validationBrowserCreationPromise;
 
 chrome.runtime.onInstalled.addListener(() => {
   initializationPromise = initializeStore();
@@ -54,7 +55,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.target === "validation-offscreen") return false;
+  if (["validation-offscreen", "validation-browser"].includes(message?.target)) return false;
   if (message?.target === "generation-background") {
     void ready()
       .then(() => message.type === "generation-progress"
@@ -218,7 +219,7 @@ async function handleMessage(message, sender) {
         await ensureUserScriptsAvailable();
         const { request, criteria } = await prepareGenerationRequest(packageDefinition);
         packageDefinition.criteria = criteria;
-        await ensureValidationDocument();
+        await Promise.all([ensureValidationDocument(), ensureValidationBrowserDocument()]);
         const accepted = await chrome.runtime.sendMessage({
           target: "validation-offscreen",
           type: "generate-package",
@@ -603,8 +604,9 @@ async function validatePackagedBehavior(packageDefinition) {
   }
   const developerTestSpec = packageDefinition.build.developerConformance;
   if (developerTestSpec) {
+    await ensureValidationBrowserDocument();
     const developerResponse = await chrome.runtime.sendMessage({
-      target: "validation-offscreen",
+      target: "validation-browser",
       type: "run-developer-conformance",
       testSpec: developerTestSpec,
       criteria,
@@ -641,6 +643,28 @@ async function ensureValidationDocument() {
     offscreenCreationPromise = null;
   });
   await offscreenCreationPromise;
+}
+
+async function ensureValidationBrowserDocument() {
+  const url = chrome.runtime.getURL("src/validation/offscreen.html?backend=browser");
+  if (chrome.runtime.getContexts) {
+    const contexts = await chrome.runtime.getContexts({
+      contextTypes: ["TAB"],
+      documentUrls: [url]
+    });
+    if (contexts.length > 0) return;
+  }
+  validationBrowserCreationPromise ??= chrome.tabs.create({ url, active: false }).then(async tab => {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const current = await chrome.tabs.get(tab.id).catch(() => null);
+      if (current?.status === "complete") return;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    throw new Error("Browser-backed validation document did not finish loading.");
+  }).finally(() => {
+    validationBrowserCreationPromise = null;
+  });
+  await validationBrowserCreationPromise;
 }
 
 async function setGenerationJob(skillId, job) {

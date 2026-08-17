@@ -62,6 +62,11 @@ test("Developer Conformance is isolated, strict, and uses constrained repair dia
   assert.doesNotMatch(offscreen, /buildPublicTestSpecRepairMessage\(blockedDeveloperTests\)/);
   assert.match(background, /Developer Conformance cannot be failed or inconclusive at approval/);
   assert.match(background, /run-developer-conformance/);
+  assert.match(background, /ensureValidationBrowserDocument/);
+  assert.match(background, /target: "validation-browser"/);
+  assert.match(background, /chrome\.tabs\.create\(\{ url, active: false \}\)/);
+  assert.match(offscreen, /VALIDATION_BACKEND/);
+  assert.match(offscreen, /target: "validation-browser"/);
 });
 
 test("options can add and remove forked Store origins after permission approval", async () => {

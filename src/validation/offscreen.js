@@ -16,10 +16,16 @@ import {
 } from "../lib/generation-policy.js";
 
 const MAX_TESTER_ATTEMPTS = 2;
+const VALIDATION_BACKEND = new URL(location.href).searchParams.get("backend") || "offscreen";
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.target !== "validation-offscreen"
-    || !["run-behavior-tests", "run-developer-conformance"].includes(message.type)) return;
+  const acceptsOffscreen = VALIDATION_BACKEND === "offscreen"
+    && message?.target === "validation-offscreen"
+    && message.type === "run-behavior-tests";
+  const acceptsBrowser = VALIDATION_BACKEND === "browser"
+    && message?.target === "validation-browser"
+    && message.type === "run-developer-conformance";
+  if (!acceptsOffscreen && !acceptsBrowser) return;
   void runValidatedTestSpec(message).then(sendResponse, error => sendResponse({
     ok: false,
     error: error.message
@@ -28,7 +34,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.target !== "validation-offscreen" || message.type !== "generate-package") return;
+  if (VALIDATION_BACKEND !== "offscreen"
+    || message?.target !== "validation-offscreen" || message.type !== "generate-package") return;
   void runGenerationJob(message);
   sendResponse({ ok: true });
   return false;
@@ -136,7 +143,17 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
       }
       let developerResponse = null;
       if (developerConformance) {
-        developerResponse = await runTestSpec({ testSpec: developerConformance, build });
+        developerResponse = await chrome.runtime.sendMessage({
+          target: "validation-browser",
+          type: "run-developer-conformance",
+          testSpec: developerConformance,
+          criteria: packageDefinition.criteria,
+          skill: packageDefinition.skill,
+          build
+        });
+        if (!developerResponse?.results) {
+          throw new Error(developerResponse?.error || "Browser-backed Developer Conformance runner did not respond.");
+        }
         // Conformance is a fixed regression gate. Unsupported/inconclusive
         // execution is not evidence of success and therefore blocks approval.
         const blockedDeveloperTests = developerResponse.results.filter(result => !result.ok);
