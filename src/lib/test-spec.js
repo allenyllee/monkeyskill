@@ -120,6 +120,18 @@ export function parseGeneratedTestSpec(text, skill, criteria) {
 }
 
 export function validateTestSpec(spec, skill, criteria) {
+  return validateTestSpecWithCoverage(spec, skill, criteria, { requireCompleteCoverage: true });
+}
+
+// Developer Conformance is package-authored regression evidence. It uses the
+// exact same constrained TestSpec language as independent tests, but it is
+// intentionally allowed to cover only the historical regressions that the
+// package needs to remember. It may block a build; it never grants safety.
+export function validateDeveloperConformance(spec, skill, criteria) {
+  return validateTestSpecWithCoverage(spec, skill, criteria, { requireCompleteCoverage: false });
+}
+
+function validateTestSpecWithCoverage(spec, skill, criteria, { requireCompleteCoverage }) {
   if (spec?.schemaVersion !== 1 || !Array.isArray(spec.tests)) {
     throw new Error("Tester LLM returned an unsupported TestSpec schema.");
   }
@@ -143,7 +155,9 @@ export function validateTestSpec(spec, skill, criteria) {
   }
 
   const missing = [...criterionSet].filter(criterion => !covered.has(criterion));
-  if (missing.length > 0) throw new Error(`TestSpec does not cover SKILL.md criteria: ${missing.join(", ")}`);
+  if (requireCompleteCoverage && missing.length > 0) {
+    throw new Error(`TestSpec does not cover SKILL.md criteria: ${missing.join(", ")}`);
+  }
   return { schemaVersion: 1, tests: normalized };
 }
 

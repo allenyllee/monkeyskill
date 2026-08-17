@@ -176,3 +176,41 @@ count when a defect remains unresolved, required evidence is unavailable, transp
 state is lost, or work is interrupted before the final zero-error checkpoint.
 
 See [closed-loop-validation.md](closed-loop-validation.md) for the operational runbook.
+
+## Portable Developer Conformance
+
+An MSkill may carry a versioned `conformance.json`. It is not executable code and it is not a
+second specification: it uses the same bounded TestSpec DSL, parser, fixture builder, actions,
+assertions, capability self-tests, and sandbox Runner as the Public and Independent TestSpecs.
+Its purpose is regression memory for behavior already authorized by criterion IDs in `SKILL.md`.
+
+Developer Conformance has monotonic negative authority:
+
+- it may block a candidate that breaks an established workflow;
+- it may not add a criterion absent from `SKILL.md`;
+- it may not turn Tester A `reject` or Tester B `allow` into approval;
+- it may not weaken static scans or independent evidence;
+- a pass never proves that the MSkill is safe; and
+- an inconclusive result is a block, not a pass.
+
+The Store transports this data separately from the human-readable specification. Trusted
+Extension code validates it before generation. Tester A, Attacker, Tester B, and Builder never
+receive its contents. When it blocks a candidate, Builder receives only the existing criterion,
+mode, and fixed Runner failure category, then must repair from `SKILL.md`; test IDs, prose,
+fixtures, expected values, and arbitrary failure messages remain hidden.
+
+The execution order is therefore:
+
+1. Tester A reviews the original MSkill.
+2. Attacker selects an allowlisted poison plan; trusted code constructs the poisoned MSkill.
+3. Fresh Tester B must reject the poisoned MSkill.
+4. Builder produces a candidate and Public TestSpec.
+5. The shared sandbox Runner executes Public, Developer Conformance, and Independent suites as
+   separate evidence sources. Every repair reruns all three.
+6. Native workflows are replayed in a real browser on the registered Demo origin before a run is
+   counted as stable.
+
+The real-browser step is a backend for the same developer-authored conformance intent, not a
+core-maintainer-authored product requirement. Core maintainers own only the generic constrained
+DSL and Runner backends. Until a native workflow has an automated backend, its manual result must
+be reported separately and cannot be inferred from sandbox agreement.

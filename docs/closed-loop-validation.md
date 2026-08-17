@@ -505,3 +505,22 @@ every stochastic generation will succeed. Claim repeated-install stability only 
 fresh cycles—each with new Builder and Tester workers—complete without manual recovery and pass
 the minimum real-browser checks. Until then, say that the flow is working and substantially more
 stable, while naming any remaining inconclusive checks.
+
+## 11. Developer Conformance gate
+
+When a Store package includes `conformance.json`, validate it with
+`validateDeveloperConformance`. It shares the normal TestSpec engine but may cover a focused set
+of historical regressions. It cannot reference a criterion absent from `SKILL.md`.
+
+Run it after the Public TestSpec and before the Independent TestSpec. Treat both `fail` and
+`inconclusive` as blocking. On repair, disclose only `criterion`, `mode`, and the fixed failure
+`category`; never disclose the developer test ID, fixture, expected value, trace, prose, or any
+untrusted failure message. Rerun Public, Developer Conformance, and Independent suites from the
+beginning after every candidate change.
+
+For Restore Right Click, the fixed suite currently remembers the recurring text-selection,
+copy-shortcut, selection-dismissal, and image/background/input/canvas overlay regressions. This
+prevents a generated TestSpec from silently forgetting a previously repaired Demo family.
+Sandbox success is still not a substitute for the real Demo: native context menus, clipboard
+defaults, Save Image As, genuine mouse drag selection, and world/timing boundaries require the
+real-browser evidence layer.

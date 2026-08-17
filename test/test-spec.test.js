@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { extractCriterionIds } from "../src/lib/llm.js";
-import { parseGeneratedTestSpec, parseTesterSecurityReview, validateTestSpec } from "../src/lib/test-spec.js";
+import { parseGeneratedTestSpec, parseTesterSecurityReview, validateDeveloperConformance, validateTestSpec } from "../src/lib/test-spec.js";
 
 const fixtureText = await readFile(new URL("../scripts/fixtures/runner.testspec.json", import.meta.url), "utf8");
 const fixtureCriteria = [...new Set(JSON.parse(fixtureText).tests.map(test => test.criterion))];
@@ -129,6 +129,19 @@ test("TestSpec rejects missing criteria and undeclared behavior", () => {
   const second = JSON.parse(fixtureText);
   second.tests[0].mode = "secret-mode";
   assert.throws(() => validateTestSpec(second, skill, criteria), /invalid kind or mode/);
+});
+
+test("Developer Conformance shares the DSL but may cover only fixed regressions", () => {
+  const spec = JSON.parse(fixtureText);
+  spec.tests = spec.tests.filter(candidate => ["text-selection", "keyboard-copy"].includes(candidate.criterion));
+  const normalized = validateDeveloperConformance(spec, skill, criteria);
+  assert.equal(normalized.tests.length, 3);
+
+  spec.tests[0].criterion = "developer-invented-requirement";
+  assert.throws(
+    () => validateDeveloperConformance(spec, skill, criteria),
+    /criterion absent from SKILL\.md/
+  );
 });
 
 test("TestSpec rejects network-bearing styles and external links", () => {

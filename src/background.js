@@ -25,6 +25,7 @@ import {
   scanGeneratedBuild
 } from "./lib/llm.js";
 import { buildAttackerMessages } from "./lib/security-regression.js";
+import { validateDeveloperConformance } from "./lib/test-spec.js";
 
 const PENDING_BUILDS_KEY = "pendingSkillBuilds";
 const GENERATION_JOBS_KEY = "generationJobs";
@@ -365,8 +366,8 @@ function validateStorePackage(value, sender) {
     throw new Error("MSkill Store did not provide a package.");
   }
   const keys = Object.keys(value);
-  if (keys.some(key => !["skill", "instructions"].includes(key))) {
-    throw new Error("MSkill Store packages may contain only a manifest and SKILL.md text.");
+  if (keys.some(key => !["skill", "instructions", "developerConformance"].includes(key))) {
+    throw new Error("MSkill Store packages may contain only a manifest, SKILL.md text, and constrained Developer Conformance.");
   }
   const skill = validateSkillManifest(value.skill);
   if (skill.entrypoint !== "SKILL.md") throw new Error("Store MSkills must use SKILL.md as the entrypoint.");
@@ -376,6 +377,7 @@ function validateStorePackage(value, sender) {
   return {
     skill,
     specification: { instructions: value.instructions },
+    developerConformance: value.developerConformance ?? null,
     source: {
       type: "store",
       storeUrl: sender.url,
@@ -428,6 +430,13 @@ async function prepareGenerationRequest(packageDefinition) {
   });
   const criteria = extractCriterionIds(skillInstructions);
   if (criteria.length === 0) throw new Error("MSkill must declare human-readable criterion IDs in SKILL.md.");
+  if (packageDefinition.developerConformance) {
+    packageDefinition.developerConformance = validateDeveloperConformance(
+      packageDefinition.developerConformance,
+      packageDefinition.skill,
+      criteria
+    );
+  }
 
   return {
     request: {
@@ -485,6 +494,13 @@ async function handleGenerationCompletion(message, sender) {
     const publicInconclusiveCount = publicTestResults.filter(result => result.inconclusive).length;
     generatedPackage.build.validation.push(`public-testspec:${publicPassedCount}/${publicTestResults.length}`);
     if (publicInconclusiveCount > 0) generatedPackage.build.validation.push(`public-testspec-inconclusive:${publicInconclusiveCount}`);
+    const developerResults = generatedPackage.build.developerConformanceResults ?? [];
+    const developerPassedCount = developerResults.filter(result => result.ok).length;
+    const developerBlockedCount = developerResults.filter(result => !result.ok).length;
+    if (developerBlockedCount > 0) throw new Error("Developer Conformance cannot be failed or inconclusive at approval.");
+    if (generatedPackage.build.developerConformance) {
+      generatedPackage.build.validation.push(`developer-conformance:${developerPassedCount}/${developerResults.length}`);
+    }
     const independentTestResults = generatedPackage.build.independentTestResults ?? generatedPackage.build.behaviorTests ?? [];
     const inconclusiveCount = independentTestResults.filter(result => result.inconclusive).length;
     const passedCount = independentTestResults.filter(result => result.ok).length;
@@ -585,6 +601,24 @@ async function validatePackagedBehavior(packageDefinition) {
     const detail = failed.map(result => `${result.criterion}:${result.category}`).join("; ");
     throw new Error(`Generated build failed behavior tests (${failed.length}/${response.results.length}): ${detail}`);
   }
+  const developerTestSpec = packageDefinition.build.developerConformance;
+  if (developerTestSpec) {
+    const developerResponse = await chrome.runtime.sendMessage({
+      target: "validation-offscreen",
+      type: "run-developer-conformance",
+      testSpec: developerTestSpec,
+      criteria,
+      skill: packageDefinition.skill,
+      build: packageDefinition.build
+    });
+    if (!developerResponse?.results) throw new Error(developerResponse?.error || "Developer Conformance runner did not respond.");
+    const blocked = developerResponse.results.filter(result => !result.ok);
+    if (blocked.length > 0) {
+      const detail = blocked.map(result => `${result.criterion}:${result.category}`).join("; ");
+      throw new Error(`Generated build failed Developer Conformance (${blocked.length}/${developerResponse.results.length}): ${detail}`);
+    }
+    packageDefinition.build.developerConformanceResults = developerResponse.results;
+  }
   return response.results;
 }
 
@@ -646,6 +680,15 @@ function publicGeneratedDraft(packageDefinition) {
       : 0,
     independentTestInconclusiveCount: Array.isArray(build.independentTestResults ?? build.behaviorTests)
       ? (build.independentTestResults ?? build.behaviorTests).filter(result => result.inconclusive).length
+      : 0,
+    developerConformanceCount: Array.isArray(build.developerConformance?.tests)
+      ? build.developerConformance.tests.length
+      : 0,
+    developerConformancePassCount: Array.isArray(build.developerConformanceResults)
+      ? build.developerConformanceResults.filter(result => result.ok).length
+      : 0,
+    developerConformanceInconclusiveCount: Array.isArray(build.developerConformanceResults)
+      ? build.developerConformanceResults.filter(result => result.inconclusive).length
       : 0,
     modes: Object.fromEntries(Object.entries(build.modes).map(([mode, artifact]) => [mode, {
       js: artifact.js,

@@ -7,7 +7,7 @@ import {
   parseGeneratedPublicTestSpec,
   scanGeneratedBuild
 } from "../lib/llm.js";
-import { parseTesterSecurityReview, validateTestSpec } from "../lib/test-spec.js";
+import { parseTesterSecurityReview, validateDeveloperConformance, validateTestSpec } from "../lib/test-spec.js";
 import { composeTrustedPoisonedSkill, evaluateDifferentialSecurityGate, parseAttackerPlan } from "../lib/security-regression.js";
 import {
   MAX_GENERATION_ATTEMPTS,
@@ -18,7 +18,8 @@ import {
 const MAX_TESTER_ATTEMPTS = 2;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.target !== "validation-offscreen" || message.type !== "run-behavior-tests") return;
+  if (message?.target !== "validation-offscreen"
+    || !["run-behavior-tests", "run-developer-conformance"].includes(message.type)) return;
   void runValidatedTestSpec(message).then(sendResponse, error => sendResponse({
     ok: false,
     error: error.message
@@ -62,6 +63,7 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
     if (!gate.proceed) throw new Error(formatDifferentialGateFailure(gate, securityReview, adversarialReview));
     await reportGenerationProgress(jobId, skillId, "requesting-initial-build-and-tests");
     const independentTestSpec = securityReview.testSpec;
+    const developerConformance = packageDefinition.developerConformance;
     const initialBuilderText = await requestAssistantText(request, request.builderBody, builderSessionId);
     let assistantText = initialBuilderText;
     let retryState = createRetryState();
@@ -132,6 +134,34 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
         }, builderSessionId);
         continue;
       }
+      let developerResponse = null;
+      if (developerConformance) {
+        developerResponse = await runTestSpec({ testSpec: developerConformance, build });
+        // Conformance is a fixed regression gate. Unsupported/inconclusive
+        // execution is not evidence of success and therefore blocks approval.
+        const blockedDeveloperTests = developerResponse.results.filter(result => !result.ok);
+        if (blockedDeveloperTests.length > 0) {
+          const retryDecision = evaluateGenerationRetry(retryState, {
+            attempt,
+            hash: candidateHash,
+            failures: blockedDeveloperTests
+          });
+          retryState = retryDecision.state;
+          if (!retryDecision.retry) {
+            const detail = blockedDeveloperTests.map(formatLocalFailure).join("; ");
+            throw new Error(`Developer Conformance blocked ${blockedDeveloperTests.length}/${developerResponse.results.length} checks after ${attempt} attempts (${retryDecision.reason}): ${detail}`);
+          }
+          builderMessages.push(
+            { role: "assistant", content: assistantText },
+            { role: "user", content: buildRepairMessage(blockedDeveloperTests) }
+          );
+          assistantText = await requestAssistantText(request, {
+            ...request.builderBody,
+            messages: builderMessages
+          }, builderSessionId);
+          continue;
+        }
+      }
       const behaviorResponse = await runTestSpec({ testSpec: independentTestSpec, build });
       const failed = behaviorResponse.results.filter(result => !result.ok && !result.inconclusive);
       if (failed.length === 0) {
@@ -142,6 +172,8 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
             ...build,
             publicTestSpec,
             publicTestResults: publicTestResponse.results,
+            developerConformance,
+            developerConformanceResults: developerResponse?.results ?? [],
             independentTestSpec,
             independentTestResults: behaviorResponse.results,
             runnerCapabilities: behaviorResponse.capabilities
@@ -286,8 +318,10 @@ function isLocalAgentEndpoint(endpoint) {
   }
 }
 
-async function runValidatedTestSpec({ testSpec, criteria, skill, build }) {
-  const normalized = validateTestSpec(testSpec, skill, criteria);
+async function runValidatedTestSpec({ type, testSpec, criteria, skill, build }) {
+  const normalized = type === "run-developer-conformance"
+    ? validateDeveloperConformance(testSpec, skill, criteria)
+    : validateTestSpec(testSpec, skill, criteria);
   return runTestSpec({ testSpec: normalized, build });
 }
 

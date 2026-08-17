@@ -54,16 +54,17 @@ Developer mode is needed only because this repository is loaded unpacked. A Chro
 ## Store installation flow
 
 1. The Store reads its generated `catalog.json`.
-2. After the user chooses an MSkill, the Store sends only its `skill.json` and `SKILL.md` to the Extension.
-3. The Extension validates the manifest and specification; the Store cannot submit a Build, JavaScript, HTML, or TestSpec.
+2. After the user chooses an MSkill, the Store sends its `skill.json`, `SKILL.md`, and optional constrained `conformance.json` to the Extension.
+3. The Extension validates the manifest, specification, and Developer Conformance; the Store cannot submit a Build, JavaScript, HTML, or arbitrary executable tests.
 4. Tester A treats the original MSkill as untrusted input and returns `allow`, `reject`, or `unverifiable`. A rejection or unverifiable result stops the flow immediately.
 5. After `allow`, the isolated Attacker selects only allowlisted canary dimensions. Trusted Extension code—not the Attacker—renders and inserts a known-reject poisoned variant.
 6. Fresh Tester B reviews only that poisoned MSkill as an ordinary untrusted request. Only the differential result `Tester A = allow` and `Tester B = reject` may proceed.
 7. Builder receives only the original, unpoisoned MSkill and creates a candidate Build plus public Builder TestSpec. Tester A's Independent TestSpec remains hidden from Builder.
 8. The shared Runner executes the Builder TestSpec and returns detailed structured failures for repair.
-9. The same Runner executes the Independent TestSpec, enforces capability-denial policy tests against the candidate, and returns only constrained diagnostics for repair.
-10. After validation passes, the user reviews the summary, hash, validation results, and generated code.
-11. The user approves installation or discards the candidate. Independent behavior tests run again immediately before installation.
+9. The same Runner executes fixed Developer Conformance. It can only block, treats inconclusive as failure, and exposes only criterion/category/mode diagnostics.
+10. The same Runner executes the Independent TestSpec, enforces capability-denial policy tests against the candidate, and returns only constrained diagnostics for repair.
+11. After validation passes, the user reviews the summary, hash, and separate Public, Developer Conformance, and Independent results.
+12. The user approves installation or discards the candidate. Developer and Independent behavior tests run again immediately before installation.
 
 ## Architecture
 

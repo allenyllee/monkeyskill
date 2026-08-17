@@ -40,17 +40,28 @@ test("closed-loop mode switching is restricted to the local development Store", 
   assert.match(background, /config\.globalMode = message\.mode/);
 });
 
-test("background accepts only manifest and SKILL.md from an approved Store", async () => {
+test("background accepts only manifest, SKILL.md, and constrained conformance from an approved Store", async () => {
   const background = await readFile(new URL("src/background.js", root), "utf8");
   assert.match(background, /assertStoreSender\(sender\)/);
   assert.match(background, /case "generate-store-skill"/);
-  assert.match(background, /\["skill", "instructions"\]/);
-  assert.match(background, /packages may contain only a manifest and SKILL\.md text/);
+  assert.match(background, /\["skill", "instructions", "developerConformance"\]/);
+  assert.match(background, /packages may contain only a manifest, SKILL\.md text, and constrained Developer Conformance/);
+  assert.match(background, /validateDeveloperConformance/);
   assert.match(background, /https:\/\/allenyllee\.github\.io/);
   assert.match(background, /const TRUSTED_STORES_KEY = "trustedStoreUrls"/);
   assert.match(background, /syncTrustedStoreBridges/);
   assert.match(background, /chrome\.permissions\.contains/);
   assert.doesNotMatch(background, /loadBundledPackage/);
+});
+
+test("Developer Conformance is isolated, strict, and uses constrained repair diagnostics", async () => {
+  const offscreen = await readFile(new URL("src/validation/offscreen.js", root), "utf8");
+  const background = await readFile(new URL("src/background.js", root), "utf8");
+  assert.match(offscreen, /const blockedDeveloperTests = developerResponse\.results\.filter\(result => !result\.ok\)/);
+  assert.match(offscreen, /buildRepairMessage\(blockedDeveloperTests\)/);
+  assert.doesNotMatch(offscreen, /buildPublicTestSpecRepairMessage\(blockedDeveloperTests\)/);
+  assert.match(background, /Developer Conformance cannot be failed or inconclusive at approval/);
+  assert.match(background, /run-developer-conformance/);
 });
 
 test("options can add and remove forked Store origins after permission approval", async () => {
