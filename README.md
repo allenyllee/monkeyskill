@@ -126,6 +126,19 @@ npm run check
 For Store development, clone the Store repository beside this one, run `npm run serve`, and open `http://127.0.0.1:4174/`.
 Functional demos live with their MSkills in that Store repository and are linked from the corresponding catalog card.
 
+To replay fixed Developer Conformance in an isolated real Chromium viewport and compare a blocked
+baseline, both candidate modes, and a relaxed known-capable reference, keep the local agent broker
+available and run:
+
+```powershell
+npm run conformance:browser -- <builder-session-id>
+npm run conformance:browser -- <builder-session-id> --headed
+```
+
+The runner serves only localhost fixtures, blocks candidate traffic outside that origin, drives
+real pointer input through CDP, and removes its temporary browser profile afterward. It is a
+diagnostic/evidence backend; it does not approve or install a candidate.
+
 ## Local agent API
 
 Run an OpenAI-compatible local endpoint:

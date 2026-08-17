@@ -524,12 +524,27 @@ beginning after every candidate change.
 
 For a trusted local diagnosis, `node scripts/diagnose-overlay.mjs <builder-session-id> [port]`
 serves the final Builder candidate and a hand-authored generic geometry reference on separate
-HTTP pages. Run both in a clean foreground browser. This intentionally bypasses the normal
-diagnostic redaction, but it neither approves nor installs a build. Use it to distinguish three
-states: candidate failure, Runner capability failure, and a contradictory requirement. In the
-August 2026 regression investigation, the Extension Runner's hit-test self-check reported a
-hidden `0 x 0` viewport and returned `null` from `elementFromPoint`; the final candidate passed
-three of four equivalent foreground HTTP cases and the generic reference passed all four.
+HTTP pages. For a repeatable gate, run `npm run conformance:browser -- <builder-session-id>` or
+append `--headed` to show the isolated browser. That command starts a localhost fixture, launches
+an isolated Chromium profile through CDP, blocks candidate traffic outside the fixture, and runs:
+
+- blocked baseline, Standard candidate, Absolute candidate, and relaxed reference variants;
+- real CDP right-click, hit-test, drag-selection, dismissal, and re-selection workflows; and
+- the exact package `conformance.json` through the shared trusted sandbox in a real viewport.
+
+The command validates its own environment before interpreting candidate results: the baseline
+must remain blocked, the relaxed reference must pass, the viewport must be non-zero and visible,
+and every required shared-Runner capability must be supported. It intentionally retains richer
+trusted diagnostics, but it neither approves nor installs a build.
+
+In the August 2026 regression investigation, the Extension validation tab reported a hidden
+`0 x 0` viewport and returned `null` from `elementFromPoint`. The CDP browser instead provided a
+visible `1258 x 808` viewport. The same final candidate passed all seven fixed DSL checks and all
+four real overlay/context-menu cases there, while its Standard build still failed the real mouse
+drag because computed `user-select` remained `none`. The relaxed reference passed overlays 4/4,
+initial selection, dismissal, and a subsequent new selection together. Therefore the requirements
+were compatible; the remaining selection defect belonged to the candidate, while the earlier
+overlay repair loop was caused by Runner infrastructure and over-redacted diagnostics.
 
 For Restore Right Click, the fixed suite currently remembers the recurring text-selection,
 copy-shortcut, selection-dismissal, and image/background/input/canvas overlay regressions. This

@@ -214,3 +214,11 @@ The real-browser step is a backend for the same developer-authored conformance i
 core-maintainer-authored product requirement. Core maintainers own only the generic constrained
 DSL and Runner backends. Until a native workflow has an automated backend, its manual result must
 be reported separately and cannot be inferred from sandbox agreement.
+
+A real-browser backend must prove its own capability before judging a candidate. MonkeySkill's
+local CDP backend runs the same constrained Developer Conformance in an isolated Chromium profile
+with a visible, non-zero viewport, and separately uses real pointer input for native interaction
+boundaries. A synthetic DSL drag can validate deterministic event and Range state, but it cannot
+substitute for the CDP drag: if the two disagree, classify the result as a Runner-model gap or a
+candidate failure only after a blocked baseline and a known-capable relaxed reference establish
+that the browser fixture itself is valid.
