@@ -512,9 +512,11 @@ When a Store package includes `conformance.json`, validate it with
 `validateDeveloperConformance`. It shares the normal TestSpec engine but may cover a focused set
 of historical regressions. It cannot reference a criterion absent from `SKILL.md`.
 
-Run it after the Public TestSpec and before the Independent TestSpec. Its shared Runner executes
-inside a browser-backed validation tab rather than the offscreen host so layout and hit-testing
-capabilities have a rendered viewport. Treat both `fail` and
+Run it after the Public TestSpec and before the Independent TestSpec. For local generation, the
+Extension calls the authenticated `/v1/real-browser-conformance` endpoint, which serializes runs
+in isolated Chromium profiles with a rendered viewport. The same endpoint reruns the fixed suite
+immediately before installation. Non-local providers retain the browser-backed Extension tab.
+Treat both `fail` and
 `inconclusive` as blocking. An inconclusive capability result is infrastructure evidence, not a
 candidate failure: stop the generation with an infrastructure error and never spend Builder
 repair attempts on it. On repair, disclose only `criterion`, `mode`, and the fixed failure
@@ -535,7 +537,9 @@ an isolated Chromium profile through CDP, blocks candidate traffic outside the f
 The command validates its own environment before interpreting candidate results: the baseline
 must remain blocked, the relaxed reference must pass, the viewport must be non-zero and visible,
 and every required shared-Runner capability must be supported. It intentionally retains richer
-trusted diagnostics, but it neither approves nor installs a build.
+trusted diagnostics, but it neither approves nor installs a build. The automatic API path returns
+the full result only to trusted Extension orchestration; Builder still receives only the existing
+criterion, mode, and category repair tuple.
 
 In the August 2026 regression investigation, the Extension validation tab reported a hidden
 `0 x 0` viewport and returned `null` from `elementFromPoint`. The CDP browser instead provided a

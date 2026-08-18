@@ -222,3 +222,9 @@ boundaries. A synthetic DSL drag can validate deterministic event and Range stat
 substitute for the CDP drag: if the two disagree, classify the result as a Runner-model gap or a
 candidate failure only after a blocked baseline and a known-capable relaxed reference establish
 that the browser fixture itself is valid.
+
+In the local generation path, this backend is exposed only by the token-protected agent API and
+runs are serialized. Trusted orchestration invokes it after Public TestSpec success and again
+before installation. Its detailed fixture, assertions, and traces remain outside Builder context;
+only constrained criterion/mode/category diagnostics can trigger repair. This changes the
+execution environment without increasing Developer Conformance's authority.

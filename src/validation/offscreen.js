@@ -143,16 +143,18 @@ async function runGenerationJob({ jobId, skillId, packageDefinition, request }) 
       }
       let developerResponse = null;
       if (developerConformance) {
-        developerResponse = await chrome.runtime.sendMessage({
-          target: "validation-browser",
-          type: "run-developer-conformance",
-          testSpec: developerConformance,
-          criteria: packageDefinition.criteria,
-          skill: packageDefinition.skill,
-          build
-        });
+        developerResponse = isLocalAgentEndpoint(request.endpoint)
+          ? await runLocalRealBrowserConformance(request, developerConformance, build)
+          : await chrome.runtime.sendMessage({
+            target: "validation-browser",
+            type: "run-developer-conformance",
+            testSpec: developerConformance,
+            criteria: packageDefinition.criteria,
+            skill: packageDefinition.skill,
+            build
+          });
         if (!developerResponse?.results) {
-          throw new Error(developerResponse?.error || "Browser-backed Developer Conformance runner did not respond.");
+          throw new Error(developerResponse?.error || "Trusted real-browser Developer Conformance runner did not respond.");
         }
         // Conformance is a fixed regression gate. Unsupported/inconclusive
         // execution is not evidence of success and therefore blocks approval.
@@ -330,6 +332,23 @@ async function requestAssistantText(request, body, sessionId) {
     throw new Error(`LLM API request failed (${response.status}): ${detail}`);
   }
   return extractAssistantText(await response.json());
+}
+
+async function runLocalRealBrowserConformance(request, testSpec, build) {
+  const endpoint = new URL("/v1/real-browser-conformance", request.endpoint);
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "authorization": `Bearer ${request.apiKey}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ testSpec, build })
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || `Real-browser Developer Conformance returned HTTP ${response.status}.`);
+  }
+  return payload;
 }
 
 function isLocalAgentEndpoint(endpoint) {

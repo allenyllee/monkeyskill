@@ -136,8 +136,11 @@ npm run conformance:browser -- <builder-session-id> --headed
 ```
 
 The runner serves only localhost fixtures, blocks candidate traffic outside that origin, drives
-real pointer input through CDP, and removes its temporary browser profile afterward. It is a
-diagnostic/evidence backend; it does not approve or install a candidate.
+real pointer input through CDP, and removes its temporary browser profile afterward. With a local
+agent endpoint, generation and the pre-install recheck invoke this trusted backend automatically
+through the authenticated `/v1/real-browser-conformance` route. Only constrained
+criterion/mode/category failures return to Builder; the manual command retains richer diagnostics
+for maintainers. The runner supplies evidence but never bypasses the other approval gates.
 
 ## Local agent API
 

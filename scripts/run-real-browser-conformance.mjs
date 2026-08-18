@@ -4,23 +4,24 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { extractCriterionIds } from "../src/lib/llm.js";
 import { validateDeveloperConformance } from "../src/lib/test-spec.js";
 
 const args = process.argv.slice(2);
 const sessionId = args.find(value => !value.startsWith("--"));
 const headed = args.includes("--headed");
-const requestedBrowser = optionValue("--browser");
-const requestedPort = Number(optionValue("--port") || 0);
-const packageDir = path.resolve(optionValue("--package-dir") || "../monkeyskill-store/skills/restore-right-click");
-if (!sessionId) {
-  throw new Error("Usage: node scripts/run-real-browser-conformance.mjs <builder-session-id> [--headed] [--browser <path>] [--port <port>]");
-}
-if (requestedPort && (!Number.isInteger(requestedPort) || requestedPort < 1024 || requestedPort > 65535)) {
-  throw new Error("Invalid HTTP port.");
-}
+const requestedBrowser = optionValue(args, "--browser");
+const requestedPort = Number(optionValue(args, "--port") || 0);
+const packageDir = path.resolve(optionValue(args, "--package-dir") || "../monkeyskill-store/skills/restore-right-click");
 
 async function main() {
+  if (!sessionId) {
+    throw new Error("Usage: node scripts/run-real-browser-conformance.mjs <builder-session-id> [--headed] [--browser <path>] [--port <port>]");
+  }
+  if (requestedPort && (!Number.isInteger(requestedPort) || requestedPort < 1024 || requestedPort > 65535)) {
+    throw new Error("Invalid HTTP port.");
+  }
 const candidate = await readBuilderCandidate(sessionId);
 const candidateCode = candidate.modes?.absolute?.js;
 const candidateStandardCode = candidate.modes?.standard?.js;
@@ -153,7 +154,58 @@ try {
 }
 }
 
-function optionValue(name) {
+export async function runTrustedDeveloperConformance({ testSpec, build, browserPath, headed = false }) {
+  if (!testSpec || !Array.isArray(testSpec.tests)) throw new Error("Real-browser conformance requires a validated TestSpec.");
+  if (!build?.modes || typeof build.modes !== "object") throw new Error("Real-browser conformance requires candidate modes.");
+  const missingMode = testSpec.tests.find(test => !build.modes[test.mode]);
+  if (missingMode) throw new Error(`Real-browser conformance test ${missingMode.id || "(unknown)"} references missing mode ${missingMode.mode || "(unknown)"}.`);
+  const server = await startServer(0);
+  const profile = await mkdtemp(path.join(os.tmpdir(), "monkeyskill-real-browser-"));
+  const executable = findBrowserExecutable(browserPath);
+  let browserProcess;
+  try {
+    browserProcess = spawn(executable, [
+      `--user-data-dir=${profile}`,
+      "--remote-debugging-port=0",
+      "--remote-debugging-address=127.0.0.1",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-extensions",
+      "--disable-background-networking",
+      "--disable-component-update",
+      "--disable-sync",
+      "--metrics-recording-only",
+      "--password-store=basic",
+      "--host-resolver-rules=MAP * 0.0.0.0, EXCLUDE localhost, EXCLUDE 127.0.0.1",
+      "--window-size=1280,900",
+      ...(headed ? [] : ["--headless=new"]),
+      "about:blank"
+    ], { stdio: "ignore", windowsHide: !headed });
+    const debugPort = await waitForDevToolsPort(profile, browserProcess);
+    return await runDeveloperConformance({ debugPort, origin: server.origin, testSpec, build });
+  } finally {
+    await server.close();
+    await stopBrowserAndRemoveProfile(browserProcess, profile);
+  }
+}
+
+async function stopBrowserAndRemoveProfile(browserProcess, profile) {
+  if (browserProcess && browserProcess.exitCode == null) {
+    browserProcess.kill();
+    await Promise.race([
+      new Promise(resolve => browserProcess.once("exit", resolve)),
+      new Promise(resolve => setTimeout(resolve, 2000))
+    ]);
+  }
+  const resolvedProfile = path.resolve(profile);
+  const resolvedTemp = path.resolve(os.tmpdir());
+  if (!resolvedProfile.startsWith(`${resolvedTemp}${path.sep}`) || !path.basename(resolvedProfile).startsWith("monkeyskill-real-browser-")) {
+    throw new Error(`Refusing to remove unexpected profile path: ${resolvedProfile}`);
+  }
+  await rm(resolvedProfile, { recursive: true, force: true, maxRetries: 3 }).catch(() => undefined);
+}
+
+function optionValue(args, name) {
   const index = args.indexOf(name);
   return index >= 0 ? args[index + 1] : undefined;
 }
@@ -605,4 +657,6 @@ async function sha256(value) {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
-await main();
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
+  await main();
+}

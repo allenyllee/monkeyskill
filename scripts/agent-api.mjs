@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import http from "node:http";
+import { runTrustedDeveloperConformance } from "./run-real-browser-conformance.mjs";
 
 const MAX_REQUEST_BYTES = 1_000_000;
 export const DEFAULT_SUBAGENT_TIMEOUT_MS = 7_200_000;
@@ -10,6 +11,8 @@ export function createAgentApiServer(options = {}) {
   const mode = options.mode || "fixture";
   const upstreamFetch = options.fetch || globalThis.fetch;
   const broker = createSubagentBroker(options.agentTimeoutMs || DEFAULT_SUBAGENT_TIMEOUT_MS);
+  const realBrowserRunner = options.realBrowserRunner || runTrustedDeveloperConformance;
+  let realBrowserQueue = Promise.resolve();
 
   const server = http.createServer(async (request, response) => {
     setCorsHeaders(response);
@@ -66,6 +69,18 @@ export function createAgentApiServer(options = {}) {
           return;
         }
         sendJson(response, 200, session);
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/v1/real-browser-conformance") {
+        const body = await readJsonBody(request);
+        validateRealBrowserConformanceRequest(body);
+        const run = realBrowserQueue.then(() => realBrowserRunner({
+          testSpec: body.testSpec,
+          build: body.build,
+          headed: false
+        }));
+        realBrowserQueue = run.catch(() => undefined);
+        sendJson(response, 200, await run);
         return;
       }
       if (request.method !== "POST" || url.pathname !== "/v1/chat/completions") {
@@ -346,6 +361,24 @@ function chatCompletion(model, content) {
 function validateChatRequest(body) {
   if (!body || !Array.isArray(body.messages) || body.messages.length === 0) {
     throw httpError(400, "messages must be a non-empty array.");
+  }
+}
+
+function validateRealBrowserConformanceRequest(body) {
+  if (!body || !Array.isArray(body.testSpec?.tests) || body.testSpec.tests.length === 0) {
+    throw httpError(400, "testSpec.tests must be a non-empty array.");
+  }
+  if (body.testSpec.tests.length > 200) {
+    throw httpError(400, "Real-browser conformance accepts at most 200 tests.");
+  }
+  const modes = body.build?.modes;
+  if (!modes || typeof modes !== "object" || Object.keys(modes).length === 0) {
+    throw httpError(400, "build.modes must be a non-empty object.");
+  }
+  for (const [mode, artifact] of Object.entries(modes)) {
+    if (!artifact || typeof artifact.js !== "string" || typeof artifact.css !== "string") {
+      throw httpError(400, `build.modes.${mode} must contain js and css strings.`);
+    }
   }
 }
 

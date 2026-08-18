@@ -82,6 +82,57 @@ test("local agent API rejects an incorrect token", async t => {
   assert.equal(response.status, 401);
 });
 
+test("local agent API runs protected real-browser conformance without exposing it to chat", async t => {
+  const calls = [];
+  const local = createAgentApiServer({
+    token: "browser-token",
+    realBrowserRunner: async request => {
+      calls.push(request);
+      return {
+        passed: 1,
+        failed: 0,
+        inconclusive: 0,
+        total: 1,
+        capabilities: { cdp: true, nativePointer: true },
+        results: [{ id: "real-drag", criterion: "text-selection", category: "selection-state", ok: true }]
+      };
+    }
+  });
+  local.server.listen(0, "127.0.0.1");
+  await once(local.server, "listening");
+  t.after(() => local.server.close());
+  const { port } = local.server.address();
+  const body = {
+    testSpec: { schemaVersion: 1, tests: [{ id: "real-drag" }] },
+    build: { modes: { standard: { js: "", css: "" } } }
+  };
+
+  const unauthorized = await fetch(`http://127.0.0.1:${port}/v1/real-browser-conformance`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  assert.equal(unauthorized.status, 401);
+
+  const response = await fetch(`http://127.0.0.1:${port}/v1/real-browser-conformance`, {
+    method: "POST",
+    headers: { authorization: "Bearer browser-token", "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    passed: 1,
+    failed: 0,
+    inconclusive: 0,
+    total: 1,
+    capabilities: { cdp: true, nativePointer: true },
+    results: [{ id: "real-drag", criterion: "text-selection", category: "selection-state", ok: true }]
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].headed, false);
+  assert.deepEqual(calls[0].testSpec, body.testSpec);
+});
+
 test("subagent mode queues a request and returns the worker's fresh completion", async t => {
   const local = createAgentApiServer({ mode: "subagent", token: "queue-token", agentTimeoutMs: 5_000 });
   local.server.listen(0, "127.0.0.1");

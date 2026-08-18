@@ -604,15 +604,22 @@ async function validatePackagedBehavior(packageDefinition) {
   }
   const developerTestSpec = packageDefinition.build.developerConformance;
   if (developerTestSpec) {
-    await ensureValidationBrowserDocument();
-    const developerResponse = await chrome.runtime.sendMessage({
-      target: "validation-browser",
-      type: "run-developer-conformance",
-      testSpec: developerTestSpec,
-      criteria,
-      skill: packageDefinition.skill,
-      build: packageDefinition.build
-    });
+    const stored = await chrome.storage.local.get(LLM_SETTINGS_KEY);
+    const settings = normalizeLlmSettings(stored[LLM_SETTINGS_KEY]);
+    let developerResponse;
+    if (settings.apiKey && isLocalAgentEndpoint(settings.endpoint)) {
+      developerResponse = await runLocalRealBrowserConformance(settings, developerTestSpec, packageDefinition.build);
+    } else {
+      await ensureValidationBrowserDocument();
+      developerResponse = await chrome.runtime.sendMessage({
+        target: "validation-browser",
+        type: "run-developer-conformance",
+        testSpec: developerTestSpec,
+        criteria,
+        skill: packageDefinition.skill,
+        build: packageDefinition.build
+      });
+    }
     if (!developerResponse?.results) throw new Error(developerResponse?.error || "Developer Conformance runner did not respond.");
     const blocked = developerResponse.results.filter(result => !result.ok);
     if (blocked.length > 0) {
@@ -622,6 +629,31 @@ async function validatePackagedBehavior(packageDefinition) {
     packageDefinition.build.developerConformanceResults = developerResponse.results;
   }
   return response.results;
+}
+
+async function runLocalRealBrowserConformance(settings, testSpec, build) {
+  const endpoint = new URL("/v1/real-browser-conformance", settings.endpoint);
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "authorization": `Bearer ${settings.apiKey}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ testSpec, build })
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || `Real-browser Developer Conformance returned HTTP ${response.status}.`);
+  }
+  return payload;
+}
+
+function isLocalAgentEndpoint(endpoint) {
+  try {
+    return ["127.0.0.1", "localhost"].includes(new URL(endpoint).hostname);
+  } catch {
+    return false;
+  }
 }
 
 async function ensureValidationDocument() {
