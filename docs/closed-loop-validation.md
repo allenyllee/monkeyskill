@@ -569,9 +569,14 @@ immediately before installation. Non-local providers retain the browser-backed E
 Treat both `fail` and
 `inconclusive` as blocking. An inconclusive capability result is infrastructure evidence, not a
 candidate failure: stop the generation with an infrastructure error and never spend Builder
-repair attempts on it. On repair, disclose only `criterion`, `mode`, and the fixed failure
-`category`; never disclose the developer test ID, fixture, expected value, trace, prose, or any
-untrusted failure message. Rerun Public, Developer Conformance, and Independent suites from the
+repair attempts on it. On repair, disclose only `criterion`, `mode`, the assertion type, and the
+fixed failure `category`; never disclose the developer test ID, fixture, actual or expected value,
+trace, prose, provider message, or any untrusted failure message. The projection must be non-empty
+for a real assertion failure. If the provider returns only a generic code such as
+`assertion-failed`, trusted Host code derives the fixed category from the originating
+criterion/assertion metadata; if that cannot be done safely, classify the run as Runner
+infrastructure failure rather than spend a Builder attempt on an empty diagnostic. Rerun Public,
+Developer Conformance, and Independent suites from the
 beginning after every candidate change.
 
 For a trusted local diagnosis, `node scripts/diagnose-overlay.mjs <builder-session-id> [port]`
@@ -606,3 +611,16 @@ prevents a generated TestSpec from silently forgetting a previously repaired Dem
 Sandbox success is still not a substitute for the real Demo: native context menus, clipboard
 defaults, Save Image As, genuine mouse drag selection, and world/timing boundaries require the
 real-browser evidence layer.
+
+### 11.1 Generated Runner Bootstrap boundary
+
+A local Agent may generate and install the real-environment Runner from the versioned,
+human-readable Runner Bootstrap MSkill. The Bootstrap contains protocol and meta-conformance, not
+a Runner implementation. A fresh Runner Builder produces source for the current OS; a fresh Runner
+Tester validates the exact artifact hash with positive cases and negative canaries; trusted
+orchestration atomically activates only a passing user-scoped version and preserves rollback.
+
+The Runner Bootstrap stops at a generic authenticated Host handoff. It must not name or execute a
+particular MSkill, Demo, approval, or product workflow. This runbook's orchestrator—not the Runner
+MSkill—selects Restore Right Click as the current integration scenario, launches the fresh
+Tester/Attacker/Builder roles, requests final user approval, and records post-install Demo evidence.

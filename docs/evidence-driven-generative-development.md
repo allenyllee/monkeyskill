@@ -260,5 +260,35 @@ that the browser fixture itself is valid.
 In the local generation path, this backend is exposed only by the token-protected agent API and
 runs are serialized. Trusted orchestration invokes it after Public TestSpec success and again
 before installation. Its detailed fixture, assertions, and traces remain outside Builder context;
-only constrained criterion/mode/category diagnostics can trigger repair. This changes the
-execution environment without increasing Developer Conformance's authority.
+only constrained criterion/mode/category/assertion-type diagnostics can trigger repair. The Host
+must translate provider errors into that fixed vocabulary; a deliberately failing assertion that
+projects to an empty diagnostic is a Runner infrastructure failure, not a candidate failure. This
+changes the execution environment without increasing Developer Conformance's authority.
+
+## Generated local Runner Bootstrap
+
+The real-environment Runner does not have to be a preinstalled trusted binary. A Store may publish
+a versioned, human-readable Runner Bootstrap MSkill containing only goals, protocol schemas,
+role-isolation rules, and fixed meta-conformance. A local agent can use it to generate a minimal
+Runner for the current OS, while a fresh Tester validates positive cases, fail-closed canaries,
+cleanup, protocol purity, runtime hashes, and constrained diagnostic projection. Only the exact
+tested artifact hash is atomically activated; the previous passing hash remains available for
+rollback.
+
+```mermaid
+flowchart LR
+    B[Readable Runner Bootstrap] --> RB[Fresh Runner Builder]
+    RB --> RT[Fresh Runner Tester: meta-conformance]
+    RT -- constrained failure --> RB
+    RT -- all pass --> AI[Atomic user-scoped install]
+    AI --> H[Authenticated generic Host]
+    H --> O[Invoking orchestrator]
+    O --> M[Application-specific MSkill closed loop]
+```
+
+The Bootstrap and generated Runner remain application-agnostic. They must not name, special-case,
+approve, install, or execute Restore Right Click or any other particular MSkill. The invoking
+orchestrator chooses the subsequent integration scenario and owns its application-specific Demo,
+approval, and installation evidence. This separation lets the same generated Runner serve browser,
+desktop-GUI, filesystem, process, or future providers without turning one case study into global
+Runner policy.

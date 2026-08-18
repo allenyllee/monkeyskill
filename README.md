@@ -139,8 +139,14 @@ The runner serves only localhost fixtures, blocks candidate traffic outside that
 real pointer input through CDP, and removes its temporary browser profile afterward. With a local
 agent endpoint, generation and the pre-install recheck invoke this trusted backend automatically
 through the authenticated `/v1/real-browser-conformance` route. Only constrained
-criterion/mode/category failures return to Builder; the manual command retains richer diagnostics
+criterion/mode/category/assertion-type failures return to Builder; the manual command retains richer diagnostics
 for maintainers. The runner supplies evidence but never bypasses the other approval gates.
+
+The Runner can also be generated locally from the Store's versioned, human-readable Runner
+Bootstrap MSkill. Its fresh Builder/Tester loop validates fail-closed behavior, cleanup, protocol
+purity, artifact hashes, and non-empty constrained diagnostic projection before atomic user-scoped
+activation. The Bootstrap is application-agnostic; the outer orchestrator, not the Runner MSkill,
+chooses and validates a particular application or MSkill workflow.
 
 ## Local agent API
 
