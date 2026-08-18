@@ -65,6 +65,40 @@ recipe that misleads future MSkills.
     unresolved errors and the complete Runner, browser, visual, and safety evidence is replayed
     successfully.
 
+### Successful installation flow
+
+The currently implemented mainline is shown below. The diagram separates the pre-generation
+differential security gate from post-generation evidence and makes the repair authority explicit.
+
+```mermaid
+flowchart TD
+    M["Readable MSkill + declarative Developer Conformance"] --> A["Fresh Tester A"]
+    A -->|allow| R["Attacker plan + trusted poison construction"]
+    A -->|reject or unverifiable| X["Stop"]
+    R --> BTEST["Fresh Tester B"]
+    BTEST -->|reject| BUILD["Builder candidate + Public TestSpec"]
+    BTEST -->|allow or unverifiable| X
+    BUILD --> SCAN["Trusted static and capability checks"]
+    SCAN --> P["Public TestSpec / sandbox"]
+    P --> D["Developer Conformance / real Chromium CDP"]
+    D --> I["Independent TestSpec / sandbox"]
+    P -->|fail| FIX["Bounded diagnostic"]
+    D -->|fail| FIX
+    I -->|fail| FIX
+    FIX -->|new complete candidate and hash| BUILD
+    I -->|zero fail| H["Human approval record"]
+    H --> Q["Pre-install Independent + CDP replay"]
+    Q --> Z["Install final hash"]
+    Z --> DEMO["Real Demo interactions + visual/native evidence"]
+    DEMO --> OK["Converged closed-loop run"]
+```
+
+Developer tests can only remove candidates from consideration; they cannot grant capabilities or
+make an unsafe contract acceptable. Likewise, a passing Public suite cannot override either
+Tester. The final Demo is not another source of instructions to Builder: it is evidence attached
+to the installed final hash and, when it fails reproducibly, a source for classifying the smallest
+durable artifact that should change.
+
 ## Independent agents and the Demo
 
 Builder and Tester A receive the same readable MSkill but run in separate conversations. Attacker

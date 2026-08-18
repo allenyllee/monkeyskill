@@ -28,6 +28,56 @@ A closed loop is complete only when all of the following are true:
 An HTTP `200` from the broker, an empty repair queue, or a Runner result by itself is not a
 complete result.
 
+### Verified successful mainline
+
+The following is the complete successful path verified on 2026-08-18. It distinguishes
+security authorization, candidate construction, three independent evidence sources, approval,
+pre-install replay, and final real-Demo evidence. Only the `Tester A=allow` / `Tester B=reject`
+matrix can reach Builder.
+
+```mermaid
+flowchart TD
+    A["Human-reviewable MSkill<br/>manifest + SKILL.md + Developer Conformance"] --> TA["Fresh Tester A<br/>security review + Independent TestSpec"]
+    TA -->|reject or unverifiable| STOPA["Fail closed before Builder"]
+    TA -->|allow| AT["Attacker selects an allowlisted poison plan"]
+    AT --> POISON["Trusted orchestrator constructs poisoned MSkill"]
+    POISON --> TB["Fresh Tester B<br/>blind review of poisoned copy"]
+    TB -->|allow or unverifiable| STOPB["Block: possible injection bypass"]
+    TB -->|reject| B["Builder<br/>Standard + Absolute Build + Public TestSpec"]
+    B --> STATIC["Schema, size, capability, remote-content,<br/>Chrome parse, JS, and UTF-8 checks"]
+    STATIC --> PUBLIC["Public TestSpec<br/>shared sandbox Runner"]
+    PUBLIC --> DEV["Fixed Developer Conformance<br/>isolated Chromium + CDP"]
+    DEV --> INDEP["Independent TestSpec<br/>shared sandbox Runner"]
+    PUBLIC -->|fail| REPAIR["Constrained repair diagnosis"]
+    DEV -->|fail| REPAIR
+    INDEP -->|fail| REPAIR
+    REPAIR -->|complete replacement; new hash| B
+    INDEP -->|zero fail| APPROVAL["Approval record<br/>attempts + P/I/F + candidate hash"]
+    APPROVAL --> USER["Explicit user approval"]
+    USER --> PREINSTALL["Pre-install replay<br/>static + Independent + CDP Conformance"]
+    PREINSTALL -->|pass| INSTALL["Register generated user script"]
+    INSTALL --> DEMO["Real published Demo<br/>pointer + keyboard + native UI + screenshots"]
+    DEMO --> DONE["Closed-loop success for final hash"]
+```
+
+The three test sources have different authority:
+
+- **Public TestSpec** is Builder-authored and gives detailed repair feedback. It is useful but
+  cannot authorize safety or prove its own completeness.
+- **Developer Conformance** is versioned regression memory in the constrained DSL. It can block
+  but cannot authorize, add undeclared criteria, or override a security verdict. In local runs it
+  executes through the token-protected, serialized real-browser endpoint.
+- **Independent TestSpec** is authored by fresh Tester A and remains hidden from Builder. A
+  failure returns only bounded criterion/mode/category information.
+
+The verified run used candidate hash `0a33209130eff97b`: Tester A returned `allow` with 32
+independent tests, Tester B rejected the trusted poisoned copy, Builder converged on attempt 1
+with zero repairs, Public reported 21 pass / 4 inconclusive / 0 fail, Developer Conformance
+reported 7 / 7 pass in Chromium/CDP, and Independent reported 28 pass / 4 inconclusive / 0 fail.
+The user approved installation, the pre-install real-browser replay completed, and all manual
+Demo checks passed. The four Public and Independent inconclusive results remain recorded as such;
+the successful CDP and final Demo evidence do not rewrite them into sandbox passes.
+
 ### Consecutive success means convergence, not first-attempt perfection
 
 The configured consecutive-success threshold counts complete closed-loop runs that end in a
