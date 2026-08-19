@@ -69,8 +69,12 @@ test("Developer Conformance is isolated, strict, and uses constrained repair dia
   assert.match(offscreen, /target: "validation-browser"/);
   assert.match(offscreen, /isLocalAgentEndpoint\(request\.endpoint\)/);
   assert.match(offscreen, /\/v1\/real-browser-conformance/);
+  assert.match(offscreen, /attempt < 2/);
+  assert.match(offscreen, /response\.status < 500 \|\| attempt === 1/);
   assert.match(background, /isLocalAgentEndpoint\(settings\.endpoint\)/);
   assert.match(background, /runLocalRealBrowserConformance\(settings, developerTestSpec/);
+  assert.match(background, /attempt < 2/);
+  assert.match(background, /response\.status < 500 \|\| attempt === 1/);
   assert.match(offscreen, /inconclusiveDeveloperTests/);
   assert.match(offscreen, /Inconclusive checks are not Builder failures and cannot trigger repair/);
 });

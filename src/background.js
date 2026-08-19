@@ -633,19 +633,22 @@ async function validatePackagedBehavior(packageDefinition) {
 
 async function runLocalRealBrowserConformance(settings, testSpec, build) {
   const endpoint = new URL("/v1/real-browser-conformance", settings.endpoint);
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "authorization": `Bearer ${settings.apiKey}`,
-      "content-type": "application/json"
-    },
-    body: JSON.stringify({ testSpec, build })
-  });
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(payload?.error?.message || `Real-browser Developer Conformance returned HTTP ${response.status}.`);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "authorization": `Bearer ${settings.apiKey}`,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ testSpec, build })
+    });
+    const payload = await response.json().catch(() => null);
+    if (response.ok) return payload;
+    if (response.status < 500 || attempt === 1) {
+      throw new Error(payload?.error?.message || `Real-browser Developer Conformance returned HTTP ${response.status}.`);
+    }
+    await new Promise(resolve => setTimeout(resolve, 250));
   }
-  return payload;
 }
 
 function isLocalAgentEndpoint(endpoint) {
