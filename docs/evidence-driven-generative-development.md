@@ -240,9 +240,16 @@ The execution order is therefore:
 3. Fresh Tester B must reject the poisoned MSkill.
 4. Builder produces a candidate and Public TestSpec.
 5. The shared sandbox Runner executes Public, Developer Conformance, and Independent suites as
-   separate evidence sources. Every repair reruns all three.
+   separate evidence sources. A repair first runs a hash-bound targeted checkpoint for the
+   affected criterion; once it passes, all three suites rerun once against the final candidate.
 6. Native workflows are replayed in a real browser on the registered Demo origin before a run is
    counted as stable.
+
+Unchanged upstream work may be replayed only from an exact dependency checkpoint. For example,
+Tester A, Attacker, and Tester B results remain reusable across a candidate-only repair when their
+complete request and policy hashes are identical. A changed MSkill, poison construction, Tester
+policy, Runner, Host, TestSpec, or candidate invalidates precisely the evidence that depends on
+that input. This saves repeated model work without weakening the final full-hash replay.
 
 The real-browser step is a backend for the same developer-authored conformance intent, not a
 core-maintainer-authored product requirement. Core maintainers own only the generic constrained

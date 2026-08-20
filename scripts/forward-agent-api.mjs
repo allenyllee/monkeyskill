@@ -11,6 +11,8 @@ const server = http.createServer((request, response) => {
   const target = conformance && new URL(request.url, `http://${host}`).pathname === conformance.route
     ? conformance
     : { host, port: targetPort };
+  const conformanceRequest = target === conformance;
+  const startedAt = conformanceRequest ? Date.now() : 0;
   const upstream = http.request({
     host: target.host,
     port: target.port,
@@ -18,10 +20,18 @@ const server = http.createServer((request, response) => {
     path: request.url,
     headers: { ...request.headers, host: `${target.host}:${target.port}` }
   }, upstreamResponse => {
+    if (conformanceRequest) {
+      response.once("finish", () => {
+        console.log(`MonkeySkill conformance: status=${upstreamResponse.statusCode || 502} durationMs=${Date.now() - startedAt}`);
+      });
+    }
     response.writeHead(upstreamResponse.statusCode || 502, upstreamResponse.headers);
     upstreamResponse.pipe(response);
   });
   upstream.on("error", error => {
+    if (conformanceRequest) {
+      console.error(`MonkeySkill conformance transport: code=${error.code || "unknown"} durationMs=${Date.now() - startedAt}`);
+    }
     if (!response.headersSent) response.writeHead(502, { "content-type": "application/json" });
     response.end(JSON.stringify({ error: `Worker API unavailable: ${error.code || "unknown"}` }));
   });

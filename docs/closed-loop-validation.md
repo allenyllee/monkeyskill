@@ -575,9 +575,26 @@ trace, prose, provider message, or any untrusted failure message. The projection
 for a real assertion failure. If the provider returns only a generic code such as
 `assertion-failed`, trusted Host code derives the fixed category from the originating
 criterion/assertion metadata; if that cannot be done safely, classify the run as Runner
-infrastructure failure rather than spend a Builder attempt on an empty diagnostic. Rerun Public,
-Developer Conformance, and Independent suites from the
-beginning after every candidate change.
+infrastructure failure rather than spend a Builder attempt on an empty diagnostic.
+
+Do not spend a complete end-to-end replay merely to learn whether one narrowly repaired failure
+still reproduces. Use a hash-gated checkpoint strategy:
+
+1. Record each role result together with the exact request-message hash and all policy, MSkill,
+   TestSpec, Runner, Host, and candidate hashes on which it depends.
+2. Reuse Tester A, Attacker, or Tester B only when that role's complete input and policy hashes are
+   byte-identical. A mismatch fails closed and dispatches a fresh role.
+3. After a candidate repair, first replay only the affected criterion/mode/assertion checkpoint in
+   the same trusted environment. This is diagnostic evidence, not approval.
+4. When the targeted checkpoint passes, rerun the complete Public, Developer Conformance, and
+   Independent suites once against the new final candidate hash before approval or installation.
+5. A Runner or Host repair invalidates its provider/meta-conformance evidence, but need not rerun
+   unchanged upstream security reviews. Validate the failed provider boundary first, then run one
+   complete downstream replay.
+
+Checkpoint reuse is therefore dependency-scoped, never status-scoped: an empty queue, a previous
+pass label, or a similar-looking prompt is insufficient. Only exact hashes authorize replay, and
+final installation evidence always belongs to the fully replayed final hash.
 
 For a trusted local diagnosis, `node scripts/diagnose-overlay.mjs <builder-session-id> [port]`
 serves the final Builder candidate and a hand-authored generic geometry reference on separate
