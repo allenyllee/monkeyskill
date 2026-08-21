@@ -148,6 +148,14 @@ purity, artifact hashes, and non-empty constrained diagnostic projection before 
 activation. The Bootstrap is application-agnostic; the outer orchestrator, not the Runner MSkill,
 chooses and validates a particular application or MSkill workflow.
 
+The Store's **Copy verified Bootstrap prompt** button does not trust the page to author the copied
+prompt. The isolated Extension bridge downloads every file in the advertised immutable package,
+checks its byte length and SHA-256, recomputes the package hash, and reports the observed protocol
+to the Extension background. The background accepts only the exact Bootstrap version, package hash,
+and protocol pinned in the published Extension, constructs the prompt itself, and returns it only to
+the isolated bridge for copying. The page receives success metadata, never the prompt text. For this
+POC, exact Extension pinning is the trust anchor; there is deliberately no signature or PKI layer.
+
 ## Local agent API
 
 Run an OpenAI-compatible local endpoint:

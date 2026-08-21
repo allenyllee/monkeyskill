@@ -16,12 +16,37 @@ test("Store bridge is limited to local development and the official Pages origin
   const bridge = await readFile(new URL("src/store/bridge.js", root), "utf8");
   assert.match(bridge, /store-list-installed-skills/);
   assert.match(bridge, /store-generate-store-skill/);
+  assert.match(bridge, /store-verify-runner-bootstrap/);
+  assert.match(bridge, /observeRunnerBootstrap/);
+  assert.match(bridge, /cache: "no-store"/);
+  assert.match(bridge, /credentials: "omit"/);
+  assert.match(bridge, /redirect: "error"/);
+  assert.match(bridge, /crypto\.subtle\.digest\("SHA-256"/);
+  assert.match(bridge, /Runner Bootstrap package hash is invalid/);
   assert.match(bridge, /skillPackage/);
   assert.match(bridge, /request\.action === "ping"/);
   assert.match(bridge, /response: \{ ok: true \}/);
   assert.match(bridge, /if \(localPage\) \{/);
   assert.match(bridge, /actions\.set\("reload-extension", "store-reload-extension"\)/);
   assert.match(bridge, /actions\.set\("set-test-mode", "store-set-test-mode"\)/);
+});
+
+test("verified Runner Bootstrap prompt is pinned and copied by Extension-owned code", async () => {
+  const background = await readFile(new URL("src/background.js", root), "utf8");
+  const bridge = await readFile(new URL("src/store/bridge.js", root), "utf8");
+  const policy = await readFile(new URL("src/lib/runner-bootstrap-policy.js", root), "utf8");
+  const offscreen = await readFile(new URL("src/validation/offscreen.js", root), "utf8");
+  assert.match(background, /case "verify-runner-bootstrap"/);
+  assert.match(background, /validateRunnerBootstrapObservation/);
+  assert.match(background, /buildVerifiedRunnerBootstrapPrompt/);
+  assert.match(background, /clipboardText: prompt/);
+  assert.match(background, /reasons: \["IFRAME_SCRIPTING"\]/);
+  assert.match(policy, /eb4d2956a00f5d2232fe0a06a0f58b050bc831502cafc48e6286db5248701869/);
+  assert.match(policy, /protocolSchemaVersion: 2/);
+  assert.doesNotMatch(offscreen, /write-verified-bootstrap-prompt/);
+  assert.match(bridge, /const \{ clipboardText, \.\.\.publicResponse \} = response/);
+  assert.match(bridge, /document\.execCommand\("copy"\)/);
+  assert.match(bridge, /response = publicResponse/);
 });
 
 test("automatic Extension reload is restricted to the local development Store", async () => {

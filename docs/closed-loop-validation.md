@@ -643,6 +643,37 @@ orchestration atomically activates only a passing user-scoped version and preser
 This is an explicit provisioning or infrastructure-maintenance workflow, never an implicit repair
 inside ordinary MSkill installation.
 
+The user-facing Bootstrap entry uses an Extension-mediated verified-copy flow:
+
+```mermaid
+flowchart LR
+    U[User clicks Copy verified Bootstrap prompt] --> S[Store sends version, URL, package hash]
+    S --> B[Isolated Extension bridge downloads manifest and every listed file]
+    B --> H[Verify bytes and SHA-256; recompute package hash; inspect protocol]
+    H --> P{Extension pinned policy matches?}
+    P -- no --> X[Fail closed; copy nothing]
+    P -- yes --> C[Extension background constructs prompt]
+    C --> I[Isolated bridge copies prompt]
+    I --> M[Store receives success metadata only]
+    I --> A[Local Agent re-downloads and re-verifies before build]
+```
+
+The Store page is not a trust anchor and cannot supply the prompt body. The bridge accepts only a
+same-origin immutable package URL, fetches with credentials omitted and redirects rejected, verifies
+every declared byte count and SHA-256, and recomputes the manifest package hash. The Extension
+background then compares the observed ID, version, package hash, and protocol profile with its
+compiled allowlist. Only that trusted background constructs the prompt; the isolated content-script
+bridge copies it and strips the prompt before replying to the page. A compromised Store alone can
+therefore display arbitrary prose, but it cannot obtain the Extension's “verified” result for
+different Bootstrap bytes or protocol.
+
+This is intentionally a POC trust model, not a signing system. Updating the pinned Bootstrap or
+protocol requires a reviewed Extension release through the Chrome Web Store. A local Agent must
+still independently re-download the URL, verify the exact package hash named in the prompt, and run
+fresh Runner Builder/Tester meta-conformance before activation. Exact pinning prevents Store-only
+tampering; it does not claim that an arbitrary protocol-compatible Runner is safe without those
+independent gates.
+
 The Runner Bootstrap stops at a generic authenticated Host handoff. It must not name or execute a
 particular MSkill, Demo, approval, or product workflow. This runbook's orchestrator—not the Runner
 MSkill—selects Restore Right Click as the current integration scenario, launches the fresh

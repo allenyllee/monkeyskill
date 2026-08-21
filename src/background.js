@@ -25,6 +25,10 @@ import {
   scanGeneratedBuild
 } from "./lib/llm.js";
 import { buildAttackerMessages } from "./lib/security-regression.js";
+import {
+  buildVerifiedRunnerBootstrapPrompt,
+  validateRunnerBootstrapObservation
+} from "./lib/runner-bootstrap-policy.js";
 import { validateDeveloperConformance } from "./lib/test-spec.js";
 
 const PENDING_BUILDS_KEY = "pendingSkillBuilds";
@@ -130,6 +134,18 @@ async function handleMessage(message, sender) {
         source: record.source.type
       }));
       return { ok: true, skills };
+    }
+    case "verify-runner-bootstrap": {
+      const verified = validateRunnerBootstrapObservation(message.bootstrap);
+      const prompt = buildVerifiedRunnerBootstrapPrompt(verified, chrome.runtime.getManifest().version);
+      return {
+        ok: true,
+        id: verified.id,
+        version: verified.version,
+        packageHashPrefix: verified.packageHash.slice(0, 16),
+        protocolSchemaVersion: verified.protocolSchemaVersion,
+        clipboardText: prompt
+      };
     }
     case "reload-extension": {
       assertLocalReloadSender(sender);
@@ -673,7 +689,7 @@ async function ensureValidationDocument() {
   offscreenCreationPromise ??= chrome.offscreen.createDocument({
     url: "src/validation/offscreen.html",
     reasons: ["IFRAME_SCRIPTING"],
-    justification: "Generate and run public and independent constrained MSkill TestSpecs in isolated sandbox frames before installation."
+    justification: "Run constrained MSkill validation in an isolated Extension document."
   }).finally(() => {
     offscreenCreationPromise = null;
   });
