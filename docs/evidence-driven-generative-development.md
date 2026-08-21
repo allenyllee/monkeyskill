@@ -325,3 +325,34 @@ following generic properties:
 
 The generated implementation remains replaceable. These properties, the schemas, and the hidden
 meta-conformance are the durable trust root; no prewritten Runner source is required.
+
+## Infrastructure change governance
+
+The ability to generate infrastructure does not give an application Builder authority to publish
+infrastructure. Three workflows remain distinct:
+
+```mermaid
+flowchart LR
+    D[MSkill developer: reproduce and propose] --> R[Infrastructure maintainer: review]
+    R --> T[Fresh infrastructure Tester: meta-conformance]
+    T --> P[Versioned published Runner infrastructure]
+    P --> U[Ordinary user: normal MSkill installation]
+    U -- infrastructure error --> X[Fail closed and report or use published update]
+```
+
+During MSkill development, an infrastructure failure freezes the application checkpoint and does
+not consume an application Builder attempt. The developer may prepare a minimal reproducer, exact
+dependency hashes, a generic isolated patch, and public regression tests, but cannot use that
+experimental patch as approval evidence for the application or distribute it directly to users.
+
+Infrastructure maintainers review whether the proposal is provider-generic, preserves least
+privilege and fail-closed behavior, contains no MSkill/test-ID/fixture special case, and fits the
+published protocol. A fresh infrastructure Tester must then execute complete meta-conformance,
+negative canaries, cleanup, immutable packaging, atomic installation, and rollback before a new
+version is published.
+
+Ordinary users run only published, reviewed infrastructure. A normal MSkill installation may retry
+or restart an unchanged service, but it must not generate, patch, or activate Runner/Host code. If
+infrastructure remains unhealthy, installation stops without consuming application attempts and
+offers an already-published update or a report path. This governance keeps local generation
+auditable without turning every user installation into infrastructure development.

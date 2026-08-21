@@ -570,8 +570,9 @@ in isolated Chromium profiles with a rendered viewport. The same endpoint reruns
 immediately before installation. Non-local providers retain the browser-backed Extension tab.
 Treat both `fail` and
 `inconclusive` as blocking. An inconclusive capability result is infrastructure evidence, not a
-candidate failure: stop the generation with an infrastructure error and never spend Builder
-repair attempts on it. On repair, disclose only `criterion`, `mode`, the assertion type, and the
+candidate failure: stop the generation with an infrastructure error, preserve its checkpoint, and
+never spend Builder repair attempts on it. Ordinary installation must not rebuild or patch the
+Runner, Host, broker, or provider in the background. On candidate repair, disclose only `criterion`, `mode`, the assertion type, and the
 fixed failure `category`; never disclose the developer test ID, fixture, actual or expected value,
 trace, prose, provider message, or any untrusted failure message. The projection must be non-empty
 for a real assertion failure. If the provider returns only a generic code such as
@@ -590,9 +591,10 @@ still reproduces. Use a hash-gated checkpoint strategy:
    the same trusted environment. This is diagnostic evidence, not approval.
 4. When the targeted checkpoint passes, rerun the complete Public, Developer Conformance, and
    Independent suites once against the new final candidate hash before approval or installation.
-5. A Runner or Host repair invalidates its provider/meta-conformance evidence, but need not rerun
-   unchanged upstream security reviews. Validate the failed provider boundary first, then run one
-   complete downstream replay.
+5. A Runner or Host repair may occur only in the separate infrastructure-maintainer workflow below.
+   Once a reviewed version is published and installed, it invalidates its provider/meta-conformance
+   evidence but need not rerun unchanged upstream security reviews. Validate the failed provider
+   boundary first, then run one complete downstream replay.
 
 Checkpoint reuse is therefore dependency-scoped, never status-scoped: an empty queue, a previous
 pass label, or a similar-looking prompt is insufficient. Only exact hashes authorize replay, and
@@ -638,6 +640,8 @@ human-readable Runner Bootstrap MSkill. The Bootstrap contains protocol and meta
 a Runner implementation. A fresh Runner Builder produces source for the current OS; a fresh Runner
 Tester validates the exact artifact hash with positive cases and negative canaries; trusted
 orchestration atomically activates only a passing user-scoped version and preserves rollback.
+This is an explicit provisioning or infrastructure-maintenance workflow, never an implicit repair
+inside ordinary MSkill installation.
 
 The Runner Bootstrap stops at a generic authenticated Host handoff. It must not name or execute a
 particular MSkill, Demo, approval, or product workflow. This runbook's orchestrator—not the Runner
@@ -702,3 +706,54 @@ This incident belongs to the Restore Right Click case study and its regression m
 general MonkeySkill rule that all application containers or all transiently empty nodes require the
 same handling; the general method says only that reproducible application defects should be promoted
 to that application's readable criterion and fixed conformance evidence.
+
+### 11.3 Infrastructure change governance
+
+Application generation, infrastructure development, and ordinary installation are separate loops:
+
+```mermaid
+flowchart TB
+    subgraph D[MSkill developer]
+        D1[Run application closed loop] --> D2{Infrastructure failure?}
+        D2 -- no --> D3[Repair candidate normally]
+        D2 -- yes --> D4[Freeze application checkpoint]
+        D4 --> D5[Minimal reproducer plus generic repair proposal]
+    end
+    subgraph M[Infrastructure maintainer]
+        M1[Review scope and threat boundary] --> M2[Public compatibility tests]
+        M2 --> M3[Fresh independent meta-conformance]
+        M3 --> M4[Version and publish Runner infrastructure]
+    end
+    subgraph U[Ordinary user]
+        U1[Use published Runner version] --> U2[Normal MSkill install validation]
+        U2 --> U3{Infrastructure healthy?}
+        U3 -- yes --> U4[Continue approval and install]
+        U3 -- no --> U5[Fail closed; offer published update or report]
+    end
+    D5 --> M1
+    M4 --> U1
+```
+
+The MSkill developer may diagnose an infrastructure failure and prototype a generic correction in
+an isolated workspace, but that proposal is not a trusted release and cannot make the interrupted
+application run count. The report must include the exact affected hashes, a minimal reproducer,
+failure classification, bounded logs or diagnostics, the proposed generic change, and public tests.
+It must not include application/test-ID special cases or hidden independent fixtures.
+
+The infrastructure maintainer owns review and release. Review confirms that the change is generic,
+does not weaken capability or network boundaries, preserves constrained diagnostics, and has no
+application-specific branches. A fresh independent infrastructure Tester then runs the complete
+meta-conformance, secret/network negative canaries, lifecycle cleanup, immutable package verification,
+and atomic install/rollback checks. Only a versioned passing artifact may be published.
+
+An ordinary user installs an MSkill only with a published, reviewed infrastructure version. A
+transient service restart or bounded retry may occur without changing code; a substantive failure
+stops the install, consumes no application Builder attempt, and reports or offers an already-published
+Runner update. It never launches a Runner Builder or silently activates an experimental repair.
+
+When this workflow is simulated in an agent conversation, use the same separation: the application
+Builder stops at infrastructure classification; an isolated developer task may prepare a reproducer
+and proposal; a distinct infrastructure-maintainer review and fresh Tester are required before any
+version is published or activated. Resume the saved application checkpoint only after the reviewed
+version is installed, then rerun the affected provider checkpoint followed by the complete downstream
+application gates.
