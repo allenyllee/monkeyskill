@@ -283,13 +283,17 @@ tested artifact hash is atomically activated; the previous passing hash remains 
 rollback.
 
 ```mermaid
-flowchart LR
+flowchart TB
     B[Readable Runner Bootstrap] --> RB[Fresh Runner Builder]
-    RB --> RT[Fresh Runner Tester: meta-conformance]
-    RT -- constrained failure --> RB
-    RT -- all pass --> AI[Atomic user-scoped install]
+    RB --> PC[Public compatibility and fail-closed checks]
+    PC --> RT[Fresh Runner Tester: hidden meta-conformance]
+    RT -- bounded diagnostic --> RB
+    RT -- all pass --> AI[Immutable hash-addressed package and atomic activation]
     AI --> H[Authenticated generic Host]
-    H --> O[Invoking orchestrator]
+    H -->|validate full external envelope| P[Minimal provider projection]
+    P --> R[Generated Runner]
+    R --> E[Isolated environment provider]
+    O[Invoking orchestrator] -->|select application and evidence| H
     O --> M[Application-specific MSkill closed loop]
 ```
 
@@ -299,3 +303,25 @@ orchestrator chooses the subsequent integration scenario and owns its applicatio
 approval, and installation evidence. This separation lets the same generated Runner serve browser,
 desktop-GUI, filesystem, process, or future providers without turning one case study into global
 Runner policy.
+
+The Host/Runner split is a security boundary rather than a convenience adapter. The Host accepts
+the complete public request, rejects unknown fields, and projects only the provider's documented
+private shape (for the browser reference provider, exact `modes`) without changing its bytes.
+Unsupported operations, malformed output, provider crashes, and timeouts remain infrastructure
+failures; they cannot be disguised as candidate assertions or consume Builder repair attempts.
+
+A generated Runner is acceptable only when independent meta-conformance establishes all of the
+following generic properties:
+
+- the advertised DSL profile and diagnostic projection are exact and non-empty for supported
+  assertion failures;
+- process spawning uses a default-deny environment and does not expose fresh secret canaries;
+- external communication is rejected both before launch and at runtime, including browser intents
+  that produce no network request because another browser policy blocks them first;
+- provider readiness, timeout, child-process termination, and temporary-profile cleanup are
+  verified on every outcome; and
+- canonical package hashing, atomic activation, rollback, and acceptance tooling preserve an
+  immutable delivery tree. Verification tools must not write evidence inside the tree they verify.
+
+The generated implementation remains replaceable. These properties, the schemas, and the hidden
+meta-conformance are the durable trust root; no prewritten Runner source is required.

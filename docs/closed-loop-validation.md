@@ -230,8 +230,10 @@ Before asking the user to press **Generate**:
 
 Port roles must not be confused:
 
-- `8787`: Extension-facing OpenAI-compatible Chat Completions endpoint.
-- `8788`: protected Attacker/Builder/Tester worker API.
+- `8787`: Extension-facing API and trusted request forwarder.
+- `8788`: protected Attacker/Builder/Tester broker API. Role workers poll only this port.
+- `8790`: active, user-scoped generated Runner Host for real-browser conformance. The Extension-facing
+  forwarder routes only conformance requests here; role workers never poll it.
 
 Do not delete the bootstrap file, reuse a worker from an earlier run, or treat repeated `204`
 responses as proof that a Store request was submitted.
@@ -641,3 +643,62 @@ The Runner Bootstrap stops at a generic authenticated Host handoff. It must not 
 particular MSkill, Demo, approval, or product workflow. This runbook's orchestrator—not the Runner
 MSkill—selects Restore Right Click as the current integration scenario, launches the fresh
 Tester/Attacker/Builder roles, requests final user approval, and records post-install Demo evidence.
+
+The reference local topology is:
+
+```mermaid
+flowchart LR
+    E[Store Extension] -->|authenticated API| F[8787 forwarder]
+    F -->|role jobs| B[8788 role broker]
+    B --> R[Fresh Tester / Attacker / Builder workers]
+    F -->|real-browser conformance| H[8790 active generated Host]
+    H -->|validate full Build envelope| P[Project exact modes-only request]
+    P --> G[Generated Runner]
+    G --> C[Isolated Edge / Chromium CDP]
+    C -->|P / I / F plus constrained diagnostic| H
+```
+
+Ports are a reference deployment detail, not part of the portable protocol. The important trust
+boundary is that the public Host validates the complete Extension Build envelope and sends the
+private Runner only the exact `{modes}` object it accepts. Unknown envelope fields, unsupported
+DSL operations, malformed provider responses, timeouts, or provider crashes are infrastructure
+failures and do not consume a Builder repair attempt.
+
+The generated Host/Runner boundary enforces four additional generic invariants:
+
+- **Default-deny process environment.** Host-to-Runner spawning passes only an explicit environment
+  allowlist; fresh secret canaries must be absent from responses, stdout, stderr, profiles, and the
+  installed tree.
+- **Two-stage network denial.** Recursive request preflight rejects encoded external URLs before a
+  browser starts. CDP request-stage interception and an early intent guard also reject browser-created
+  navigation, subresource, Fetch/XHR, WebSocket/EventSource, Worker, DOM URL, CSS URL, form, and related
+  external intents, including cases that CSP suppresses before a request is emitted.
+- **Real browser lifecycle.** Readiness is determined from the actual DevTools endpoint rather than
+  the short-lived Windows launcher process. Every pass, failure, and timeout closes the browser,
+  waits for child termination, and verifies profile deletion before returning.
+- **Immutable activation.** The artifact is addressed by a canonical `sha256-tree-v1` hash. Installer
+  and verifier share the same implementation, activate one version atomically, preserve rollback,
+  and never start an untested version. Acceptance tools write to stdout by default and may write only
+  outside the manifest-covered delivery, so validation cannot mutate the artifact it is proving.
+
+The current reference installation is Runner Bootstrap 1.0.6: Runner
+`6523640f2e198addb64e1c051ff54fefbdafb2afe2f9d8e1de8dc2652e50d04c`, Host
+`bf5a8834df541e5a7d9e3b74db00895cba0db7949df5b653189c8f08edc66534`, and immutable package
+`e86b1b802714c3526d01061ac8a91f606bf62108aa07a0bf9fb7142f946ff17a`. Independent testing
+recomputed all hashes, exercised the authenticated Host and public DSL profile, passed the exact
+eight-case application conformance, and verified isolated install/rollback with zero attributable
+process or profile residue.
+
+### 11.2 Application-specific regression example
+
+Restore Right Click once disabled pointer events on a Store application container that was empty
+when queued for overlay repair but populated before the queued mutation ran. The result made the
+Store page unclickable after installation. The capability-specific repair now rechecks content,
+geometry, and interactivity immediately before changing pointer behavior, records the prior inline
+value, and restores it when content arrives. A fixed Developer Conformance case named
+`regression-transient-empty-container` preserves this time-of-check/time-of-use boundary.
+
+This incident belongs to the Restore Right Click case study and its regression memory. It is not a
+general MonkeySkill rule that all application containers or all transiently empty nodes require the
+same handling; the general method says only that reproducible application defects should be promoted
+to that application's readable criterion and fixed conformance evidence.
