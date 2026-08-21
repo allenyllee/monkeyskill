@@ -34,12 +34,16 @@ import { validateDeveloperConformance } from "./lib/test-spec.js";
 const PENDING_BUILDS_KEY = "pendingSkillBuilds";
 const GENERATION_JOBS_KEY = "generationJobs";
 const TRUSTED_STORES_KEY = "trustedStoreUrls";
+const PENDING_BOOTSTRAP_COPY_KEY = "pendingRunnerBootstrapCopy";
+const BOOTSTRAP_COPY_NOTICE_KEY = "runnerBootstrapCopyNotice";
+const BOOTSTRAP_POPUP_COPY_KEY = "runnerBootstrapPopupCopy";
 const STORE_BRIDGE_PREFIX = "monkeyskill-store-bridge-";
 const GENERATION_STALE_MS = 20 * 60 * 1000;
 let initializationPromise;
 let registrationQueue = Promise.resolve();
 let offscreenCreationPromise;
 let validationBrowserCreationPromise;
+const bootstrapPopupCopyWaiters = new Map();
 
 chrome.runtime.onInstalled.addListener(() => {
   initializationPromise = initializeStore();
@@ -138,14 +142,97 @@ async function handleMessage(message, sender) {
     case "verify-runner-bootstrap": {
       const verified = validateRunnerBootstrapObservation(message.bootstrap);
       const prompt = buildVerifiedRunnerBootstrapPrompt(verified, chrome.runtime.getManifest().version);
-      return {
+      const publicResult = {
         ok: true,
         id: verified.id,
         version: verified.version,
         packageHashPrefix: verified.packageHash.slice(0, 16),
-        protocolSchemaVersion: verified.protocolSchemaVersion,
-        clipboardText: prompt
+        protocolSchemaVersion: verified.protocolSchemaVersion
       };
+      if (typeof chrome.action.openPopup === "function") {
+        const popupToken = crypto.randomUUID();
+        await chrome.storage.session.set({
+          [BOOTSTRAP_POPUP_COPY_KEY]: {
+            token: popupToken,
+            text: prompt,
+            version: verified.version,
+            packageHashPrefix: verified.packageHash.slice(0, 16),
+            expiresAt: Date.now() + 30_000
+          }
+        });
+        const popupResult = waitForBootstrapPopupCopy(popupToken);
+        let popupOpened = false;
+        try {
+          if (sender.tab?.windowId == null) await chrome.action.openPopup();
+          else await chrome.action.openPopup({ windowId: sender.tab.windowId });
+          popupOpened = true;
+          const copied = await popupResult.promise;
+          if (!copied.ok) throw new Error(copied.error || "Extension popup could not copy the prompt.");
+          return { ...publicResult, popupOpened: true };
+        } catch (error) {
+          popupResult.cancel();
+          await chrome.storage.session.remove(BOOTSTRAP_POPUP_COPY_KEY);
+          if (popupOpened) throw error;
+        }
+      }
+      const confirmationToken = crypto.randomUUID();
+      await chrome.storage.session.set({
+        [PENDING_BOOTSTRAP_COPY_KEY]: {
+          token: confirmationToken,
+          id: verified.id,
+          version: verified.version,
+          packageHashPrefix: verified.packageHash.slice(0, 16),
+          expiresAt: Date.now() + 30_000
+        }
+      });
+      return {
+        ...publicResult,
+        popupOpened: false,
+        clipboardText: prompt,
+        confirmationToken
+      };
+    }
+    case "bootstrap-popup-copy-result": {
+      if (sender.url !== chrome.runtime.getURL("src/popup/popup.html")) {
+        throw new Error("Invalid Bootstrap popup sender.");
+      }
+      const waiter = bootstrapPopupCopyWaiters.get(message.token);
+      if (!waiter) throw new Error("Bootstrap popup copy request expired.");
+      waiter.resolve(message.ok === true
+        ? { ok: true }
+        : { ok: false, error: typeof message.error === "string" ? message.error : "Clipboard write failed." });
+      bootstrapPopupCopyWaiters.delete(message.token);
+      return { ok: true };
+    }
+    case "confirm-runner-bootstrap-copy": {
+      const stored = await chrome.storage.session.get(PENDING_BOOTSTRAP_COPY_KEY);
+      const pending = stored[PENDING_BOOTSTRAP_COPY_KEY];
+      if (!pending || pending.token !== message.confirmationToken || pending.expiresAt < Date.now()) {
+        throw new Error("Runner Bootstrap copy confirmation expired.");
+      }
+      await chrome.storage.session.remove(PENDING_BOOTSTRAP_COPY_KEY);
+      await chrome.storage.session.set({
+        [BOOTSTRAP_COPY_NOTICE_KEY]: {
+          id: pending.id,
+          version: pending.version,
+          packageHashPrefix: pending.packageHashPrefix,
+          copiedAt: Date.now()
+        }
+      });
+      await Promise.all([
+        chrome.action.setBadgeText({ text: "✓" }),
+        chrome.action.setBadgeBackgroundColor({ color: "#638100" }),
+        chrome.action.setTitle({ title: `Bootstrap v${pending.version} copied` })
+      ]);
+      let popupOpened = false;
+      if (typeof chrome.action.openPopup === "function") {
+        try {
+          if (sender.tab?.windowId == null) await chrome.action.openPopup();
+          else await chrome.action.openPopup({ windowId: sender.tab.windowId });
+          popupOpened = true;
+        } catch {}
+      }
+      return { ok: true, popupOpened };
     }
     case "reload-extension": {
       assertLocalReloadSender(sender);
@@ -364,6 +451,29 @@ async function handleMessage(message, sender) {
     default:
       throw new Error("Unknown MonkeySkill message.");
   }
+}
+
+function waitForBootstrapPopupCopy(token) {
+  let timeout;
+  let settled = false;
+  let resolvePromise;
+  const promise = new Promise(resolve => {
+    resolvePromise = value => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      bootstrapPopupCopyWaiters.delete(token);
+      resolve(value);
+    };
+  });
+  timeout = setTimeout(() => resolvePromise({ ok: false, error: "Extension popup copy timed out." }), 5_000);
+  bootstrapPopupCopyWaiters.set(token, { resolve: resolvePromise });
+  return {
+    promise,
+    cancel() {
+      resolvePromise({ ok: false, error: "Extension popup was not opened." });
+    }
+  };
 }
 
 async function loadJsonAsset(path) {

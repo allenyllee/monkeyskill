@@ -155,6 +155,9 @@ to the Extension background. The background accepts only the exact Bootstrap ver
 and protocol pinned in the published Extension, constructs the prompt itself, and returns it only to
 the isolated bridge for copying. The page receives success metadata, never the prompt text. For this
 POC, exact Extension pinning is the trust anchor; there is deliberately no signature or PKI layer.
+On Chrome 127 or newer the Extension opens its action popup after the verified copy and shows the
+version plus hash prefix. Browsers that do not expose programmatic popup opening receive a green
+check badge; clicking the Extension icon consumes and displays the same trusted confirmation.
 
 ## Local agent API
 

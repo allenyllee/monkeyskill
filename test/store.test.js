@@ -34,6 +34,8 @@ test("Store bridge is limited to local development and the official Pages origin
 test("verified Runner Bootstrap prompt is pinned and copied by Extension-owned code", async () => {
   const background = await readFile(new URL("src/background.js", root), "utf8");
   const bridge = await readFile(new URL("src/store/bridge.js", root), "utf8");
+  const popupHtml = await readFile(new URL("src/popup/popup.html", root), "utf8");
+  const popupJs = await readFile(new URL("src/popup/popup.js", root), "utf8");
   const policy = await readFile(new URL("src/lib/runner-bootstrap-policy.js", root), "utf8");
   const offscreen = await readFile(new URL("src/validation/offscreen.js", root), "utf8");
   assert.match(background, /case "verify-runner-bootstrap"/);
@@ -44,9 +46,15 @@ test("verified Runner Bootstrap prompt is pinned and copied by Extension-owned c
   assert.match(policy, /eb4d2956a00f5d2232fe0a06a0f58b050bc831502cafc48e6286db5248701869/);
   assert.match(policy, /protocolSchemaVersion: 2/);
   assert.doesNotMatch(offscreen, /write-verified-bootstrap-prompt/);
-  assert.match(bridge, /const \{ clipboardText, \.\.\.publicResponse \} = response/);
+  assert.match(bridge, /const \{ clipboardText, confirmationToken, \.\.\.publicResponse \} = response/);
   assert.match(bridge, /document\.execCommand\("copy"\)/);
-  assert.match(bridge, /response = publicResponse/);
+  assert.match(bridge, /store-confirm-runner-bootstrap-copy/);
+  assert.match(background, /case "confirm-runner-bootstrap-copy"/);
+  assert.match(background, /chrome\.action\.openPopup/);
+  assert.match(background, /chrome\.action\.setBadgeText\(\{ text: "✓" \}\)/);
+  assert.match(popupHtml, /id="bootstrap-copy-notice"/);
+  assert.match(popupJs, /runnerBootstrapCopyNotice/);
+  assert.match(popupJs, /bootstrapCopyNotice\.hidden = false/);
 });
 
 test("automatic Extension reload is restricted to the local development Store", async () => {

@@ -45,8 +45,16 @@
         bootstrap
       });
       if (request.action === "verify-bootstrap" && response?.ok) {
-        const { clipboardText, ...publicResponse } = response;
-        copyVerifiedText(clipboardText);
+        const { clipboardText, confirmationToken, ...publicResponse } = response;
+        if (!response.popupOpened) {
+          copyVerifiedText(clipboardText);
+          const confirmation = await chrome.runtime.sendMessage({
+            type: "store-confirm-runner-bootstrap-copy",
+            confirmationToken
+          });
+          if (!confirmation?.ok) throw new Error(confirmation?.error || "Extension confirmation popup failed.");
+          publicResponse.popupOpened = confirmation.popupOpened === true;
+        }
         response = publicResponse;
       }
     } catch (error) {

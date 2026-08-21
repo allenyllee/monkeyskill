@@ -42,6 +42,34 @@ h1, h2, p { margin: 0; }
 h1 { font-size: 20px; letter-spacing: -0.4px; }
 header p { margin-top: 2px; color: #69756d; font-size: 12px; }
 
+.copy-notice {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid #b9d770;
+  border-radius: 14px;
+  color: #314600;
+  background: #f1ffd0;
+}
+.copy-notice[hidden] { display: none; }
+.copy-notice strong { font-size: 13px; }
+.copy-notice p { margin-top: 3px; color: #5c720f; font-size: 11px; }
+.copy-notice.error { border-color: #e6aaaa; color: #7e2020; background: #fff0f0; }
+.copy-notice.error p { color: #963737; }
+.copy-check {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: white;
+  background: #638100;
+  font-weight: 900;
+}
+
 .skill-card {
   padding: 18px;
   border: 1px solid #dce4da;

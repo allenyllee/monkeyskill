@@ -9,6 +9,8 @@ const saveButton = document.querySelector("#save");
 const manageButton = document.querySelector("#manage");
 const storeButton = document.querySelector("#store");
 const status = document.querySelector("#status");
+const bootstrapCopyNotice = document.querySelector("#bootstrap-copy-notice");
+const bootstrapCopyDetail = document.querySelector("#bootstrap-copy-detail");
 
 let activeTab;
 let skills = [];
@@ -21,6 +23,7 @@ manageButton.addEventListener("click", () => chrome.runtime.openOptionsPage());
 storeButton.addEventListener("click", () => chrome.tabs.create({ url: STORE_URL }));
 
 async function initialize() {
+  await showBootstrapCopyNotice();
   [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   siteName.textContent = activeTab?.url && /^https?:\/\//.test(activeTab.url)
     ? new URL(activeTab.url).hostname
@@ -41,6 +44,65 @@ async function initialize() {
     return;
   }
   await selectSkill(skills[0].id);
+}
+
+async function showBootstrapCopyNotice() {
+  const popupKey = "runnerBootstrapPopupCopy";
+  const popupStored = await chrome.storage.session.get(popupKey);
+  const pending = popupStored[popupKey];
+  if (pending && pending.expiresAt >= Date.now()) {
+    try {
+      copyText(pending.text);
+      await chrome.storage.session.remove(popupKey);
+      bootstrapCopyDetail.textContent = `v${pending.version} · ${pending.packageHashPrefix}…`;
+      bootstrapCopyNotice.hidden = false;
+      await chrome.runtime.sendMessage({ type: "bootstrap-popup-copy-result", token: pending.token, ok: true });
+    } catch (error) {
+      await chrome.storage.session.remove(popupKey);
+      bootstrapCopyNotice.classList.add("error");
+      bootstrapCopyNotice.querySelector("strong").textContent = "Bootstrap prompt 複製失敗";
+      bootstrapCopyDetail.textContent = error.message;
+      bootstrapCopyNotice.hidden = false;
+      await chrome.runtime.sendMessage({
+        type: "bootstrap-popup-copy-result",
+        token: pending.token,
+        ok: false,
+        error: error.message
+      });
+    }
+    await clearActionCopyIndicator();
+    return;
+  }
+  const key = "runnerBootstrapCopyNotice";
+  const stored = await chrome.storage.session.get(key);
+  const notice = stored[key];
+  await chrome.storage.session.remove(key);
+  await clearActionCopyIndicator();
+  if (!notice || Date.now() - notice.copiedAt > 60_000) return;
+  bootstrapCopyDetail.textContent = `v${notice.version} · ${notice.packageHashPrefix}…`;
+  bootstrapCopyNotice.hidden = false;
+}
+
+function copyText(text) {
+  if (typeof text !== "string" || text.length < 100 || text.length > 4_000) {
+    throw new Error("Extension returned an invalid verified prompt.");
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.cssText = "position:fixed;inset:-9999px;width:1px;height:1px;opacity:0";
+  document.body.append(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, text.length);
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  if (!copied) throw new Error("Extension clipboard write failed.");
+}
+
+async function clearActionCopyIndicator() {
+  await Promise.all([
+    chrome.action.setBadgeText({ text: "" }),
+    chrome.action.setTitle({ title: "MonkeySkill" })
+  ]);
 }
 
 async function selectSkill(skillId) {
