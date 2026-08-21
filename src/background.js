@@ -26,6 +26,11 @@ import {
 } from "./lib/llm.js";
 import { buildAttackerMessages } from "./lib/security-regression.js";
 import {
+  CodexAppServerClient,
+  DEFAULT_CODEX_APP_SERVER_URL,
+  normalizeCodexAppServerUrl
+} from "./lib/codex-app-server.js";
+import {
   buildVerifiedRunnerBootstrapPrompt,
   validateRunnerBootstrapObservation
 } from "./lib/runner-bootstrap-policy.js";
@@ -37,6 +42,7 @@ const TRUSTED_STORES_KEY = "trustedStoreUrls";
 const PENDING_BOOTSTRAP_COPY_KEY = "pendingRunnerBootstrapCopy";
 const BOOTSTRAP_COPY_NOTICE_KEY = "runnerBootstrapCopyNotice";
 const BOOTSTRAP_POPUP_COPY_KEY = "runnerBootstrapPopupCopy";
+const CODEX_APP_SERVER_URL_KEY = "codexAppServerUrl";
 const STORE_BRIDGE_PREFIX = "monkeyskill-store-bridge-";
 const GENERATION_STALE_MS = 20 * 60 * 1000;
 let initializationPromise;
@@ -77,6 +83,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     .then(sendResponse, error => sendResponse({ ok: false, error: error.message }));
   return true;
 });
+
+async function withCodexAppServer(url, operation, timeoutMs = 20_000) {
+  const client = new CodexAppServerClient(url || DEFAULT_CODEX_APP_SERVER_URL, { timeoutMs });
+  try {
+    await client.connect();
+    return { ok: true, ...(await operation(client)) };
+  } finally {
+    client.close();
+  }
+}
 
 function ready() {
   initializationPromise ??= initializeStore();
@@ -292,6 +308,31 @@ async function handleMessage(message, sender) {
     case "delete-llm-settings": {
       await chrome.storage.local.remove(LLM_SETTINGS_KEY);
       return { ok: true };
+    }
+    case "get-codex-agent-settings": {
+      const stored = await chrome.storage.local.get(CODEX_APP_SERVER_URL_KEY);
+      return { ok: true, url: normalizeCodexAppServerUrl(stored[CODEX_APP_SERVER_URL_KEY] || DEFAULT_CODEX_APP_SERVER_URL) };
+    }
+    case "save-codex-agent-settings": {
+      const url = normalizeCodexAppServerUrl(message.url);
+      await chrome.storage.local.set({ [CODEX_APP_SERVER_URL_KEY]: url });
+      return { ok: true, url };
+    }
+    case "codex-agent-status": {
+      return withCodexAppServer(message.url, client => client.readAccount());
+    }
+    case "codex-agent-login": {
+      return withCodexAppServer(message.url, async client => {
+        const current = await client.readAccount();
+        if (current.accountType === "chatgpt") return { ...current, alreadySignedIn: true };
+        const login = await client.startChatGptLogin();
+        if (!login?.authUrl) throw new Error("Codex App Server 未回傳 ChatGPT 登入網址。");
+        await chrome.tabs.create({ url: login.authUrl });
+        return { connected: true, authenticated: false, loginStarted: true, loginId: login.loginId };
+      });
+    }
+    case "codex-agent-smoke-test": {
+      return withCodexAppServer(message.url, client => client.runSmokeTest(), 100_000);
     }
     case "list-trusted-stores": {
       const stored = await chrome.storage.local.get(TRUSTED_STORES_KEY);

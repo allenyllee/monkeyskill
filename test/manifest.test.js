@@ -20,6 +20,7 @@ test("manifest references existing extension entrypoints and the external Store"
     access(join(root, manifest.background.service_worker)),
     access(join(root, manifest.action.default_popup)),
     access(join(root, manifest.options_page)),
+    access(join(root, "src", "lib", "codex-app-server.js")),
     access(join(root, "agent-skills.json")),
     access(join(root, "skills", "mskill-attacker", "SKILL.md")),
     access(join(root, "skills", "mskill-creator", "SKILL.md")),
@@ -28,6 +29,17 @@ test("manifest references existing extension entrypoints and the external Store"
     access(join(root, "src", "validation", "offscreen.html")),
     access(join(root, "src", "validation", "sandbox.html"))
   ]);
+});
+
+test("experimental ChatGPT Agent path remains localhost-only and separate from BYOK", async () => {
+  const readme = await readFile(join(root, "README.md"), "utf8");
+  const integration = await readFile(join(root, "docs", "codex-agent-integration.md"), "utf8");
+  const options = await readFile(join(root, "src", "options", "options.html"), "utf8");
+  assert.match(readme, /codex app-server --listen ws:\/\/127\.0\.0\.1:4500/);
+  assert.match(readme, /not yet a replacement for the four-role BYOK MSkill pipeline/);
+  assert.match(integration, /Tester A, Attacker, Tester B, and Builder/);
+  assert.match(integration, /MONKEYSKILL_AGENT_OK/);
+  assert.match(options, /目前只提供連線、登入與隔離 smoke test/);
 });
 
 test("agent Skill catalog preinstalls attacker, creator, installer, and tester policies", async () => {

@@ -33,7 +33,7 @@ button { border: 0; border-radius: 9px; padding: 8px 10px; font: inherit; font-s
 .skill-actions { display: flex; gap: 8px; margin-top: 22px; }
 .skill-actions button { color: #445047; background: #eef1ed; }
 .skill-actions .danger { color: #8b2525; background: #fff0f0; }
-#status, #store-status { min-height: 20px; margin-top: 10px; color: #657168; font-size: 12px; overflow-wrap: anywhere; }
+#status, #store-status, #agent-status { min-height: 20px; margin-top: 10px; color: #657168; font-size: 12px; overflow-wrap: anywhere; }
 form { display: grid; gap: 14px; margin-top: 22px; }
 label { display: grid; gap: 6px; color: #5d6961; font-size: 12px; font-weight: 750; }
 input, select { width: 100%; border: 1px solid #d6dfd4; border-radius: 10px; padding: 11px 12px; color: #17211b; background: #fbfcfa; font: inherit; }
@@ -45,3 +45,5 @@ button:disabled { cursor: wait; opacity: .55; }
 details { border-top: 1px solid #dce5d8; padding-top: 12px; }
 summary { cursor: pointer; color: #536159; font-size: 12px; font-weight: 800; }
 pre { max-height: 420px; overflow: auto; padding: 14px; border-radius: 10px; color: #dcebd6; background: #17211b; font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.command-hint { padding: 10px 12px; border-radius: 10px; color: #48544b; background: #f1f4ef; font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+#agent-result { margin: 8px 0 0; }

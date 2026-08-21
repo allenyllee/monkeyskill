@@ -9,6 +9,7 @@ MonkeySkill is an experimental Manifest V3 Chrome extension that generates, vali
 - No bundled functional MSkills or generated Store builds.
 - A GitHub Pages Store that publishes only `skill.json` manifests and human-readable `SKILL.md` specifications.
 - BYOK settings for an OpenAI-compatible Chat Completions endpoint, model, and API key.
+- An experimental localhost-only Codex App Server connection for ChatGPT account login and isolated Agent smoke tests.
 - Isolated Attacker, Builder, original-Tester, and poisoned-Tester conversations.
 - A mandatory differential gate: Tester A rejection short-circuits immediately; only an allowed original reaches an allowlist-only Attacker, trusted code renders a varied known-reject canary, and Tester B must reject it before Builder runs.
 - The trusted canary library provides 245,760 framing/consequence/structure/wording combinations before safe insertion positions, with exhaustive plan-tuple regressions.
@@ -50,6 +51,25 @@ operational procedure.
 6. Visit <https://allenyllee.github.io/monkeyskill-store/> to install an MSkill.
 
 Developer mode is needed only because this repository is loaded unpacked. A Chrome Web Store build would not require it. **Allow User Scripts** remains required for runtime-generated builds.
+
+### Experimental ChatGPT Agent connection
+
+The options page can connect to a local Codex App Server without receiving a ChatGPT cookie,
+password, or bearer token. Start the service in a separate terminal:
+
+```powershell
+codex app-server --listen ws://127.0.0.1:4500
+```
+
+Then open **ChatGPT Agent** in the options page. **Check connection** reads the redacted account
+status, **Sign in with ChatGPT** asks app-server for the official browser login URL, and **Test
+Agent** creates a read-only, approval-free smoke-test thread. The test prompt forbids tools and
+expects one exact response; the Extension archives the test thread afterward.
+
+This is a POC integration path, not yet a replacement for the four-role BYOK MSkill pipeline. The
+Extension accepts only `ws://localhost`, `ws://127.0.0.1`, or `ws://[::1]`; remote App Servers,
+credentials embedded in URLs, and query parameters are rejected. See
+[ChatGPT Agent integration POC](docs/codex-agent-integration.md) for protocol and trust boundaries.
 
 ## Store installation flow
 

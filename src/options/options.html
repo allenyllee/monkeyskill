@@ -52,6 +52,25 @@
 
       <section>
         <div class="section-title">
+          <div><span class="eyebrow">EXPERIMENTAL</span><h2>ChatGPT Agent</h2></div>
+          <span id="agent-state" class="installed">Not connected</span>
+        </div>
+        <p class="copy">透過本機 Codex App Server 使用你的 ChatGPT 登入狀態。Extension 不讀取 ChatGPT cookie 或 token；目前只提供連線、登入與隔離 smoke test，尚未取代既有的 BYOK 生成流程。</p>
+        <form id="agent-form">
+          <label><span>Local App Server</span><input id="agent-url" type="url" required value="ws://127.0.0.1:4500"></label>
+          <div class="command-hint"><code>codex app-server --listen ws://127.0.0.1:4500</code></div>
+          <div class="skill-actions">
+            <button type="submit">檢查連線</button>
+            <button id="agent-login" type="button">使用 ChatGPT 登入</button>
+            <button id="agent-smoke" type="button">測試 Agent</button>
+          </div>
+        </form>
+        <p id="agent-status" role="status"></p>
+        <pre id="agent-result" hidden></pre>
+      </section>
+
+      <section>
+        <div class="section-title">
           <div><span class="eyebrow">FORKS</span><h2>Trusted MSkill Stores</h2></div>
         </div>
         <p class="copy">官方 Store 已預先信任。若要使用別人 Fork 的 Store，加入其 GitHub Pages 根網址並核准該 origin；只有清單中的頁面能載入 Extension bridge。</p>

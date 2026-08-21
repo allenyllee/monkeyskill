@@ -17,6 +17,13 @@ const apiKey = document.querySelector("#api-key");
 const apiState = document.querySelector("#api-state");
 const apiStatus = document.querySelector("#api-status");
 const deleteApi = document.querySelector("#delete-api");
+const agentForm = document.querySelector("#agent-form");
+const agentUrl = document.querySelector("#agent-url");
+const agentState = document.querySelector("#agent-state");
+const agentStatus = document.querySelector("#agent-status");
+const agentLogin = document.querySelector("#agent-login");
+const agentSmoke = document.querySelector("#agent-smoke");
+const agentResult = document.querySelector("#agent-result");
 const storeForm = document.querySelector("#store-form");
 const storeUrl = document.querySelector("#store-url");
 const trustedStores = document.querySelector("#trusted-stores");
@@ -25,7 +32,7 @@ const storeStatus = document.querySelector("#store-status");
 let skills = [];
 let selected;
 
-void Promise.all([renderSkills(), renderApiSettings(), renderTrustedStores()]);
+void Promise.all([renderSkills(), renderApiSettings(), renderAgentSettings(), renderTrustedStores()]);
 skillPicker.addEventListener("change", () => void renderSkill(skillPicker.value));
 openStore.addEventListener("click", () => chrome.tabs.create({ url: STORE_URL }));
 resetButton.addEventListener("click", () => void resetSkill());
@@ -54,6 +61,19 @@ deleteApi.addEventListener("click", async () => {
   const response = await chrome.runtime.sendMessage({ type: "delete-llm-settings" });
   apiStatus.textContent = response.ok ? "API 設定已刪除。" : response.error;
   await renderApiSettings();
+});
+
+agentForm.addEventListener("submit", event => {
+  event.preventDefault();
+  void runAgentAction("codex-agent-status", "連線中…");
+});
+
+agentLogin.addEventListener("click", () => {
+  void runAgentAction("codex-agent-login", "正在啟動 ChatGPT 登入…");
+});
+
+agentSmoke.addEventListener("click", () => {
+  void runAgentAction("codex-agent-smoke-test", "正在執行隔離 Agent smoke test…");
 });
 
 storeForm.addEventListener("submit", async event => {
@@ -163,6 +183,61 @@ async function renderApiSettings() {
   apiModel.value = response.settings.model;
   apiKey.placeholder = response.settings.hasApiKey ? "已儲存；留白可保留原 key" : "輸入 API key";
   apiState.textContent = response.settings.hasApiKey ? "Configured" : "Not configured";
+}
+
+async function renderAgentSettings() {
+  const response = await chrome.runtime.sendMessage({ type: "get-codex-agent-settings" });
+  if (!response.ok) return agentStatus.textContent = response.error;
+  agentUrl.value = response.url;
+}
+
+async function runAgentAction(type, progress) {
+  agentStatus.textContent = progress;
+  agentResult.hidden = true;
+  setAgentControlsDisabled(true);
+  try {
+    const saved = await chrome.runtime.sendMessage({ type: "save-codex-agent-settings", url: agentUrl.value });
+    if (!saved.ok) throw new Error(saved.error);
+    agentUrl.value = saved.url;
+    const response = await chrome.runtime.sendMessage({ type, url: saved.url });
+    if (!response.ok) throw new Error(response.error);
+    if (response.loginStarted) {
+      agentState.textContent = "Login pending";
+      agentStatus.textContent = "已開啟 ChatGPT 登入頁。完成後再按「檢查連線」。";
+      return;
+    }
+    if (response.passed !== undefined) {
+      agentState.textContent = response.passed ? "Agent verified" : "Unexpected reply";
+      agentStatus.textContent = response.passed ? "Agent 連線與隔離 turn 已通過。測試 task 已封存。" : "Agent 有回應，但內容不符合 smoke-test 契約。";
+      agentResult.textContent = JSON.stringify({
+        passed: response.passed,
+        reply: response.reply,
+        threadId: response.threadId,
+        turnId: response.turnId
+      }, null, 2);
+      agentResult.hidden = false;
+      return;
+    }
+    renderAgentAccount(response);
+  } catch (error) {
+    agentState.textContent = "Not connected";
+    agentStatus.textContent = error.message;
+  } finally {
+    setAgentControlsDisabled(false);
+  }
+}
+
+function renderAgentAccount(account) {
+  agentState.textContent = account.authenticated
+    ? `${account.accountType || "Agent"}${account.planType ? ` · ${account.planType}` : ""}`
+    : "Sign-in required";
+  agentStatus.textContent = account.authenticated
+    ? `已連線${account.email ? `：${account.email}` : ""}。`
+    : "App Server 已連線，但尚未登入 ChatGPT。";
+}
+
+function setAgentControlsDisabled(disabled) {
+  for (const button of [agentForm.querySelector('button[type="submit"]'), agentLogin, agentSmoke]) button.disabled = disabled;
 }
 
 async function renderTrustedStores() {
