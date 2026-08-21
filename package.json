@@ -1,15 +1,16 @@
 {
   "name": "monkeyskill",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test",
     "preflight:agent": "node scripts/preflight-agent-api.mjs",
-    "check": "node --check src/background.js && node --check src/lib/codex-app-server.js && node --check src/lib/generation-policy.js && node --check src/lib/skill-store.js && node --check src/lib/llm.js && node --check src/lib/security-regression.js && node --check src/lib/test-spec.js && node --check src/popup/popup.js && node --check src/options/options.js && node --check src/store/bridge.js && node --check src/validation/offscreen.js && node --check src/validation/sandbox.js && node --check scripts/agent-api.mjs && node --check scripts/serve-agent-api.mjs && node --check scripts/forward-agent-api.mjs && node --check scripts/preflight-agent-api.mjs && node --check scripts/poll-agent-job.mjs && node --check scripts/complete-agent-job.mjs && node --check scripts/export-agent-checkpoint.mjs && node --check scripts/replay-agent-checkpoint.mjs && node --check scripts/diagnose-overlay.mjs && node --check scripts/run-real-browser-conformance.mjs",
+    "check": "node --check src/background.js && node --check src/lib/codex-app-server.js && node --check src/lib/codex-browser-bridge.js && node --check src/lib/generation-policy.js && node --check src/lib/skill-store.js && node --check src/lib/llm.js && node --check src/lib/security-regression.js && node --check src/lib/test-spec.js && node --check src/popup/popup.js && node --check src/options/options.js && node --check src/store/bridge.js && node --check src/validation/offscreen.js && node --check src/validation/sandbox.js && node --check scripts/agent-api.mjs && node --check scripts/serve-agent-api.mjs && node --check scripts/codex-browser-bridge-server.mjs && node --check scripts/serve-codex-browser-bridge.mjs && node --check scripts/forward-agent-api.mjs && node --check scripts/preflight-agent-api.mjs && node --check scripts/poll-agent-job.mjs && node --check scripts/complete-agent-job.mjs && node --check scripts/export-agent-checkpoint.mjs && node --check scripts/replay-agent-checkpoint.mjs && node --check scripts/diagnose-overlay.mjs && node --check scripts/run-real-browser-conformance.mjs",
     "diagnose:overlay": "node scripts/diagnose-overlay.mjs",
     "conformance:browser": "node scripts/run-real-browser-conformance.mjs",
     "serve:agent": "node scripts/serve-agent-api.mjs",
-    "serve:agent-forwarder": "node scripts/forward-agent-api.mjs"
+    "serve:agent-forwarder": "node scripts/forward-agent-api.mjs",
+    "serve:codex-bridge": "node scripts/serve-codex-browser-bridge.mjs"
   }
 }

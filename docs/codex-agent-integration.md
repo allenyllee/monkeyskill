@@ -1,14 +1,18 @@
 # ChatGPT Agent integration POC
 
-MonkeySkill 0.3.7 adds an experimental Extension-to-Agent path through the local Codex App
+MonkeySkill 0.3.8 adds an experimental Extension-to-Agent path through a tokenized local Browser
+Bridge and Codex App
 Server. It proves that a user who already has Codex can authorize MonkeySkill with the user's
 ChatGPT account instead of placing an API key inside the Extension. It does not yet migrate the
 production MSkill generation and validation roles away from BYOK.
 
 ## Boundary
 
-- The Extension connects only to loopback `ws://` URLs. Remote hosts and URL credentials fail
-  closed.
+- Codex App Server rejects every browser WebSocket carrying an `Origin` header. The Extension does
+  not attempt a direct connection or ask users to weaken that protection.
+- The bridge connects to App Server without a browser Origin and accepts only a loopback `ws://`
+  URL containing its freshly generated 256-bit token. Remote hosts, missing tokens, and URL
+  credentials fail closed.
 - The first user-initiated Agent action requests optional permission only for the selected
   localhost origin before opening its WebSocket.
 - Codex App Server owns ChatGPT authentication and cached credentials. The Extension receives an
@@ -28,7 +32,8 @@ Official protocol references: [Codex App Server](https://learn.chatgpt.com/docs/
 
 ```mermaid
 flowchart TD
-    U[User opens Extension options] --> L[Local Codex App Server]
+    U[User opens Extension options] --> B[Tokenized local Browser Bridge]
+    B --> L[Local Codex App Server]
     L --> H[initialize / initialized]
     H --> A[account/read]
     A -->|ChatGPT account present| S[Test Agent]
@@ -51,17 +56,20 @@ flowchart TD
 1. Start `codex app-server --listen ws://127.0.0.1:4500` outside the browser. On Windows without a
    global CLI command, run
    `npx.cmd --yes @openai/codex@0.149.0 app-server --listen ws://127.0.0.1:4500`.
-2. Reload MonkeySkill 0.3.7 and open its options page.
-3. Under **ChatGPT Agent**, leave the default loopback URL and select **Check connection**.
-4. If sign-in is required, select **Sign in with ChatGPT**, complete the official browser flow,
+2. In this repository, run `npm run serve:codex-bridge` and keep the terminal open.
+3. Reload MonkeySkill 0.3.8 and open its options page.
+4. Paste the complete printed Browser Bridge URL, then select **Check connection** and approve the
+   matching localhost origin permission.
+5. If sign-in is required, select **Sign in with ChatGPT**, complete the official browser flow,
    and check the connection again.
-5. Select **Test Agent**. A pass requires the exact final answer
+6. Select **Test Agent**. A pass requires the exact final answer
    `MONKEYSKILL_AGENT_OK`; connection alone is not sufficient.
 
 ## Evidence
 
-The module test replays the full wire sequence with a deterministic fake App Server and verifies
-loopback URL enforcement plus account-field redaction. A real Codex CLI 0.149.0 run additionally
+The module tests replay the full wire sequence with a deterministic fake App Server, enforce the
+tokenized loopback bridge URL, and prove that an incoming `chrome-extension://` Origin is removed
+before the upstream handshake. They also verify account-field redaction. A real Codex CLI 0.149.0 run additionally
 completed the handshake, read a ChatGPT subscription account, ran the isolated turn, received the
 exact final answer, and archived the generated thread.
 

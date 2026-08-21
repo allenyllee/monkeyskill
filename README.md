@@ -54,18 +54,32 @@ Developer mode is needed only because this repository is loaded unpacked. A Chro
 
 ### Experimental ChatGPT Agent connection
 
-The options page can connect to a local Codex App Server without receiving a ChatGPT cookie,
-password, or bearer token. Start the service in a separate terminal:
+The options page connects through a tokenized local Browser Bridge without receiving a ChatGPT
+cookie, password, or bearer token. Codex App Server deliberately rejects browser WebSockets that
+carry an `Origin` header, so direct Extension-to-App-Server connections are not supported.
+
+Start Codex App Server in one terminal:
 
 ```powershell
 codex app-server --listen ws://127.0.0.1:4500
 ```
 
-On Windows, when the desktop app has not placed `codex` on `PATH`, use the tested npm launcher:
+On Windows, when the desktop app has not placed `codex` on `PATH`, use:
 
 ```powershell
 npx.cmd --yes @openai/codex@0.149.0 app-server --listen ws://127.0.0.1:4500
 ```
+
+In a second terminal, from this repository, start the bridge:
+
+```powershell
+npm run serve:codex-bridge
+```
+
+Paste the complete printed `ws://127.0.0.1:4501/<random-token>` URL into the Extension. The
+bridge accepts only that high-entropy path from a `chrome-extension://` Origin, binds only to
+loopback, removes the browser Origin, and forwards raw WebSocket frames to App Server. A new URL
+is generated on every bridge start.
 
 Then open **ChatGPT Agent** in the options page. **Check connection** reads the redacted account
 status, **Sign in with ChatGPT** asks app-server for the official browser login URL, and **Test
@@ -74,7 +88,7 @@ expects one exact response; the Extension archives the test thread afterward.
 
 This is a POC integration path, not yet a replacement for the four-role BYOK MSkill pipeline. The
 first Agent action requests the matching localhost origin permission. The Extension accepts only
-`ws://localhost`, `ws://127.0.0.1`, or `ws://[::1]`; remote App Servers,
+a tokenized `ws://localhost`, `ws://127.0.0.1`, or `ws://[::1]` bridge URL; remote bridges,
 credentials embedded in URLs, and query parameters are rejected. See
 [ChatGPT Agent integration POC](docs/codex-agent-integration.md) for protocol and trust boundaries.
 

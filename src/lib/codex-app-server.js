@@ -61,7 +61,7 @@ export class CodexAppServerClient {
       clientInfo: {
         name: "monkeyskill_extension",
         title: "MonkeySkill Extension",
-        version: "0.3.7"
+        version: "0.3.8"
       }
     });
     this.notify("initialized");

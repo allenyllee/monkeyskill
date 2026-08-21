@@ -25,11 +25,8 @@ import {
   scanGeneratedBuild
 } from "./lib/llm.js";
 import { buildAttackerMessages } from "./lib/security-regression.js";
-import {
-  CodexAppServerClient,
-  DEFAULT_CODEX_APP_SERVER_URL,
-  normalizeCodexAppServerUrl
-} from "./lib/codex-app-server.js";
+import { CodexAppServerClient } from "./lib/codex-app-server.js";
+import { normalizeCodexBrowserBridgeUrl } from "./lib/codex-browser-bridge.js";
 import {
   buildVerifiedRunnerBootstrapPrompt,
   validateRunnerBootstrapObservation
@@ -85,7 +82,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 async function withCodexAppServer(url, operation, timeoutMs = 20_000) {
-  const client = new CodexAppServerClient(url || DEFAULT_CODEX_APP_SERVER_URL, { timeoutMs });
+  const client = new CodexAppServerClient(normalizeCodexBrowserBridgeUrl(url), { timeoutMs });
   try {
     await client.connect();
     return { ok: true, ...(await operation(client)) };
@@ -311,10 +308,12 @@ async function handleMessage(message, sender) {
     }
     case "get-codex-agent-settings": {
       const stored = await chrome.storage.local.get(CODEX_APP_SERVER_URL_KEY);
-      return { ok: true, url: normalizeCodexAppServerUrl(stored[CODEX_APP_SERVER_URL_KEY] || DEFAULT_CODEX_APP_SERVER_URL) };
+      let url = "";
+      try { url = normalizeCodexBrowserBridgeUrl(stored[CODEX_APP_SERVER_URL_KEY]); } catch {}
+      return { ok: true, url };
     }
     case "save-codex-agent-settings": {
-      const url = normalizeCodexAppServerUrl(message.url);
+      const url = normalizeCodexBrowserBridgeUrl(message.url);
       await chrome.storage.local.set({ [CODEX_APP_SERVER_URL_KEY]: url });
       return { ok: true, url };
     }

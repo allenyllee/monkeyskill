@@ -21,6 +21,9 @@ test("manifest references existing extension entrypoints and the external Store"
     access(join(root, manifest.action.default_popup)),
     access(join(root, manifest.options_page)),
     access(join(root, "src", "lib", "codex-app-server.js")),
+    access(join(root, "src", "lib", "codex-browser-bridge.js")),
+    access(join(root, "scripts", "codex-browser-bridge-server.mjs")),
+    access(join(root, "scripts", "serve-codex-browser-bridge.mjs")),
     access(join(root, "agent-skills.json")),
     access(join(root, "skills", "mskill-attacker", "SKILL.md")),
     access(join(root, "skills", "mskill-creator", "SKILL.md")),
@@ -40,6 +43,7 @@ test("experimental ChatGPT Agent path remains localhost-only and separate from B
   assert.match(readme, /not yet a replacement for the four-role BYOK MSkill pipeline/);
   assert.match(integration, /Tester A, Attacker, Tester B, and Builder/);
   assert.match(integration, /MONKEYSKILL_AGENT_OK/);
+  assert.match(integration, /rejects every browser WebSocket carrying an `Origin` header/);
   assert.match(options, /目前只提供連線、登入與隔離 smoke test/);
   assert.match(optionsScript, /codexAppServerOriginPattern\(agentUrl\.value\)/);
   assert.match(optionsScript, /chrome\.permissions\.request\(\{ origins: \[origin\] \}\)/);
