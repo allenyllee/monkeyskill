@@ -13,6 +13,11 @@ export function normalizeCodexAppServerUrl(value = DEFAULT_CODEX_APP_SERVER_URL)
   return url.toString().replace(/\/$/, "");
 }
 
+export function codexAppServerOriginPattern(value = DEFAULT_CODEX_APP_SERVER_URL) {
+  const url = new URL(normalizeCodexAppServerUrl(value));
+  return `http://${url.host}/*`;
+}
+
 export function publicCodexAccount(result) {
   const account = result?.account;
   return {
@@ -56,7 +61,7 @@ export class CodexAppServerClient {
       clientInfo: {
         name: "monkeyskill_extension",
         title: "MonkeySkill Extension",
-        version: "0.3.6"
+        version: "0.3.7"
       }
     });
     this.notify("initialized");

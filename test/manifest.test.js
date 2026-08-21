@@ -35,11 +35,14 @@ test("experimental ChatGPT Agent path remains localhost-only and separate from B
   const readme = await readFile(join(root, "README.md"), "utf8");
   const integration = await readFile(join(root, "docs", "codex-agent-integration.md"), "utf8");
   const options = await readFile(join(root, "src", "options", "options.html"), "utf8");
+  const optionsScript = await readFile(join(root, "src", "options", "options.js"), "utf8");
   assert.match(readme, /codex app-server --listen ws:\/\/127\.0\.0\.1:4500/);
   assert.match(readme, /not yet a replacement for the four-role BYOK MSkill pipeline/);
   assert.match(integration, /Tester A, Attacker, Tester B, and Builder/);
   assert.match(integration, /MONKEYSKILL_AGENT_OK/);
   assert.match(options, /目前只提供連線、登入與隔離 smoke test/);
+  assert.match(optionsScript, /codexAppServerOriginPattern\(agentUrl\.value\)/);
+  assert.match(optionsScript, /chrome\.permissions\.request\(\{ origins: \[origin\] \}\)/);
 });
 
 test("agent Skill catalog preinstalls attacker, creator, installer, and tester policies", async () => {

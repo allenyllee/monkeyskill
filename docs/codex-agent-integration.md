@@ -1,6 +1,6 @@
 # ChatGPT Agent integration POC
 
-MonkeySkill 0.3.6 adds an experimental Extension-to-Agent path through the local Codex App
+MonkeySkill 0.3.7 adds an experimental Extension-to-Agent path through the local Codex App
 Server. It proves that a user who already has Codex can authorize MonkeySkill with the user's
 ChatGPT account instead of placing an API key inside the Extension. It does not yet migrate the
 production MSkill generation and validation roles away from BYOK.
@@ -9,6 +9,8 @@ production MSkill generation and validation roles away from BYOK.
 
 - The Extension connects only to loopback `ws://` URLs. Remote hosts and URL credentials fail
   closed.
+- The first user-initiated Agent action requests optional permission only for the selected
+  localhost origin before opening its WebSocket.
 - Codex App Server owns ChatGPT authentication and cached credentials. The Extension receives an
   authorization URL and redacted account fields, not cookies or tokens.
 - Login uses the hosted ChatGPT success page and the local callback owned by App Server.
@@ -46,8 +48,10 @@ flowchart TD
 
 ## Operation
 
-1. Start `codex app-server --listen ws://127.0.0.1:4500` outside the browser.
-2. Reload MonkeySkill 0.3.6 and open its options page.
+1. Start `codex app-server --listen ws://127.0.0.1:4500` outside the browser. On Windows without a
+   global CLI command, run
+   `npx.cmd --yes @openai/codex@0.149.0 app-server --listen ws://127.0.0.1:4500`.
+2. Reload MonkeySkill 0.3.7 and open its options page.
 3. Under **ChatGPT Agent**, leave the default loopback URL and select **Check connection**.
 4. If sign-in is required, select **Sign in with ChatGPT**, complete the official browser flow,
    and check the connection again.

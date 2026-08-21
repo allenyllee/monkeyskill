@@ -1,3 +1,5 @@
+import { codexAppServerOriginPattern } from "../lib/codex-app-server.js";
+
 const STORE_URL = "https://allenyllee.github.io/monkeyskill-store/";
 const skillPicker = document.querySelector("#skill-picker");
 const skillName = document.querySelector("#skill-name");
@@ -196,6 +198,10 @@ async function runAgentAction(type, progress) {
   agentResult.hidden = true;
   setAgentControlsDisabled(true);
   try {
+    const origin = codexAppServerOriginPattern(agentUrl.value);
+    if (!await chrome.permissions.request({ origins: [origin] })) {
+      throw new Error("未取得本機 Codex App Server 的連線權限。");
+    }
     const saved = await chrome.runtime.sendMessage({ type: "save-codex-agent-settings", url: agentUrl.value });
     if (!saved.ok) throw new Error(saved.error);
     agentUrl.value = saved.url;

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   CodexAppServerClient,
+  codexAppServerOriginPattern,
   normalizeCodexAppServerUrl,
   publicCodexAccount
 } from "../src/lib/codex-app-server.js";
@@ -12,6 +13,7 @@ test("only accepts loopback Codex App Server websocket URLs", () => {
   assert.throws(() => normalizeCodexAppServerUrl("wss://agent.example.com"), /本機/);
   assert.throws(() => normalizeCodexAppServerUrl("ws://192.168.1.2:4500"), /localhost/);
   assert.throws(() => normalizeCodexAppServerUrl("ws://user:pass@localhost:4500"), /不可包含/);
+  assert.equal(codexAppServerOriginPattern("ws://127.0.0.1:4500"), "http://127.0.0.1:4500/*");
 });
 
 test("redacts Codex account data to fields needed by the UI", () => {

@@ -61,13 +61,20 @@ password, or bearer token. Start the service in a separate terminal:
 codex app-server --listen ws://127.0.0.1:4500
 ```
 
+On Windows, when the desktop app has not placed `codex` on `PATH`, use the tested npm launcher:
+
+```powershell
+npx.cmd --yes @openai/codex@0.149.0 app-server --listen ws://127.0.0.1:4500
+```
+
 Then open **ChatGPT Agent** in the options page. **Check connection** reads the redacted account
 status, **Sign in with ChatGPT** asks app-server for the official browser login URL, and **Test
 Agent** creates a read-only, approval-free smoke-test thread. The test prompt forbids tools and
 expects one exact response; the Extension archives the test thread afterward.
 
 This is a POC integration path, not yet a replacement for the four-role BYOK MSkill pipeline. The
-Extension accepts only `ws://localhost`, `ws://127.0.0.1`, or `ws://[::1]`; remote App Servers,
+first Agent action requests the matching localhost origin permission. The Extension accepts only
+`ws://localhost`, `ws://127.0.0.1`, or `ws://[::1]`; remote App Servers,
 credentials embedded in URLs, and query parameters are rejected. See
 [ChatGPT Agent integration POC](docs/codex-agent-integration.md) for protocol and trust boundaries.
 

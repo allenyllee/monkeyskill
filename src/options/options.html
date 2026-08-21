@@ -58,7 +58,7 @@
         <p class="copy">透過本機 Codex App Server 使用你的 ChatGPT 登入狀態。Extension 不讀取 ChatGPT cookie 或 token；目前只提供連線、登入與隔離 smoke test，尚未取代既有的 BYOK 生成流程。</p>
         <form id="agent-form">
           <label><span>Local App Server</span><input id="agent-url" type="url" required value="ws://127.0.0.1:4500"></label>
-          <div class="command-hint"><code>codex app-server --listen ws://127.0.0.1:4500</code></div>
+          <div class="command-hint"><code>npx.cmd --yes @openai/codex@0.149.0 app-server --listen ws://127.0.0.1:4500</code></div>
           <div class="skill-actions">
             <button type="submit">檢查連線</button>
             <button id="agent-login" type="button">使用 ChatGPT 登入</button>
