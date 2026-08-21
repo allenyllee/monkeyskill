@@ -41,6 +41,10 @@ test("verified Runner Bootstrap prompt is pinned and copied by Extension-owned c
   assert.match(background, /case "verify-runner-bootstrap"/);
   assert.match(background, /validateRunnerBootstrapObservation/);
   assert.match(background, /buildVerifiedRunnerBootstrapPrompt/);
+  assert.match(background, /packageHash: verified\.packageHash/);
+  assert.match(background, /protocolProfile: verified\.protocolProfile/);
+  assert.match(background, /verifiedFileCount: verified\.verifiedFileCount/);
+  assert.match(background, /verifiedByteCount: verified\.verifiedByteCount/);
   assert.match(background, /clipboardText: prompt/);
   assert.match(background, /reasons: \["IFRAME_SCRIPTING"\]/);
   assert.match(policy, /eb4d2956a00f5d2232fe0a06a0f58b050bc831502cafc48e6286db5248701869/);

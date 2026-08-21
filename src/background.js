@@ -146,8 +146,12 @@ async function handleMessage(message, sender) {
         ok: true,
         id: verified.id,
         version: verified.version,
+        packageHash: verified.packageHash,
         packageHashPrefix: verified.packageHash.slice(0, 16),
-        protocolSchemaVersion: verified.protocolSchemaVersion
+        protocolSchemaVersion: verified.protocolSchemaVersion,
+        protocolProfile: verified.protocolProfile,
+        verifiedFileCount: verified.verifiedFileCount,
+        verifiedByteCount: verified.verifiedByteCount
       };
       if (typeof chrome.action.openPopup === "function") {
         const popupToken = crypto.randomUUID();
